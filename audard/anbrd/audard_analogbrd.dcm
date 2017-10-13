@@ -1,0 +1,17 @@
+EESchema-DOCLIB  Version 2.0  Date: 2010-12-08T03:58:23 CET
+#
+$CMP BD6211F
+D BD6211(F): H-BRIDGE DRIVER 7V MAX, 1.0 A, For brush motors
+$ENDCMP
+#
+#
+$CMP IRS20954S
+D IR(S)20954(S): Protected Digital Audio Driver for MOSFET, Floating PWM input
+$ENDCMP
+#
+#
+$CMP LM386
+D LM386: Low Voltage Audio Power Amplifier, Voltage gains from 20 to 200
+$ENDCMP
+#
+#End Doc Library

@@ -1,0 +1,97 @@
+cp -r /usr/share/perl5/LWP /media/sdhcnonos/ebin/mvs-client.perl/
+
+% perl -MCPAN -eshell
+
+Actually, must call with
+
+% sudo perl -MCPAN -eshell
+else HTML::Summary, WWW::Robot ... (req for AuthenAgent) fail building because of permissions..
+
+and sudo apt-get install perl-tk (req by AuthenAgent)
+also, yaml  # (else complaints by MCPAN)
+
+cpan> install YAML
+cpan> install Bundle::LWP
+cpan> install LWP::AuthenAgent
+
+can debug with perl -d mvs li
+then use s to step, p to print, hash valuex are examined with x %
+so mvs:108-Client.pm:912 - Client.pm:871, and x %$response (not %response, it results with empty array) getting: 'LWP will support HTTPS if either Crypt::SSLeay or IO:Socket:SSL is installed'
+
+$ cpan -a | grep -i ssl
+Crypt::SSLeay                  0.57      0.57  DLAND/Crypt-SSLeay-0.57.tar.gz
+
+# just openssl and libssl0.9.8 is not enough:
+sudo apt-get install libssl-dev
+cpan> install Crypt::SSLeay
+
+... and finally it works as it should :D
+(note, avoid test of Crypt::SSLeay - if doig them, and cannot reinstall, do 'clean Crypt::SSLeay' at the prompt first)
+
+...
+/usr/bin/mvs
+/usr/share/perl5/WWW/Mediawiki/Client.pm
+...
+
+Remember for scite:
+# Required for Unicode to work on GTK+:
+#LC_CTYPE=en_US.UTF-8
+if PLAT_GTK
+	output.code.page=65001
+so files open by default in Unicode...
+and use the ljutacer2/52.3KB version (more unicode handling for mvs)..
+
+////////////////////////////////
+
+Note, on natty, newer Perl, so now sites with broken SSL will fail by default, and two more packages are needed:
+
+cpan> install Mozilla::CA
+cpan> install IO::Socket::SSL
+
+... however, that will still not get rid of errors, so must actually set environment variable to control that, as in:
+
+PERL_LWP_SSL_VERIFY_HOSTNAME=0 mvs up Whatever.wiki
+
+
+below some errors and an answer from SO:
+
+$res = bless( {
+                '_content' => 'Can\'t verify SSL peers without knowning which Certificate Authorities to trust
+
+This problem can be fixed by either setting the PERL_LWP_SSL_CA_FILE
+envirionment variable or by installing the Mozilla::CA module.
+
+To disable verification of SSL peers set the PERL_LWP_SSL_VERIFY_HOSTNAME
+envirionment variable to 0.  If you do this you can\'t be sure that you
+communicate with the expected peer.
+',
+
+Net::SSL from Crypt-SSLeay can\'t verify hostnames; either install IO::Socket::SSL or turn off verification by setting the PERL_LWP_SSL_VERIFY_HOSTNAME environm
+ent variable to 0 at /usr/local/share/perl/5.10.1/LWP/Protocol/http.pm line 51.
+
+$res = bless( {
+                '_content' => 'Can\'t connect to imi.aau.dk:443 (certificate verify failed)
+
+LWP::Protocol::https::Socket: SSL connect attempt failed with unknown errorerror:14090086:SSL routines:SSL3_GET_SERVER_CERTIFICATE:certificate verify failed at /usr/local/share/perl/5.10.1/LWP/Protocol/http.pm line 51.
+
+foreach $key (sort keys(%ENV)) { print "$key = $ENV{$key}\n"; }
+
+<qp l="http://stackoverflow.com/questions/74358/how-can-i-get-lwp-to-validate-ssl-server-certificates" t="perl - How can I get LWP to validate SSL server certificates? - Stack Overflow" d="Wed Mar 30 2011 15:36:59 GMT+0200 (CEST)" s="1">This long-standing security hole has finally been fixed in version 6.00 of libwww-perl. Starting with that version, by default LWP::UserAgent verifies that HTTPS servers present a valid certificate matching the expected hostname (unless $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} is set to a false value or, for backwards compatibility if that variable is not set at all, either $ENV{HTTPS_CA_FILE} or $ENV{HTTPS_CA_DIR} is set).
+
+This can be controlled by the new ssl_opts option of LWP::UserAgent. See that link for details on how the Certificate Authority certificates are located.
+
+So use LWP::UserAgent 6; should be sufficient to have server certificates validated.</qp>
+<qp l="http://search.cpan.org/~gaas/libwww-perl-6.02/lib/LWP/UserAgent.pm#%24ua-%3Essl_opts" t="LWP::UserAgent - search.cpan.org" d="Wed Mar 30 2011 15:48:37 GMT+0200 (CEST)" s="1">
+
+This option is initialized from the PERL_LWP_SSL_VERIFY_HOSTNAME environment variable. If this envirionment variable isn't set; then verify_hostname defaults to 1.</qp>
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="XS3A_FT245_duplex_rdwr_tbw.wdb" id="1" type="auto">
+         <top_modules>
+            <top_module name="glbl" />
+            <top_module name="math_real" />
+            <top_module name="numeric_std" />
+            <top_module name="std_logic_1164" />
+            <top_module name="std_logic_arith" />
+            <top_module name="std_logic_textio" />
+            <top_module name="std_logic_unsigned" />
+            <top_module name="textio" />
+            <top_module name="vl_types" />
+            <top_module name="xs3a_ft245_duplex_rdwr_tbw" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <WVObjectSize size="8" />
+   <wvobject fp_name="/xs3a_ft245_duplex_rdwr_tbw/wtclk" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wtclk</obj_property>
+      <obj_property name="ObjectShortName">wtclk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_duplex_rdwr_tbw/wtnrxf" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wtnrxf</obj_property>
+      <obj_property name="ObjectShortName">wtnrxf</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_duplex_rdwr_tbw/wtntxe" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wtntxe</obj_property>
+      <obj_property name="ObjectShortName">wtntxe</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_duplex_rdwr_tbw/wtnrd" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wtnrd</obj_property>
+      <obj_property name="ObjectShortName">wtnrd</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_duplex_rdwr_tbw/wtwr" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wtwr</obj_property>
+      <obj_property name="ObjectShortName">wtwr</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_duplex_rdwr_tbw/wtd" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">wtd[7:0]</obj_property>
+      <obj_property name="ObjectShortName">wtd[7:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_duplex_rdwr_tbw/UUT/bdri" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">bdri[7:0]</obj_property>
+      <obj_property name="ObjectShortName">bdri[7:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_duplex_rdwr_tbw/UUT/bdwo" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">bdwo[7:0]</obj_property>
+      <obj_property name="ObjectShortName">bdwo[7:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+</wave_config>

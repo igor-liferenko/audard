@@ -1,0 +1,32 @@
+* Schematics Netlist; file: ngspice_rc_mini.net *
+* must have first comment on top - 'tis a circuit name! *
+* call with: ngspice -b ngspice_rc_mini.net *
+
+
+* PULSE ( V1 V2 TD(elay) TR(rise) TF(all) PW(idth) PER(iod) )
+
+C1 0 1 10n
+R1 2 1 1K
+V2 2 0 pulse 0 5V 0u 2u 2u 20us 40us
+
+.control
+echo ...........
+
+* set color for postscript output
+set hcopypscolor=1
+
+* perform transient sim
+tran 1us 39us
+
+* save the plots of node voltages V(1) and V(2)
+* in a ngspice_rc_mini.ps file
+hardcopy ngspice_rc_mini.ps V(1) V(2)
+
+* save the vector of V(1) plot as ASCII file
+set filetype = ASCII
+write ngspice_rc_mini.raw V(1)
+
+.endc
+.end
+
+

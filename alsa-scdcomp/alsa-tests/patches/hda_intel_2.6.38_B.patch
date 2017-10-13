@@ -1,0 +1,46 @@
+--- hda_intel_2.6.38_orig.c	2013-10-21 14:25:10.000000000 +0200
++++ hda_intel_2.6.38.c	2013-10-21 14:24:40.017973477 +0200
+@@ -34,6 +34,9 @@
+  * 
+  */
+ 
++// downloaded from http://lxr.linux.no/linux+v2.6.38.8/+save=sound/pci/hda/hda_intel.c
++// alt: http://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/tree/sound/pci/hda/hda_intel.c?h=linux-2.6.38.y
++
+ #include <asm/io.h>
+ #include <linux/delay.h>
+ #include <linux/interrupt.h>
+@@ -984,6 +987,7 @@
+ 	/* set DMA start and interrupt mask */
+ 	azx_sd_writeb(azx_dev, SD_CTL, azx_sd_readb(azx_dev, SD_CTL) |
+ 		      SD_CTL_DMA_START | SD_INT_MASK);
++  trace_printk("(%d)\n", azx_dev->substream->stream);
+ }
+ 
+ /* stop DMA */
+@@ -1122,6 +1126,7 @@
+ 			if (!azx_dev->substream || !azx_dev->running ||
+ 			    !(sd_status & SD_INT_COMPLETE))
+ 				continue;
++			//~ trace_printk("azx_interrupt %d\n",azx_dev->substream->stream);
+ 			/* check whether this IRQ is really acceptable */
+ 			ok = azx_position_ok(chip, azx_dev);
+ 			if (ok == 1) {
+@@ -1890,8 +1895,16 @@
+ 	struct azx_pcm *apcm = snd_pcm_substream_chip(substream);
+ 	struct azx *chip = apcm->chip;
+ 	struct azx_dev *azx_dev = get_azx_dev(substream);
+-	return bytes_to_frames(substream->runtime,
++  snd_pcm_sframes_t ploc = bytes_to_frames(substream->runtime,
+ 			       azx_get_position(chip, azx_dev));
++  // report in frames directly (calc in bytes elsewhere);
++  // function name is auto-printed by trace_printk - but not in function_graph!
++  // also report __builtin_return_address(1) caller - can distinguish if in _elapsed
++  trace_printk("_pointer: %ld (%d) a:%lu h:%lu d:%ld av:%ld hav:%ld c:%pS\n", ploc, substream->stream, substream->runtime->control->appl_ptr, substream->runtime->status->hw_ptr, substream->runtime->delay, (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) ? snd_pcm_playback_avail(substream->runtime) : snd_pcm_capture_avail(substream->runtime), (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) ? snd_pcm_playback_hw_avail(substream->runtime) : snd_pcm_capture_hw_avail(substream->runtime), __builtin_return_address(1));
++
++  return ploc;
++  //~ return bytes_to_frames(substream->runtime,
++                         //~ azx_get_position(chip, azx_dev));
+ }
+ 
+ /*

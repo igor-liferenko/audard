@@ -1,0 +1,80 @@
+Cmp-Mod V01 Created by CVpcb (20090216-final) date = Sat 31 Oct 2009 03:30:43 PM CET
+
+BeginCmp
+TimeStamp = /4AEC1F37;
+Reference = C1;
+ValeurCmp = 100nF;
+IdModule  = C2;
+EndCmp
+
+BeginCmp
+TimeStamp = /4AEC1F55;
+Reference = C2;
+ValeurCmp = 100nF;
+IdModule  = C2;
+EndCmp
+
+BeginCmp
+TimeStamp = /4AEC1F69;
+Reference = C3;
+ValeurCmp = 4.7uF;
+IdModule  = C2V10;
+EndCmp
+
+BeginCmp
+TimeStamp = /4AEC1FDF;
+Reference = C4;
+ValeurCmp = 100nF;
+IdModule  = C2;
+EndCmp
+
+BeginCmp
+TimeStamp = /4AEC1BFA;
+Reference = CONN1;
+ValeurCmp = USBCONN2;
+IdModule  = CONN_USB2_MiniB_SMT;
+EndCmp
+
+BeginCmp
+TimeStamp = /4AEC4924;
+Reference = CONN2;
+ValeurCmp = USBCONN2;
+IdModule  = USB_B;
+EndCmp
+
+BeginCmp
+TimeStamp = /4AEC22C7;
+Reference = P1;
+ValeurCmp = CONN_15;
+IdModule  = SIL-15;
+EndCmp
+
+BeginCmp
+TimeStamp = /4AEC1E21;
+Reference = R1;
+ValeurCmp = 4K7;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /4AEC1E51;
+Reference = R2;
+ValeurCmp = 10K;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /4AEC203D;
+Reference = R3;
+ValeurCmp = 10K;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /4AEB9160;
+Reference = U1;
+ValeurCmp = FT245RL;
+IdModule  = SSOP28;
+EndCmp
+
+EndListe

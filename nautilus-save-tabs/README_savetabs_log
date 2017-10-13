@@ -1,0 +1,634 @@
+# init: start from apt-get source nautilus-open-terminal, Ubuntu 9.04 ; gets nautilus-open-terminal-0.9
+
+Build needs (ubuntu): libnautilus-extension-dev (40MB) libgconf2-dev (5MB) libgnome-desktop-dev (1 MB) libgnomevfs2-dev (12 MB) libgtk2.0-dev 
+Makefile needs po dir as well.. 
+
+./configure --includedir=/usr/include/gnome-vfs-2.0 doesn't really help (nor make with same argument)
+So, change in src/Makefile - add gnome-vfs-2.0 - AFTER configure has been run:
+DEFAULT_INCLUDES = -I. -I$(top_builddir) -I/usr/include/gnome-vfs-2.0
+Output is: libnautilus-open-terminal.la
+
+###
+
+rename plugin: 
+
+grep -r -i "nautilus" . | grep --color -i open
+
+# previews
+find . -type f | while read fi ; do echo $fi; sed -n "s/\(nautilus_open_terminal\)/$CSA\1$CE/gp" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -n "s/\(nautilus_open_terminal\)/$CSA$(echo A)$CE/gp" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -n "s/\(nautilus-open-terminal\)/$CSA\1$CE/gp" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -n "s/\(NautilusOpenTerminal\)/$CSA\1$CE/gp" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -n "s/\(NAUTILUS_OPEN_TERMINAL\)/$CSA\1$CE/gp" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -n "s/\(NAUTILUS_TYPE_OPEN_TERMINAL\)/$CSA\1$CE/gp" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -n "s/\(Nautilus-Open-Terminal\)/$CSA\1$CE/gp" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -n "s/\(OPEN_TERMINAL\)/$CSA\1$CE/gp" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -n "s/\(open_terminal\)/$CSA\1$CE/gp" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -n "s/\(open-terminal\)/$CSA\1$CE/gp" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -n "s/\(Open \)/$CSA\1$CE/gp" $fi ; done # msgstring
+
+# change
+find . -type f | while read fi ; do echo $fi; sed -i "s/\(nautilus_open_terminal\)/nautilus_save_tabs/g" $fi ; done 
+find . -type f | while read fi ; do echo $fi; sed -i "s/nautilus-open-terminal/nautilus-save-tabs/g" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -i "s/NautilusOpenTerminal/NautilusSaveTabs/g" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -i "s/NAUTILUS_OPEN_TERMINAL/NAUTILUS_SAVE_TABS/g" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -i "s/NAUTILUS_TYPE_OPEN_TERMINAL/NAUTILUS_TYPE_SAVE_TABS/g" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -i "s/Nautilus-Open-Terminal/Nautilus-Save-Tabs/g" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -i "s/OPEN_TERMINAL/SAVE_TABS/g" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -i "s/open_terminal/save_tabs/g" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -i "s/open-terminal/save-tabs/g" $fi ; done
+find . -type f | while read fi ; do echo $fi; sed -i "s/Open /SaveTabs /g" $fi ; done
+
+  614  mv src/nautilus-open-terminal.c src/nautilus-save-tabs.c
+  615  mv src/nautilus-open-terminal.h src/nautilus-save-tabs.h
+  616  mv src/open-terminal.c src/save-tabs.c
+  617  mv nautilus-open-terminal.schemas.in nautilus-save-tabs.schemas.in 
+
+### 
+in confugure, should change:
+#ALL_LINGUAS="ar be be@latin bg bn_IN ca cs da de dz en_CA en_GB es el et eu fi fr gl gu he hu it ja ka ko lt mk ml nb ne nl oc or pa pl pt pt_BR ro ru rw sk sl sr sr@Latn sv ta th tr uk vi zh_CN zh_TW"
+ALL_LINGUAS="en_GB"
+
+and again, change in src/Makefile - add gnome-vfs-2.0 - AFTER configure has been run:
+DEFAULT_INCLUDES = -I. -I$(top_builddir) -I/usr/include/gnome-vfs-2.0
+Output is: libnautilus-save-tabs.la
+
+Originally, open-terminal extension in /usr/lib/nautilus/extensions-2.0/libnautilus-open-terminal.so ..
+So try:
+sudo cp src/libnautilus-save-tabs.la /usr/lib/nautilus/extensions-2.0 # not much happens, need the .so 
+sudo cp src/.libs/libnautilus-save-tabs.so /usr/lib/nautilus/extensions-2.0
+sudo rm /usr/lib/nautilus/extensions-2.0/libnautilus-save-tabs.la
+OK - after log off/log on, at this point SaveTabs shows in context menu... and it works correctly - the same as open in terminal.. 
+
+Instead of log off, can also do killall nautilus ; nautilus -n &
+
+Also, the python examples in /usr/share/doc/python-nautilus/examples/ seem to work; particular /usr/share/doc/python-nautilus/examples/open-terminal.py ...
+
+http://www.codetrax.org/attachments/download/38/tab-session-management-0.3b.tar.gz has example of tabs obtained via python for epiphany (TabList = window.get_notebook().get_children()), maybe something similar works in nautilus?
+sudo gedit /usr/lib/nautilus/extensions-2.0/python/open-terminal.py
+Probably it wont work - /usr/share/doc/python-nautilus/examples/documentation.py lists the python nautilus interface, and it doesn't include tabs (it is for an older version..)  - so will have to do through C?
+Nope, it doesn't work - although nautilus also uses notebook:
+	TabList = "" #window.get_notebook() #.get_children()
+	message = "This is Py OpenTerm get_background_items" + str(TabList)
+	dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_NONE, message)
+	dialog.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+	dialog.run()
+	dialog.destroy()
+the above fires only when get_notebook is not used.. 
+
+
+Also, see for nautilus extensions providing command line arguments/options.. 
+
+###
+
+API nautilus: http://library.gnome.org/devel/libnautilus-extension/stable/
+nautilus-column-provider
+NautilusColumn
+nautilus-extension-types
+nautilus-file-info
+nautilus-info-provider <--- possibly only this to retrieve list of tabs.. 
+nautilus-location-widget-provider
+nautilus-menu-provider
+NautilusMenuItem
+nautilus-property-page-provider
+NautilusPropertyPage
+
+### 
+in src:
+./src/nautilus-navigation-window.c:static void enable_tabs_changed
+	NautilusNavigationWindow *window;
+	window = NAUTILUS_NAVIGATION_WINDOW (callback_data);
+	nautilus_navigation_window_update_tab_menu_item_visibility (window);
+
+./src/nautilus-places-sidebar.c:	if (eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS)) {
+		gtk_widget_show (sidebar->popup_menu_open_in_new_tab_item);
+	} else {
+		gtk_widget_hide (sidebar->popup_menu_open_in_new_tab_item);
+	}
+static void
+open_shortcut_in_new_tab_cb (GtkMenuItem	      *item,
+				NautilusPlacesSidebar *sidebar)
+{
+	open_shortcut_from_menu (sidebar, NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB);
+}
+static void
+open_shortcut_from_menu (NautilusPlacesSidebar *sidebar,
+			 NautilusWindowOpenFlags	       flags)
+{
+	GtkTreeModel *model;
+	GtkTreePath *path;
+
+	model = gtk_tree_view_get_model (sidebar->tree_view);
+	gtk_tree_view_get_cursor (sidebar->tree_view, &path, NULL);
+
+	open_selected_bookmark (sidebar, model, path, flags);
+
+	gtk_tree_path_free (path);
+}
+static void
+open_selected_bookmark (NautilusPlacesSidebar *sidebar,
+			GtkTreeModel	      *model,
+			GtkTreePath	      *path,
+			NautilusWindowOpenFlags	      flags)
+{
+	NautilusWindowSlotInfo *slot;
+	GtkTreeIter iter;
+	GFile *location;
+	char *uri;
+
+	if (!path) {
+		return;
+	}
+
+	if (!gtk_tree_model_get_iter (model, &iter, path)) {
+		return;
+	}
+
+	if (flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB &&
+	    !eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ENABLE_TABS)) {
+		flags &= ~NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB;
+		flags |= NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW;
+	}
+
+	gtk_tree_model_get (model, &iter, PLACES_SIDEBAR_COLUMN_URI, &uri, -1);
+
+	if (uri != NULL) {
+		nautilus_debug_log (FALSE, NAUTILUS_DEBUG_LOG_DOMAIN_USER,
+				    "activate from places sidebar window=%p: %s",
+				    sidebar->window, uri);
+		location = g_file_new_for_uri (uri);
+		/* Navigate to the clicked location */
+		if ((flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_WINDOW) == 0) {
+			slot = nautilus_window_info_get_active_slot (sidebar->window);
+			nautilus_window_slot_info_open_location (slot, location,
+								 NAUTILUS_WINDOW_OPEN_ACCORDING_TO_MODE,
+								 flags, NULL);
+		} else {
+			NautilusWindow *cur, *new;
+			
+			cur = NAUTILUS_WINDOW (sidebar->window);
+			new = nautilus_application_create_navigation_window (cur->application,
+									     NULL,
+									     gtk_window_get_screen (GTK_WINDOW (cur)));
+			nautilus_window_go_to (new, location);
+		}
+		g_object_unref (location);
+		g_free (uri);
+
+	} else { ....
+
+./src/nautilus-window.c:	if (new_tab) {
+./src/nautilus-window-manage-views.c:	if (new_tab) {
+./src/nautilus-window.c:	
+void
+nautilus_window_go_up (NautilusWindow *window, gboolean close_behind, gboolean new_tab)
+
+
+./libnautilus-private/nautilus-file-utilities.c:			char *argv[5];
+
+./libnautilus-private/nautilus-open-with-dialog.c:	char **argv = NULL;
+./libnautilus-private/nautilus-open-with-dialog.c:	g_shell_parse_argv (command, &argc, &argv, &error);
+
+./src/nautilus-main.c:main (int argc, char *argv[])
+./src/nautilus-main.c:	if (!g_option_context_parse (context, &argc, &argv, &error)) {
+
+./src/nautilus-file-management-properties-main.c:main (int argc, char *argv[])
+./src/nautilus-connect-server-dialog-main.c:main (int argc, char *argv[])
+./src/nautilus-autorun-software.c:main (int argc, char *argv[])
+
+./src/nautilus-main.c:
+	} else {
+		/* Convert args to URIs */
+		uris = NULL;
+		if (remaining != NULL) {
+			uris_array = g_ptr_array_new ();
+			for (i = 0; remaining[i] != NULL; i++) {
+				file = g_file_new_for_commandline_arg (remaining[i]);
+				if (file != NULL) {
+					uri = g_file_get_uri (file);
+					g_object_unref (file);
+					if (uri) {
+						g_ptr_array_add (uris_array, uri);
+					}
+				}
+			}
+			g_ptr_array_add (uris_array, NULL);
+			uris = (char **)g_ptr_array_free (uris_array, FALSE);
+		}
+
+		
+		/* Run the nautilus application. */
+		application = nautilus_application_new ();
+
+		if (egg_sm_client_is_resumed (application->smclient)) {
+			no_default_window = TRUE;
+		}
+		
+		nautilus_application_startup
+			(application,
+			 kill_shell, no_default_window, no_desktop,
+			 browser_window,
+			 geometry,
+			 uris);
+		g_strfreev (uris);
+
+		if (is_event_loop_needed ()) {
+			gtk_main ();
+		}
+	}
+
+./src/nautilus-application.c:nautilus_application_startup (NautilusApplication *application,	......	
+  	/* Create the other windows. */
+	if (urls != NULL || !no_default_window) {
+		if (unique_app_is_running (application->unique_app)) {
+			message = unique_message_data_new ();
+			_unique_message_data_set_geometry_and_uris (message, geometry, urls);
+			if (browser_window) {
+				unique_app_send_message (application->unique_app,
+							 COMMAND_OPEN_BROWSER, message);
+			} else {
+				unique_app_send_message (application->unique_app,
+							 UNIQUE_OPEN, message);
+			}
+			unique_message_data_free (message);				
+		} else {
+			open_windows (application, NULL,
+				      urls,
+				      gdk_screen_get_default (),
+				      geometry,
+				      browser_window);
+		}
+	}
+	...
+	case UNIQUE_OPEN:
+	case COMMAND_OPEN_BROWSER:
+		uris = _unique_message_data_get_geometry_and_uris (message, &geometry);
+		screen = unique_message_data_get_screen (message);
+		open_windows (application,
+			      unique_message_data_get_startup_id (message),
+			      uris,
+			      screen,
+			      geometry,
+			      command == COMMAND_OPEN_BROWSER);
+		g_strfreev (uris);
+		g_free (geometry);
+		break;
+	...
+open_windows:
+	if (uris == NULL || uris[0] == NULL) {
+		/* Open a window pointing at the default location. */
+		open_window (application, startup_id, NULL, screen, geometry, browser_window);
+	} else {
+		/* Open windows at each requested location. */
+		for (i = 0; uris[i] != NULL; i++) {
+			open_window (application, startup_id, uris[i], screen, geometry, browser_window);
+		}
+	}
+	....
+open_window:
+static void
+open_window (NautilusApplication *application,
+	     const char *startup_id,
+	     const char *uri, GdkScreen *screen, const char *geometry,
+	     gboolean browser_window)
+{
+	GFile *location;
+	NautilusWindow *window;
+
+	if (browser_window ||
+	    eel_preferences_get_boolean (NAUTILUS_PREFERENCES_ALWAYS_USE_BROWSER)) {
+		window = nautilus_application_create_navigation_window (application,
+									startup_id,
+									screen);
+		if (uri == NULL) {
+			nautilus_window_go_home (window);
+		} else {
+			location = g_file_new_for_uri (uri);
+			nautilus_window_go_to (window, location);
+			g_object_unref (location);
+		}
+	} else {
+		if (uri == NULL) {
+			location = g_file_new_for_path (g_get_home_dir ());
+		} else {
+			location = g_file_new_for_uri (uri);
+		}
+		
+		window = nautilus_application_present_spatial_window (application,
+								      NULL,
+								      startup_id,
+								      location,
+								      screen);
+		g_object_unref (location);
+	}
+	
+	if (geometry != NULL && !GTK_WIDGET_VISIBLE (window)) {
+		/* never maximize windows opened from shell if a
+		 * custom geometry has been requested.
+		 */
+		gtk_window_unmaximize (GTK_WINDOW (window));
+		eel_gtk_window_set_initial_geometry_from_string (GTK_WINDOW (window),
+								 geometry,
+								 APPLICATION_WINDOW_MIN_WIDTH,
+								 APPLICATION_WINDOW_MIN_HEIGHT,
+								 FALSE);
+	}
+}
+
+ChangeLog:	(open_selected_bookmark): Open the APPROPRIATE kind of window when
+ChangeLog:	(open_selected_bookmark): New function, choose if to open in
+src/nautilus-places-sidebar.c:static void  open_selected_bookmark               
+src/nautilus-bookmarks-window.c:static void	open_selected_bookmark 		 
+
+libnautilus-private/nautilus-window-slot-info.h:void                              nautilus_window_slot_info_open_location       (NautilusWindowSlotInfo            *slot,
+
+libnautilus-private/nautilus-window-slot-info.c:
+void
+nautilus_window_slot_info_open_location (NautilusWindowSlotInfo  *slot,
+					 GFile                   *location,
+					 NautilusWindowOpenMode   mode,
+					 NautilusWindowOpenFlags  flags,
+					 GList                   *selection)
+{
+	g_assert (NAUTILUS_IS_WINDOW_SLOT_INFO (slot));
+
+	(* NAUTILUS_WINDOW_SLOT_INFO_GET_IFACE (slot)->open_location) (slot,
+								       location,
+								       mode,
+								       flags,
+								       selection);
+}
+
+src/nautilus-window-slot.c:	iface->open_location = nautilus_window_slot_open_location_full;
+static void
+nautilus_window_slot_info_iface_init (NautilusWindowSlotInfoIface *iface)
+{
+	iface->active = nautilus_window_slot_active;
+	iface->inactive = nautilus_window_slot_inactive;
+	iface->get_window = nautilus_window_slot_get_window;
+	iface->get_selection_count = nautilus_window_slot_get_selection_count;
+	iface->get_current_location = real_slot_info_get_current_location;
+	iface->get_current_view = real_slot_info_get_current_view;
+	iface->set_status = nautilus_window_slot_set_status;
+	iface->get_title = nautilus_window_slot_get_title;
+	iface->open_location = nautilus_window_slot_open_location_full;
+}
+
+ChangeLog-20041029:	* src/nautilus-window-manage-views.c: (open_location):
+ChangeLog-20041029:	* src/file-manager/fm-directory-view.c (open_location):
+
+src/file-manager/fm-directory-view.c:
+static void
+open_location (FMDirectoryView *directory_view, 
+	       const char *new_uri, 
+	       NautilusWindowOpenMode mode,
+	       NautilusWindowOpenFlags flags)
+{
+	GtkWindow *window;
+	GFile *location;
+
+	g_assert (FM_IS_DIRECTORY_VIEW (directory_view));
+	g_assert (new_uri != NULL);
+
+	window = fm_directory_view_get_containing_window (directory_view);
+	nautilus_debug_log (FALSE, NAUTILUS_DEBUG_LOG_DOMAIN_USER,
+			    "directory view open_location window=%p: %s", window, new_uri);
+	location = g_file_new_for_uri (new_uri);
+	nautilus_window_slot_info_open_location (directory_view->details->slot,
+						 location, mode, flags, NULL);
+	g_object_unref (location);
+}
+
+
+src/nautilus-window-manage-views.c: 
+void
+nautilus_window_slot_open_location_full (NautilusWindowSlot *slot,
+					 GFile *location,
+					 NautilusWindowOpenMode mode,
+					 NautilusWindowOpenFlags flags,
+					 GList *new_selection)
+{
+	NautilusWindow *window;
+        NautilusWindow *target_window;
+        NautilusWindowSlot *target_slot;
+	NautilusWindowOpenFlags slot_flags;
+        gboolean do_load_location = TRUE;
+...	...
+        g_assert (target_window != NULL);
+
+	if ((flags & NAUTILUS_WINDOW_OPEN_FLAG_NEW_TAB) != 0 &&
+	    NAUTILUS_IS_NAVIGATION_WINDOW (window)) {
+		g_assert (target_window == window);
+
+		slot_flags = 0;
+
+		new_slot_position = eel_preferences_get_enum (NAUTILUS_PREFERENCES_NEW_TAB_POSITION);
+		if (new_slot_position == NAUTILUS_NEW_TAB_POSITION_END) {
+			slot_flags = NAUTILUS_WINDOW_OPEN_SLOT_APPEND;
+		}
+
+		target_slot = nautilus_window_open_slot (window, slot_flags);
+	}
+
+        if ((flags & NAUTILUS_WINDOW_OPEN_FLAG_CLOSE_BEHIND) != 0) {
+                if (NAUTILUS_IS_SPATIAL_WINDOW (window) && !NAUTILUS_IS_DESKTOP_WINDOW (window)) {
+                        if (GTK_WIDGET_VISIBLE (target_window)) {
+                                nautilus_window_close (window);
+                        } else {
+                                g_signal_connect_object (target_window,
+                                                         "show",
+                                                         G_CALLBACK (new_window_show_callback),
+                                                         window,
+                                                         G_CONNECT_AFTER);
+                        }
+                }
+        }
+
+	if (target_slot == NULL) {
+		if (target_window == window) {
+			target_slot = slot;
+		} else {
+			target_slot = target_window->details->active_slot;
+		}
+	}
+
+        if ((!do_load_location) ||
+	    (target_window == window && target_slot == slot &&
+	     old_location && g_file_equal (old_location, location))) {
+		if (old_location) {
+			g_object_unref (old_location);
+		}
+                return;
+        }
+	
+	if (old_location) {
+		g_object_unref (old_location);
+	}
+
+        begin_location_change (target_slot, location, new_selection,
+                               NAUTILUS_LOCATION_CHANGE_STANDARD, 0, NULL);
+}
+
+
+src/nautilus-window-private.h:NautilusWindowSlot *nautilus_window_open_slot                            (NautilusWindow     *window,
+src/nautilus-window.c:	slot = nautilus_window_open_slot (window, 0);
+src/nautilus-window.c:nautilus_window_open_slot (NautilusWindow *window,
+NautilusWindowSlot *
+nautilus_window_open_slot (NautilusWindow *window,
+			   NautilusWindowOpenSlotFlags flags)
+{
+	NautilusWindowSlot *slot;
+
+	g_assert (NAUTILUS_IS_WINDOW (window));
+
+	slot = EEL_CALL_METHOD_WITH_RETURN_VALUE (NAUTILUS_WINDOW_CLASS, window,
+						  open_slot, (window, flags));
+
+	g_assert (NAUTILUS_IS_WINDOW_SLOT (slot));
+	g_assert (window == slot->window);
+
+	window->details->slots = g_list_append (window->details->slots, slot);
+
+	return slot;
+}
+
+
+src/nautilus-spatial-window.c:real_open_slot (NautilusWindow *window,
+src/nautilus-spatial-window.c:	NAUTILUS_WINDOW_CLASS (class)->open_slot = real_open_slot;
+src/nautilus-window-private.h:NautilusWindowSlot *nautilus_window_open_slot                            (NautilusWindow     *window,
+src/nautilus-navigation-window.c:real_open_slot (NautilusWindow *window,
+src/nautilus-navigation-window.c:	NAUTILUS_WINDOW_CLASS (class)->open_slot = real_open_slot;
+src/nautilus-window.c:	slot = nautilus_window_open_slot (window, 0);
+src/nautilus-window.c:nautilus_window_open_slot (NautilusWindow *window,
+src/nautilus-window.c:						  open_slot, (window, flags));
+src/nautilus-window.h:        NautilusWindowSlot * (* open_slot) (NautilusWindow *window,
+
+tabs shown where?
+src/nautilus-actions.h:#define NAUTILUS_ACTION_TABS "Tabs"
+src/nautilus-navigation-window-ui.xml:		<menu action="Tabs">
+src/nautilus-navigation-window-ui.xml:			<menuitem name="TabsPreviousMenu" action="TabsPrevious"/>
+src/nautilus-navigation-window-ui.xml:			<menuitem name="TabsNextMenu" action="TabsNext"/>
+src/nautilus-navigation-window-ui.xml:			<placeholder name="TabsOpen">
+src/nautilus-navigation-window-ui.xml:				<separator name="TabsSep2"/>
+src/nautilus-navigation-window-menus.c:#define MENU_PATH_TABS_PLACEHOLDER	"/MenuBar/Other Menus/Tabs/TabsOpen"
+src/nautilus-navigation-window-menus.c:	action = gtk_action_group_get_action (action_group, "TabsMoveRight");
+src/nautilus-navigation-window-menus.c:	window->details->tabs_menu_action_group = gtk_action_group_new ("TabsMenuGroup");
+src/nautilus-navigation-window-menus.c:/* Update the label displayed in the "Tabs" menu. This is called when the title of
+src/nautilus-navigation-window-menus.c:  /* name, stock id, label */  { "Tabs", NULL, N_("_Tabs") },
+
+src/nautilus-navigation-window-menus.c:
+static void
+reload_tab_menu (NautilusNavigationWindow *window)
+{
+	GtkRadioAction *action;
+	GtkUIManager *ui_manager;
+	int i;
+	gchar action_name[80];
+	gchar *action_label;
+	gchar accelerator[80];
+	GSList *radio_group;
+	NautilusWindowSlot *slot;
+	GtkNotebook *notebook;
+	
+	g_assert (NAUTILUS_IS_NAVIGATION_WINDOW (window));
+	/* Remove old tab menu items */
+	ui_manager = nautilus_window_get_ui_manager (NAUTILUS_WINDOW (window));
+	if (window->details->tabs_menu_merge_id != 0) {
+		gtk_ui_manager_remove_ui (ui_manager,
+					  window->details->tabs_menu_merge_id);
+		window->details->tabs_menu_merge_id = 0;
+	}
+	if (window->details->tabs_menu_action_group != NULL) {
+		gtk_ui_manager_remove_action_group (ui_manager,
+						    window->details->tabs_menu_action_group);
+		window->details->tabs_menu_action_group = NULL;
+	}
+
+	/* Add new tab menu items */
+	window->details->tabs_menu_merge_id = gtk_ui_manager_new_merge_id (ui_manager);
+	window->details->tabs_menu_action_group = gtk_action_group_new ("TabsMenuGroup");
+	
+	gtk_ui_manager_insert_action_group (ui_manager,
+					    window->details->tabs_menu_action_group,
+					    -1);
+	g_object_unref (window->details->tabs_menu_action_group);
+
+	notebook = GTK_NOTEBOOK (window->notebook);
+	radio_group = NULL;
+	for (i = 0; i < gtk_notebook_get_n_pages (notebook); i++) {
+
+		snprintf(action_name, sizeof (action_name), "Tab%d", i);
+
+		slot = nautilus_window_get_slot_for_content_box (NAUTILUS_WINDOW (window),
+								 gtk_notebook_get_nth_page (notebook, i));
+		if (slot) {
+			action_label = g_strdup (slot->title);
+		} else {
+			/* Give the action a generic label. This should only happen when the tab is created
+			 * and the slot has not yet be created, so if all goes to plan then the action label
+			 * will be updated when the slot is created. */
+			action_label = g_strdup_printf ("Tab %d", i);
+		}
+
+		action = gtk_radio_action_new (action_name, action_label, NULL, NULL, i);
+
+		g_free (action_label);
+		action_label = NULL;
+		
+		gtk_radio_action_set_group (action, radio_group);
+		radio_group = gtk_radio_action_get_group (action);
+		
+		g_signal_connect (action, "activate", 
+				  G_CALLBACK (tab_menu_action_activate_callback),
+				  window);
+
+		/* Use Alt+(Number) keyboard accelerators for first 10 tabs */
+		if (i < 10) {
+			snprintf(accelerator, sizeof (accelerator), "<Alt>%d", (i+1)%10);
+		} else {
+			accelerator[0] = '\0';
+		}
+		gtk_action_group_add_action_with_accel (window->details->tabs_menu_action_group, 
+							GTK_ACTION (action),
+							accelerator);
+		
+		g_object_unref (action);
+		
+		gtk_ui_manager_add_ui (ui_manager, 
+				       window->details->tabs_menu_merge_id,
+				       MENU_PATH_TABS_PLACEHOLDER,
+				       action_name,
+				       action_name,
+				       GTK_UI_MANAGER_MENUITEM,
+				       FALSE);
+	}
+
+	update_tab_action_sensitivity (window);
+}
+
+
+
+####
+To build nautilus, also need:
+sudo apt-get install libgail-dev
+sudo apt-get install libunique-dev libdbus-glib-1-dev
+sudo apt-get install intltool
+
+then configure passes with:
+nautilus-2.26.2:
+
+	prefix:                 /usr/local
+	source code location:	.
+	compiler:		gcc
+	tracker support:	no
+	beagle support:		no
+	xmp support:		no
+	PackageKit support:     yes
+
+	profiling support:      off
+	nautilus-extension documentation: no
+
+IMPORTANT: to test the new binary, MUST quit the old first with nautilus -q (else, the old version starts).  also, probably better to configure --prefix=/usr, and to get the usual files the normal nautilus has. 
+
+###
+This is a proof-of-concept Nautilus extension which allows you to open a terminal in arbitrary local folders.

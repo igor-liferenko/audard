@@ -1,0 +1,9 @@
+--quiet
+--no-print-marker
+--playerspec=0 1.0 25
+--line-limits=1:8
+--columnspec=@(ns:3)
+--break-at-namescfs
+--no-wrap-managed
+--curses
+sample.csv

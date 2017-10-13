@@ -1,0 +1,33 @@
+2013.02.16
+
+* attenload.c can now upload device settings .ssf/.SET files to scope, using the -ss switch
+* attengrab.pl has two new keyboard shortcuts, x and n, that set the triger holdoff time to max or min, respectively. This is done by retrieving the .ssf, changing the parameter inside, and uploading it back to the scope. The .ssf seems to involve an unknown checksum algorithm, without which the scope refuses to set the new settings. Currently some checksum bytes are spoofed, which makes these commands work about half of the time.
+
+2013.02.13
+
+* made attengrab.pl get .ssf device settings first
+* adsparse-wave.pl parses .ssf, and inserts some data in .csv
+* there are some weird offsets for .csv/bitmap overlay for 500ns/DIV; still unsolved
+
+2013.02.12
+
+* attengrab.pl now allows for failed .csv capture to complete; auto inserts ADS* label as first word of note (to assist repair, if needed)
+* Added attengrab-repair.pl - can take a failed .csv capture, and a .CSV or .DAV (saved from scope on USB thumbdrive), and repair and re-gnuplot the .csv capture
+* Added adscompare.pl and related scripts, to compare .csv, .CSV and .DAV, and double-check the algorithms involved
+
+2012.11.16
+
+* Added a possibility to repeat bitmap acquisition to attengrab.pl
+
+2012.11.13
+
+* Fixed extraneous kernel messages due late driver detach in attenload.c
+* Changed attengrab.pl to atomic operations (otherwise it couldn'thandle single captures)
+
+2012.11.12
+
+* Added generating test images before `eog` starts
+
+2012.11.07
+
+* Initial release of attenload

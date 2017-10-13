@@ -1,0 +1,55 @@
+#N canvas 338 117 470 461 10;
+#X obj 102 168 zexy/list2symbol /;
+#X obj 112 99 r audiodir;
+#X obj 102 121 pack s s;
+#X msg 102 142 \$2 \$1;
+#X text 166 110 reverse args \; [t b s] would still \; cause a trig
+\, when \; audiodir first comes in!;
+#X obj 102 348 soundfiler;
+#X floatatom 139 395 12 0 0 0 - - -;
+#X obj 102 439 expr 1000*$f1/44100;
+#X floatatom 130 461 12 0 0 0 - - -;
+#X text 219 165 prints: symbol ... \; (good for \$1 below!);
+#X text 223 427 44100 / $f1 is frequency (for phasor~) \; $f1 / 44100
+is time period (for vline~) \; actually 1000*$f1/44100 [ms] fr vline~!
+;
+#X obj 19 112 prepend set;
+#X obj 102 50 inlet;
+#X text 140 50 symbol - chosen filename;
+#X obj 102 79 maxlib/nchange s;
+#X text 19 6 Sample Loader - instantiate with:;
+#X obj 19 473 outlet;
+#X text 23 427 to show \; chosen file \; externally;
+#X msg 102 321 read -resize \$1 \$2 \$3;
+#X obj 102 371 t f f;
+#X text 150 207 extract the subpatch args via list box;
+#X text 150 218 'list' autoadded \, so the msgbox reads that as \$1
+\, ...;
+#X text 19 16 [ttsq_SmpLd 1 1 2] -> 'snd1-1-2L snd1-1-2R';
+#X obj 102 199 t a b;
+#X obj 165 236 list append \$1 \$2 \$3;
+#X text 291 236 'list \$1 \$2 \$3';
+#X msg 165 260 list snd\$1-\$2-\$3L snd\$1-\$2-\$3R;
+#X obj 102 283 list append;
+#X obj 139 418 s ssz\$1-\$2-\$3;
+#X obj 130 485 s len\$1-\$2-\$3;
+#X connect 0 0 23 0;
+#X connect 1 0 2 1;
+#X connect 2 0 3 0;
+#X connect 3 0 0 0;
+#X connect 5 0 19 0;
+#X connect 6 0 28 0;
+#X connect 7 0 8 0;
+#X connect 8 0 29 0;
+#X connect 11 0 16 0;
+#X connect 12 0 14 0;
+#X connect 14 0 2 0;
+#X connect 14 0 11 0;
+#X connect 18 0 5 0;
+#X connect 19 0 7 0;
+#X connect 19 1 6 0;
+#X connect 23 0 27 0;
+#X connect 23 1 24 0;
+#X connect 24 0 26 0;
+#X connect 26 0 27 1;
+#X connect 27 0 18 0;

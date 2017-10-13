@@ -1,0 +1,999 @@
+diff -Naur textmarker.jar.orig/content/about.xul textmarker.jar/content/about.xul
+--- textmarker.jar.orig/content/about.xul	2010-10-27 22:06:00.000000000 +0200
++++ textmarker.jar/content/about.xul	2011-10-23 01:36:02.000000000 +0200
+@@ -12,7 +12,7 @@
+ <groupbox align="center" orient="horizontal">
+ <vbox>
+   <text value="TextMarker" style="font-weight: bold; font-size: x-large;"/>
+-  <text value="ver. 0.3.3"/>
++  <text value="ver. 0.3.4sd"/>
+   <text value="&desc.value;"/>
+   <separator class="thin"/>
+   <text value="&created.by;" style="font-weight: bold;"/>
+diff -Naur textmarker.jar.orig/content/Io.js textmarker.jar/content/Io.js
+--- textmarker.jar.orig/content/Io.js	1970-01-01 01:00:00.000000000 +0100
++++ textmarker.jar/content/Io.js	2009-03-11 13:00:44.000000000 +0100
+@@ -0,0 +1,326 @@
++/////////////////////////////////////////////////
++/////////////////////////////////////////////////
++//
++// Basic JavaScript File and Directory IO module
++// By: MonkeeSage, v0.1
++//
++/////////////////////////////////////////////////
++/////////////////////////////////////////////////
++
++
++if (typeof(JSIO) != 'boolean') {
++
++	var JSIO = true;
++
++	/////////////////////////////////////////////////
++	// Basic file IO object based on Mozilla source 
++	// code post at forums.mozillazine.org
++	/////////////////////////////////////////////////
++
++	// Example use:
++	// var fileIn = FileIO.open('/test.txt');
++	// if (fileIn.exists()) {
++	// 	var fileOut = FileIO.open('/copy of test.txt');
++	// 	var str = FileIO.read(fileIn);
++	// 	var rv = FileIO.write(fileOut, str);
++	// 	alert('File write: ' + rv);
++	// 	rv = FileIO.write(fileOut, str, 'a');
++	// 	alert('File append: ' + rv);
++	// 	rv = FileIO.unlink(fileOut);
++	// 	alert('File unlink: ' + rv);
++	// }
++
++	var FileIO = {
++
++		localfileCID  : '@mozilla.org/file/local;1',
++		localfileIID  : Components.interfaces.nsILocalFile,
++
++		finstreamCID  : '@mozilla.org/network/file-input-stream;1',
++		finstreamIID  : Components.interfaces.nsIFileInputStream,
++
++		foutstreamCID : '@mozilla.org/network/file-output-stream;1',
++		foutstreamIID : Components.interfaces.nsIFileOutputStream,
++
++		sinstreamCID  : '@mozilla.org/scriptableinputstream;1',
++		sinstreamIID  : Components.interfaces.nsIScriptableInputStream,
++
++		suniconvCID   : '@mozilla.org/intl/scriptableunicodeconverter',
++		suniconvIID   : Components.interfaces.nsIScriptableUnicodeConverter,
++
++		open   : function(path) {
++			try {
++				var file = Components.classes[this.localfileCID]
++								.createInstance(this.localfileIID);
++				file.initWithPath(path);
++				return file;
++			}
++			catch(e) {
++				return false;
++			}
++		},
++
++		read   : function(file, charset) {
++			try {
++				var data     = new String();
++				var fiStream = Components.classes[this.finstreamCID]
++									.createInstance(this.finstreamIID);
++				var siStream = Components.classes[this.sinstreamCID]
++									.createInstance(this.sinstreamIID);
++				fiStream.init(file, 1, 0, false);
++				siStream.init(fiStream);
++				data += siStream.read(-1);
++				siStream.close();
++				fiStream.close();
++				if (charset) {
++					data = this.toUnicode(charset, data);
++				}
++				return data;
++			} 
++			catch(e) {
++				return false;
++			}
++		},
++
++		write  : function(file, data, mode, charset) {
++			try {
++				var foStream = Components.classes[this.foutstreamCID]
++									.createInstance(this.foutstreamIID);
++				if (charset) {
++					data = this.fromUnicode(charset, data);
++				}
++				var flags = 0x02 | 0x08 | 0x20; // wronly | create | truncate
++				if (mode == 'a') {
++					flags = 0x02 | 0x10; // wronly | append
++				}
++				foStream.init(file, flags, 0664, 0);
++				foStream.write(data, data.length);
++				// foStream.flush();
++				foStream.close();
++				return true;
++			}
++			catch(e) {
++				return false;
++			}
++		},
++
++		create : function(file) {
++			try {
++				file.create(0x00, 0664);
++				return true;
++			}
++			catch(e) {
++				return false;
++			}
++		},
++
++		unlink : function(file) {
++			try {
++				file.remove(false);
++				return true;
++			}
++			catch(e) {
++				return false;
++			}
++		},
++
++		path   : function(file) {
++			try {
++				return 'file:///' + file.path.replace(/\\/g, '\/')
++							.replace(/^\s*\/?/, '').replace(/\ /g, '%20');
++			}
++			catch(e) {
++				return false;
++			}
++		},
++
++		toUnicode   : function(charset, data) {
++			try{
++				var uniConv = Components.classes[this.suniconvCID]
++									.createInstance(this.suniconvIID);
++				uniConv.charset = charset;
++				data = uniConv.ConvertToUnicode(data);
++			} 
++			catch(e) {
++				// foobar!
++			}
++			return data;
++		},
++
++		fromUnicode : function(charset, data) {
++			try {
++				var uniConv = Components.classes[this.suniconvCID]
++									.createInstance(this.suniconvIID);
++				uniConv.charset = charset;
++				data = uniConv.ConvertFromUnicode(data);
++				// data += uniConv.Finish();
++			}
++			catch(e) {
++				// foobar!
++			}
++			return data;
++		}
++
++	}
++
++
++	/////////////////////////////////////////////////
++	// Basic Directory IO object based on JSLib 
++	// source code found at jslib.mozdev.org
++	/////////////////////////////////////////////////
++
++	// Example use:
++	// var dir = DirIO.open('/test');
++	// if (dir.exists()) {
++	// 	alert(DirIO.path(dir));
++	// 	var arr = DirIO.read(dir, true), i;
++	// 	if (arr) {
++	// 		for (i = 0; i < arr.length; ++i) {
++	// 			alert(arr[i].path);
++	// 		}
++	// 	}
++	// }
++	// else {
++	// 	var rv = DirIO.create(dir);
++	// 	alert('Directory create: ' + rv);
++	// }
++
++	// ---------------------------------------------
++	// ----------------- Nota Bene -----------------
++	// ---------------------------------------------
++	// Some possible types for get are:
++	// 	'ProfD'				= profile
++	// 	'DefProfRt'			= user (e.g., /root/.mozilla)
++	// 	'UChrm'				= %profile%/chrome
++	// 	'DefRt'				= installation
++	// 	'PrfDef'				= %installation%/defaults/pref
++	// 	'ProfDefNoLoc'		= %installation%/defaults/profile
++	// 	'APlugns'			= %installation%/plugins
++	// 	'AChrom'				= %installation%/chrome
++	// 	'ComsD'				= %installation%/components
++	// 	'CurProcD'			= installation (usually)
++	// 	'Home'				= OS root (e.g., /root)
++	// 	'TmpD'				= OS tmp (e.g., /tmp)
++
++	var DirIO = {
++
++		sep        : '/',
++
++		dirservCID : '@mozilla.org/file/directory_service;1',
++	
++		propsIID   : Components.interfaces.nsIProperties,
++	
++		fileIID    : Components.interfaces.nsIFile,
++
++		get    : function(type) {
++			try {
++				var dir = Components.classes[this.dirservCID]
++								.createInstance(this.propsIID)
++								.get(type, this.fileIID);
++				return dir;
++			}
++			catch(e) {
++				return false;
++			}
++		},
++
++		open   : function(path) {
++			return FileIO.open(path);
++		},
++
++		create : function(dir) {
++			try {
++				dir.create(0x01, 0664);
++				return true;
++			}
++			catch(e) {
++				return false;
++			}
++		},
++
++		read   : function(dir, recursive) {
++			var list = new Array();
++			try {
++				if (dir.isDirectory()) {
++					if (recursive == null) {
++						recursive = false;
++					}
++					var files = dir.directoryEntries;
++					list = this._read(files, recursive);
++				}
++			}
++			catch(e) {
++				// foobar!
++			}
++			return list;
++		},
++
++		_read  : function(dirEntry, recursive) {
++			var list = new Array();
++			try {
++				while (dirEntry.hasMoreElements()) {
++					list.push(dirEntry.getNext()
++									.QueryInterface(FileIO.localfileIID));
++				}
++				if (recursive) {
++					var list2 = new Array();
++					for (var i = 0; i < list.length; ++i) {
++						if (list[i].isDirectory()) {
++							files = list[i].directoryEntries;
++							list2 = this._read(files, recursive);
++						}
++					}
++					for (i = 0; i < list2.length; ++i) {
++						list.push(list2[i]);
++					}
++				}
++			}
++			catch(e) {
++			   // foobar!
++			}
++			return list;
++		},
++
++		unlink : function(dir, recursive) {
++			try {
++				if (recursive == null) {
++					recursive = false;
++				}
++				dir.remove(recursive);
++				return true;
++			}
++			catch(e) {
++				return false;
++			}
++		},
++
++		path   : function (dir) {
++			return FileIO.path(dir);
++		},
++
++		split  : function(str, join) {
++			var arr = str.split(/\/|\\/), i;
++			str = new String();
++			for (i = 0; i < arr.length; ++i) {
++				str += arr[i] + ((i != arr.length - 1) ? 
++										join : '');
++			}
++			return str;
++		},
++
++		join   : function(str, split) {
++			var arr = str.split(split), i;
++			str = new String();
++			for (i = 0; i < arr.length; ++i) {
++				str += arr[i] + ((i != arr.length - 1) ? 
++										this.sep : '');
++			}
++			return str;
++		}
++	
++	}
++
++	if (navigator.platform.toLowerCase().indexOf('win') > -1) {
++		DirIO.sep = '\\';
++	}
++
++}
+\ No newline at end of file
+diff -Naur textmarker.jar.orig/content/optionsOverlay.js textmarker.jar/content/optionsOverlay.js
+--- textmarker.jar.orig/content/optionsOverlay.js	2005-06-03 02:05:08.000000000 +0200
++++ textmarker.jar/content/optionsOverlay.js	2011-10-23 19:44:55.735627879 +0200
+@@ -1,6 +1,15 @@
+ /*
+-	Options Panel 
++	Options Panel
+ 	- this code is by Hemiola SUN (textMarker! Plus! 0.3) and modified by me for use in this version
++  Changes (23-10-2011, sdaau)
++    * Added Shift-X keyboard shortcut for "erase all highlights"
++    * Added 'Autocopy' option - with it active, every highlight will be automatically copied to clipboard
++    * Added option for customizable separator (when multiple in "copy all highlights")
++    * Integrated quoteurltext add-on (Vijaykumar Palat):
++      https://addons.mozilla.org/en-US/firefox/addon/quoteurltext/versions/1.0.9b
++    * * Now there is 'advanced formatting (quoteurltext)' tab in TextMarker options;
++        it accepts the quoteurltext 'syntax' for metadata (@url, @title, @date, @quote)
++        ... and ALL copying to clipboard is formatted according to this setting!
+ 	Changes (03-06-05)
+ 		* added checkbox option for use keyboard shortcuts
+ 	Changes (25-05-05)
+@@ -11,6 +20,18 @@
+ var lists = ["textMarker-colorpicker1","textMarker-colorpicker2","textMarker-colorpicker3"];
+ var defaultColor = ["#FFFF00","#FFFF00","#FFFF00"];
+ 
++
++// copy from quoteurltext; - for access to DirIO
++/*
++ * Load Io.js
++ */
++( ( Components.classes["@mozilla.org/moz/jssubscript-loader;1"] ).getService(
++     Components.interfaces.mozIJSSubScriptLoader ) ).loadSubScript(
++        //~ "chrome://quoteurltext/content/Io.js" );
++        "chrome://textmarker/content/Io.js" );
++// end copy from quoteurltext;
++
++
+ // load all preferences into the dialog
+ function TMOptionsInit()
+ {
+@@ -37,7 +58,37 @@
+   } catch(e) {
+   	element.checked = false;
+   }
+-  	
++  // added textMarker-autocopy
++  element = document.getElementById("textMarker-autocopy");
++  try {
++  	element.checked = gPref.getBoolPref("textMarker.autocopy");
++  } catch(e) {
++  	element.checked = true;
++  }
++  // added textMarker-separator
++  element = document.getElementById("textMarker-separator");
++  try {
++  	element.value = gPref.getCharPref("textMarker.separator");
++  } catch(e) {
++  	element.value = "\\n[...]\\n";
++  }
++
++  // copy from quoteurltext;
++  // needs also Io.js from there copied..
++  // skipping the bool preferences; only using the quote format part
++  //get adv pref format from file (s?)
++  var fileIn = DirIO.get('ProfD');
++  fileIn.append("quotepformat.txt");
++  //var fileIn = FileIO.open(DirIO.get('ProfD').path + '/test.txt');
++  var str = "@title\n@url\n@quote\n@date";
++
++  if (fileIn.exists()) {
++    fileIn = FileIO.open(fileIn.path);
++    str = FileIO.read(fileIn);
++  }
++  document.getElementById("formattemplate").value = str;
++  // end copy from quoteurltext;
++
+ }
+ 
+ // save all preferences entered into the dialog
+@@ -66,4 +117,34 @@
+   } catch(e) {
+   	gPref.setBoolPref("textMarker.useshortcuts",false);
+   }
++  element = document.getElementById("textMarker-autocopy");
++  try {
++  	gPref.setBoolPref("textMarker.autocopy",element.checked);
++  } catch(e) {
++  	gPref.setBoolPref("textMarker.autocopy",true);
++  }
++  // added textMarker-separator
++  element = document.getElementById("textMarker-separator");
++  try {
++  	gPref.setCharPref("textMarker.separator",element.value);
++  } catch(e) {
++  	gPref.setCharPref("textMarker.separator","\\n[...]\\n");
++  }
++
++
++  // copy from quoteurltext;
++  var str = document.getElementById("formattemplate").value;
++  var target = Components.classes["@mozilla.org/file/directory_service;1"]
++                   .getService(Components.interfaces.nsIProperties)
++                   .get("ProfD", Components.interfaces.nsIFile);
++
++
++  target.append("quotepformat.txt");
++  //var target = componentFile.append("/test.txt");
++  var fileOut = FileIO.open(target.path);
++  var rv = FileIO.write(fileOut, str);
++  if (!rv)
++    alert('File write: ' + rv + ' -- Error on write to' + target);
++  // end copy from quoteurltext;
++
+ }
+diff -Naur textmarker.jar.orig/content/optionsOverlay.xul textmarker.jar/content/optionsOverlay.xul
+--- textmarker.jar.orig/content/optionsOverlay.xul	2005-06-05 23:56:48.000000000 +0200
++++ textmarker.jar/content/optionsOverlay.xul	2011-10-23 04:29:53.000000000 +0200
+@@ -12,6 +12,19 @@
+ 	<script type="application/x-javascript" src="chrome://textmarker/content/optionsOverlay.js"/>
+ 
+ 
++<!--
++parts copied from options.xul; dialog id="QuoteURLTextOptions"
++quoteurltext addon by Vijaykumar Palat
++added: sdaau, 2011
++-->
++<tabbox>
++  <tabs>
++    <tab label="Basic (TextMarker)"/>
++    <tab label="Advanced Formatting (QuoteUrlText)"/>
++  </tabs>
++  <tabpanels>
++    <tabpanel id="functionstab">
++      <!-- orig from textmarker -->
+ 	<groupbox align="center" orient="vertical">
+ 			<caption label="&highlight.colors;"/>
+ 			<grid>
+@@ -35,6 +48,9 @@
+ 						<colorpicker id="textMarker-colorpicker3" palettename="standard" type="button"
+ 								prefstring="textMarker.color3"/>
+ 					</row>
++          <row>
++              <label value="&cancelnote.string;"/>
++          </row>
+ 				</rows>
+ 			</grid>
+ 	</groupbox>
+@@ -51,7 +67,57 @@
+ 							<row>
+ 									<checkbox id="textMarker-useshortcuts" label="&keyboard.shortcuts;" checked="false"/>
+ 							</row>
++              <!-- added textMarker-autocopy -->
++							<row>
++									<checkbox id="textMarker-autocopy" label="&autocopy.string;" checked="true"/>
++							</row>
++              <!-- added textMarker-separator -->
++							<row>
++                <hbox align="baseline" style="background-color: gray;">
++                  <textbox id="textMarker-separator" width="100" multiline="false" flex ="0" value=""/> <!-- label attr for screen reader only -->
++                  <label value="&separator.string;"/>
++                </hbox>
++							</row>
+ 					</rows>
+ 			</grid>
+ 	</groupbox>
++      <!-- end orig from textmarker -->
++    </tabpanel>
++    <tabpanel id="operatorstab">
++      <grid>
++
++      <rows>
++      <caption label="Change the format by arranging keywords"/>
++        <row/>
++        <row/>
++        <row/>
++        <row/>
++        <row/>
++      </rows>
++
++      <columns>
++
++        <column>
++      <caption label="Value "/>
++          <caption label="Date:"/>
++          <caption label="Title: "/>
++          <caption label="Quote:"/>
++          <caption label="location/URL:"/>
++        </column>
++
++        <column>
++      <caption label="Keyword"/>
++          <caption label="@date "/>
++          <caption label="@title "/>
++          <caption label="@quote "/>
++          <caption label="@url"/>
++        </column>
++      </columns>
++      </grid>
++      <textbox id="formattemplate" multiline="true"  flex ="1" value=""/>
++    </tabpanel>
++  </tabpanels>
++</tabbox>
++
++
+ </dialog>
+diff -Naur textmarker.jar.orig/content/textmarkerOverlay.js textmarker.jar/content/textmarkerOverlay.js
+--- textmarker.jar.orig/content/textmarkerOverlay.js	2006-10-25 11:20:48.000000000 +0200
++++ textmarker.jar/content/textmarkerOverlay.js	2011-10-23 20:18:07.893506438 +0200
+@@ -9,19 +9,31 @@
+ */
+ 
+ 
++// copy from quoteurltext; - for access to DirIO
++// (must load it here too; in case we haven't raised options first!)
++/*
++ * Load Io.js
++ */
++( ( Components.classes["@mozilla.org/moz/jssubscript-loader;1"] ).getService(
++     Components.interfaces.mozIJSSubScriptLoader ) ).loadSubScript(
++        //~ "chrome://quoteurltext/content/Io.js" );
++        "chrome://textmarker/content/Io.js" );
++// end copy from quoteurltext;
++
++
+ var textMarker = {
+ 	/* function to do some initialisation work */
+ 	init : function () {
+-		
++
+     //* localizing initial description :o)
+-    
++
+    var textmarkerLocalizationPrefs = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService).getBranch("extensions.{1c530060-b0ae-11d9-9669-0800200c9a66}.");
+    var str = Components.classes[ "@mozilla.org/supports-string;1" ].createInstance( Components.interfaces.nsISupportsString );
+    str.data = document.getElementById("textmarker-strings").getString("textmarker.description");
+    textmarkerLocalizationPrefs.setComplexValue( "description", Components.interfaces.nsISupportsString, str );
+-    
+-    
+-    
++
++
++
+     var context = document.getElementById("contentAreaContextMenu");
+     		textMarker.optionsMenu = document.getElementById("context-textMarkerOptionsMenu");
+     		textMarker.copyHighlights = document.getElementById("context-textMarkerCopyHighlights");
+@@ -35,17 +47,17 @@
+ 
+ 	/* function to display the context menu depending on various factors */
+ 	popup : function() {
+-		
++
+ 		textMarker.highlightThis.hidden = !gContextMenu.isTextSelected;
+ 
+ 		if (gContextMenu.target.ownerDocument) {
+-			//textMarker.currentDocument = gContextMenu.target.ownerDocument;			
+-			textMarker.currentDocument = document.popupNode.ownerDocument;			
++			//textMarker.currentDocument = gContextMenu.target.ownerDocument;
++			textMarker.currentDocument = document.popupNode.ownerDocument;
+ 			var targetClass = gContextMenu.target.getAttribute("name");
+-			textMarker.optionsMenu.hidden = !(textMarker.currentDocument.slindex > 0); 
++			textMarker.optionsMenu.hidden = !(textMarker.currentDocument.slindex > 0);
+ 			textMarker.clearHighlights.hidden = !(textMarker.currentDocument.slindex > 0);
+ 			textMarker.copyHighlights.hidden = !(textMarker.currentDocument.slindex > 0);
+-			
++
+ 			textMarker.currentDocument.hlCurrentBlock = "";
+ 			textMarker.clearThisHighlight.hidden = true;
+ 			textMarker.copyThisHighlight.hidden = true;
+@@ -66,23 +78,23 @@
+ 
+ 	/* function to get the selected range and start of the highlighting process is here */
+ 	/* This function code has been replaced by Hemiola SUN's code from his work of TextMarker Plus! 0.3*/
+-	highlight: function(evt) { 
++	highlight: function(evt) {
+ 		var focusedWindow = document.commandDispatcher.focusedWindow;
+ 		if (focusedWindow == window)
+-			focusedWindow = _content; 
++			focusedWindow = _content;
+ 		var selection = focusedWindow.getSelection();
+-		if (textMarker.currentDocument != focusedWindow.document) 
++		if (textMarker.currentDocument != focusedWindow.document)
+ 			textMarker.currentDocument = focusedWindow.document;
+-			
+-		textMarker.currentDocument.hlcolor = textMarker.getColor(1); 
+-		
++
++		textMarker.currentDocument.hlcolor = textMarker.getColor(1);
++
+ 		if (!textMarker.currentDocument.hlcount) {
+ 			textMarker.currentDocument.slindex = 0;
+ 			textMarker.currentDocument.hlcount = 0;
+ 			textMarker.currentDocument.hlCycleIndex = 0;
+ 		}
+ 			if (evt) {
+-				var unUsed = !(evt.charCode == 109 || evt.charCode == 77 || evt.charCode == 98 || evt.charCode == 66 || evt.charCode == 110 || evt.charCode == 78);
++				var unUsed = !(evt.charCode == 109 || evt.charCode == 77 || evt.charCode == 98 || evt.charCode == 66 || evt.charCode == 110 || evt.charCode == 78 || evt.charCode == 88);
+ 				if (unUsed)
+ 					return;
+ 				try {
+@@ -94,19 +106,31 @@
+ 					return;
+ 				}
+ 
+-				if (evt.charCode == 109 || evt.charCode == 77) 
++				if (evt.charCode == 109 || evt.charCode == 77)
+ 					textMarker.currentDocument.hlcolor = textMarker.getColor(1);
+-				if (evt.charCode == 98 || evt.charCode == 66) 
++				if (evt.charCode == 98 || evt.charCode == 66)
+ 					textMarker.currentDocument.hlcolor = textMarker.getColor(2);
+ 				if (evt.charCode == 110 || evt.charCode == 78)
+ 					textMarker.currentDocument.hlcolor = textMarker.getColor(3);
++				if (evt.charCode == 88) //only capital X!
++        {
++					textMarker.clearHL();
++          return;
++        }
+ 			}
+ 		var range = focusedWindow.document.createRange();
+ 		var startNode;
+ 		var endNode;
+ 		var startOffset;
+ 		var endOffset;
+-	
++
++    // handle empty selection - note it is empty string when problem!
++    // (below evaluates false, false, false, true)
++    //~ alert("-" + selection + " : " + (selection == null) + " : " + (selection==undefined) + " : " + ( !selection )  + " : " + ( selection == "" ) );
++    if (selection == "") {
++      return;
++    }
++
+ 		try {
+ 			range.setStart(selection.anchorNode, selection.anchorOffset);
+ 			range.setEnd(selection.focusNode, selection.focusOffset);
+@@ -115,24 +139,51 @@
+ 			startOffset = selection.anchorOffset;
+ 			endOffset = selection.focusOffset;
+ 		} catch(ex) {
++      try { // second try - if we're typing in javascript textarea (like on StackOverflow)
++            // OR if we type in the Firefox search bar !!
++            // we will have nothing selected - yet m,n,b will trigger (and cause exceptions)
+ 			range.setStart(selection.focusNode, selection.focusOffset);
+ 			range.setEnd(selection.anchorNode, selection.anchorOffset);
+ 			startNode = selection.focusNode;
+ 			endNode = selection.anchorNode;
+ 			startOffset = selection.focusOffset;
+ 			endOffset = selection.anchorOffset;
++      } catch(ex2) {
++        //~ alert(ex + " " + ex2);
++        textMarker.debug("dbltry: " + ex + " " + ex2 );
++        return;
++      }
+ 		}
+ 		range.detach();
++    // however, sometimes there's no exception if typing in textarea,
++    // and there is selection (i.e. pre on SO.com)
++    // yet startNode is still null here... so handle null selection at start!
++    //~ alert("startNode: " + startNode + " - " + selection);
++
++    // note: if we're selecting right-to-left ("backwards"); could be
++    // endOffset-startOffset < 0 ! (Exception... "Index or size is negative or greater than the allowed amount")
++    // correct that (also fixed some selection in <pre problems, it seems?!)
++    // but still better to go default left-to-right (while no exceptions, can still mess up)
++    var tdiff = endOffset-startOffset;
++    if (tdiff < 0) {
++      var tso = startOffset;
++      var teo = endOffset;
++      endOffset = tso;
++      startOffset = teo;
++      // AND repeat the matchtext again!? not anymore.
++      //~ matchtext = startNode.splitText(startOffset);
++    }
+ 
+ 
+ 	  // increment highlights count
+       textMarker.currentDocument.slindex++;
+ 
+       var matchtext;
++      var markedNodeSpan; // added
+       if ( startNode != endNode ) { // selection across many nodes
+         matchtext = startNode.splitText(startOffset);
+         startNode = matchtext.splitText(matchtext.data.length);
+-        textMarker.markNode(matchtext);
++        markedNodeSpan = textMarker.markNode(matchtext);
+ 
+         // code borrowed from Line Marker of Shimoda Hiroshi, and modified by Hemiola SUN
+         var node = startNode;
+@@ -143,7 +194,7 @@
+ 		} else {
+ 			while (!node.nextSibling) {
+ 				node = node.parentNode;
+-				if (!node) 
++				if (!node)
+ 					break traceTree;
+ 			}
+ 		node = node.nextSibling;
+@@ -153,31 +204,41 @@
+ 			if (node.nodeType == Node.TEXT_NODE && !textMarker.is_all_ws(node) ) {
+ 				matchtext = node;
+ 				node = matchtext.splitText(node.data.length);
+-				textMarker.markNode(matchtext);
++				markedNodeSpan = textMarker.markNode(matchtext);
+ 			}
+ 		}
+         while (node != endNode);
+ 
+         matchtext = endNode;
++        // inside pre (for code) in StackOverflow (seems fixed with above inversion, now all are false when here):
++        //~ alert("mt:" + matchtext + " : " + (matchtext == null) + " : " + (matchtext==undefined) + " : " + ( !matchtext )  + " : " + ( matchtext == "" ) );
+         endNode = matchtext.splitText(endOffset);
+-        textMarker.markNode(matchtext);
++        markedNodeSpan = textMarker.markNode(matchtext);
+       }
+       else { // selection in one node
+         matchtext = startNode.splitText(startOffset);
++        //~ alert("on:" + tdiff + " : " + startOffset + " " + endOffset);
+         startNode = matchtext.splitText(endOffset-startOffset);
+-        textMarker.markNode(matchtext);
++        markedNodeSpan = textMarker.markNode(matchtext);
+       }
+ 	  selection.collapseToStart();
+ 
++    // added - if activated, copy this highlight
++    // automatically when highlighting:
++    if (textMarker.getIsAutocopy()) {
++      //~ textMarker.copyThisHL(); // misses, relies on mouse position
++      textMarker.copy_a_HL("textmarker_" + textMarker.currentDocument.slindex);//(markedNodeSpan); //
++    }
+ 	},
+ 
+ 	markNode: function(matchtext) {
+ 		var clone = matchtext.cloneNode(true);
+ 		var span = textMarker.createSpan(clone,matchtext.parentNode);
+ 		matchtext.parentNode.replaceChild(span,matchtext);
++    return span;
+ 	},
+ 
+-	/* function to create a span to hold highlight*/ 
++	/* function to create a span to hold highlight*/
+ 	createSpan : function (node,pNode) { // node is a TEXT node
+ 		nam = pNode.getAttribute("name");
+ 		if (nam != null)
+@@ -195,9 +256,9 @@
+ 		return span;
+ 	},
+ 
+-	/* function to clear highlighting 
++	/* function to clear highlighting
+ 	   Code adapted from Ben Basson's Context Highlighter */
+-	clearHL : function() { 
++	clearHL : function() {
+ 		if (!textMarker.currentDocument)
+ 			return;
+ 		while (textMarker.currentDocument.hlcount > 0) {
+@@ -219,7 +280,8 @@
+ 			return;
+ 		var textToCopy = "";
+ 		var count = textMarker.currentDocument.hlcount;
+-		
++    var sep = textMarker.getSeparator(); //"\r\n";
++
+ 		for (var i = 0; i < count ; i++) {
+ 			var id_stuff = "textmarked_" + i;
+ 			var nod = textMarker.currentDocument.getElementById(id_stuff);
+@@ -227,15 +289,15 @@
+ 				hlFlag = nod.getAttribute("name");
+ 			if (nod) {
+ 				if (hlFlag != nod.getAttribute("name")) { // are we in the same highlight
+-					textToCopy += "\r\n" + nod.firstChild.data;
++					textToCopy += sep + nod.firstChild.data; // was "\r\n"
+ 					hlFlag = nod.getAttribute("name");
+-				} else 
++				} else
+ 					textToCopy += nod.firstChild.data;
+ 			}
+ 		}
+ 		textMarker.copyToClipboard(textToCopy);//copy to clipboard
+ 
+-	}, 
++	},
+ 
+ 	/* function to clear highlighting from a particular block */
+ 	clearThisHL : function() {
+@@ -272,13 +334,43 @@
+ 		textMarker.copyToClipboard(textToCopy);//copy to clipboard
+ 	},
+ 
++  // by reference
++	copy_a_HL : function (inelemn) {
++		if (!textMarker.currentDocument)
++			return;
++		//~ var nodesToCopy = inelem;
++		var nodesToCopy = textMarker.currentDocument.getElementsByName(inelemn);
++		var textToCopy = "";
++		for (var i = 0; i < nodesToCopy.length; i++) {
++			var nod = nodesToCopy.item(i);
++			textToCopy += nod.firstChild.data;
++		}
++		textMarker.copyToClipboard(textToCopy);//copy to clipboard
++	},
++
+ 	copyToClipboard : function (toCopy) {
+-        var clipboard = Components.classes["@mozilla.org/widget/clipboardhelper;1"]
+-						.getService(Components.interfaces.nsIClipboardHelper);
+-		toCopy += "\r\n(Source URL: " + textMarker.currentDocument.URL + ")";
+-        clipboard.copyString(toCopy);
++    //~ var clipboard = Components.classes["@mozilla.org/widget/clipboardhelper;1"]
++        //~ .getService(Components.interfaces.nsIClipboardHelper);
++		//~ //toCopy += "\r\n(Source URL: " + textMarker.currentDocument.URL + ")";
++    //~ clipboard.copyString(toCopy);
++
++    // expecting "plain text" here; so quoting it:
++    //~ alert("toCopy:" + toCopy);
++    var copyTxt = textMarker.quoteUrlText(toCopy);
++
++    // copy from quoteurltext() - w./ unicode transferable
++		//create object for transfer
++		var xferable = Components.classes["@mozilla.org/widget/transferable;1"].createInstance(Components.interfaces.nsITransferable);
++		// add plaintext flavor
++		xferable.addDataFlavor("text/unicode");
++		var unicodestring = Components.classes["@mozilla.org/supports-string;1"].createInstance(Components.interfaces.nsISupportsString);
++		unicodestring.data = copyTxt;
++		xferable.setTransferData("text/unicode", unicodestring, copyTxt.length * 2);
++		//send to clipboard
++		var clipboard = Components.classes["@mozilla.org/widget/clipboard;1"].getService(Components.interfaces.nsIClipboard);
++		clipboard.setData(xferable, null, Components.interfaces.nsIClipboard.kGlobalClipboard);
+ 	},
+-	
++
+ 	/* function to dump messages on the Javascript console */
+ 	debug : function (aMessage) {
+   		var consoleService = Components.classes["@mozilla.org/consoleservice;1"]
+@@ -291,7 +383,7 @@
+   		// Use ECMA-262 Edition 3 String and RegExp features
+   		return !(/[^\t\n\r ]/.test(nod.data));
+ 	},
+-	
++
+ 
+ 	getColor : function (id) {
+ 		try {
+@@ -306,11 +398,100 @@
+ 		} catch(e) {
+ 			return "#FFFF00"; // yellow
+ 		}
+-			
++
+ 	},
+ 
+-	
++	getSeparator : function () {
++    try{
++      var gPref = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefBranch);
++      // parse also escaped \r \n \t...
++      return gPref.getCharPref("textMarker.separator").replace(/\\n/g,"\n").replace(/\\t/g,"\t").replace(/\\r/g,"\r");
++    } catch(e) {
++      return e;
++    }
++	},
++
++	getIsAutocopy : function () {
++    try{
++      var gPref = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefBranch);
++      return gPref.getBoolPref("textMarker.autocopy");
++    } catch(e) {
++      alert(e);
++      return false;
++    }
++	},
++
++  // from quoteurltext:
++
++  quoteurltext_setmetadata : function(){
++
++    // Init Metadata
++    var location, title, metadata;
++    var browser = window.getBrowser();
++    var webNav = browser.webNavigation;
++    var win = browser.contentWindow;
++
++    //Set metadata
++    location = win.location.href.toString();
++
++    if(win.document.title){
++      title = win.document.title;
++    } else{
++     title = location;
++    }
++
++    //create return object
++    metadata = [location, title];
++
++    //return object
++    return metadata;
++  },
++
++
++  quoteurltext_advformat_text : function (inText, mypagedata){
++    var location = mypagedata[0];
++    var title = mypagedata[1];
++
++    var title_token = '@title';
++    var location_token = '@url';
++    var quote_token = '@quote';
++    var time_token = '@date';
++
++
++    var format = "Title @title\nAddress:";
++    var fileIn = DirIO.get('ProfD');
++    fileIn.append("quotepformat.txt");
++    format = "@title\n@url\n@date";
++
++    if (fileIn.exists()) {
++      fileIn = FileIO.open(fileIn.path);
++      format = FileIO.read(fileIn);
++    }
++
++    format = format.replace(/@title/gi, title);
++    format = format.replace(/@url/gi, location);
++    format = format.replace(/@quote/gi, inText);
++    format = format.replace(/@date/gi, Date());
++
++    return format;
++
++  },
++
++  // modified from quoteurltext
++	quoteUrlText : function (selTxt) {
++	try{  //open try
++		//set metadata
++		var metadata = textMarker.quoteurltext_setmetadata();
++
++    copyTxt = textMarker.quoteurltext_advformat_text(selTxt, metadata);
++    //copyRich = quoteurltext_advformat_rich(selRich, metadata); // not doing rich (HTML) copy here (only plaintext)
++    return copyTxt; // we're called from copy, so we return formatted text
++
++	}  //close try
++	catch(err) {alert("An unknown error has occurred\n" + err);}
++	}, //close function
+ 
+ }
++
+ window.addEventListener("load", textMarker.init,false);
+ window.addEventListener("keypress", textMarker.highlight,false);
+diff -Naur textmarker.jar.orig/locale/en-US/textmarker.dtd textmarker.jar/locale/en-US/textmarker.dtd
+--- textmarker.jar.orig/locale/en-US/textmarker.dtd	2005-11-14 09:38:02.000000000 +0100
++++ textmarker.jar/locale/en-US/textmarker.dtd	2011-10-23 01:58:47.000000000 +0200
+@@ -13,6 +13,9 @@
+ <!ENTITY other.options       "Other Options">
+ <!ENTITY cycle.colors        "Cycle colours (for mouse and M key highlights)">
+ <!ENTITY keyboard.shortcuts  "Use keyboard shortcuts">
++<!ENTITY separator.string    "Separator string (all h.)">
++<!ENTITY cancelnote.string   "[Cancel all (Shift+X key)]">
++<!ENTITY autocopy.string     "Auto-copy on highlight">
+ 
+ <!ENTITY desc.value           "Allows selected text to be highlighted via context menu">
+ <!ENTITY created.by           "Created By:">

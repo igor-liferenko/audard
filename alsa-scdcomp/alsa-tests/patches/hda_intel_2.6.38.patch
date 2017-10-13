@@ -1,0 +1,28 @@
+--- hda_intel_orig.c	2013-08-02 20:22:13.799884274 +0200
++++ hda_intel_2.6.38.c	2013-08-02 20:26:19.265101479 +0200
+@@ -34,6 +34,8 @@
+  *
+  */
+ 
++// downloaded from http://lxr.linux.no/linux+v2.6.38.8/+save=sound/pci/hda/hda_intel.c
++
+ #include <asm/io.h>
+ #include <linux/delay.h>
+ #include <linux/interrupt.h>
+@@ -1890,8 +1892,14 @@
+ 	struct azx_pcm *apcm = snd_pcm_substream_chip(substream);
+ 	struct azx *chip = apcm->chip;
+ 	struct azx_dev *azx_dev = get_azx_dev(substream);
+-	return bytes_to_frames(substream->runtime,
+-			       azx_get_position(chip, azx_dev));
++  snd_pcm_sframes_t ploc = bytes_to_frames(substream->runtime,
++                         azx_get_position(chip, azx_dev));
++  // report in frames directly (calc in bytes elsewhere);
++  // function name is auto-printed by trace_printk - but not in function_graph!
++  trace_printk("_pointer: %ld (%d) a:%lu h:%lu\n", ploc, substream->stream, substream->runtime->control->appl_ptr, substream->runtime->status->hw_ptr);
++  return ploc;
++  //~ return bytes_to_frames(substream->runtime,
++                         //~ azx_get_position(chip, azx_dev));
+ }
+ 
+ /*

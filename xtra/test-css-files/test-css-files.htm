@@ -1,0 +1,141 @@
+<link id="stylink" rel="stylesheet" type="text/css" href="">
+<script type="text/javascript">
+// note: multiple="true" and multiple="multiple" is HTML5
+// http://stackoverflow.com/questions/7023457/get-input-type-file-value-when-it-has-multiple-files-selected
+// there is no possibility to control the initial directory of input file, so:
+var CSSSUBDIR="./css"
+var topper;
+var minput;
+// mfiles will otherwise contain only plain filenames
+var mfiles;
+var curfile_span;
+var mfileind;
+var stylink;
+var curfile_sel; // select - dropdown
+// http://stackoverflow.com/questions/12274748/setting-multiple-attributes-for-an-element-at-once-with-javascript
+function setAttributes(el, attrs) {
+  for(var key in attrs) {
+    el.setAttribute(key, attrs[key]);
+  }
+}
+function minput_onchange(e) {
+  // 'this' is the input element here; e just has isTrusted()
+  //console.log("CCCC " + e.toSource() + "  " + this.files.toSource());
+  // this.value is the first one by alphabetic order in multi-selection
+  //~ console.log("CCCC " + this.value + this.value.filename);
+  // for now, just append to mfiles
+  for (var i = 0; i < this.files.length; i++) {
+    //~ console.log("  " + this.files[i].name );
+    mfiles.push(this.files[i].name);
+  };
+  // repopulate select
+  while (curfile_sel.firstChild) {
+    curfile_sel.removeChild(curfile_sel.firstChild);
+  }
+  for (var i = 0; i < mfiles.length; i++) {
+    var topt = document.createElement('option');
+    var ii = i+1;
+    setAttributes(topt, {"id": "o"+ ii, "value": ii});
+    topt.innerHTML = ii +"/"+ mfiles.length;
+    curfile_sel.appendChild(topt);
+  };
+  set_file();
+};
+function curfile_sel_onchange(e) {
+  mfileind = this.value-1;
+  set_file();
+}
+function set_file() {
+  // must append a unique argument to url/path to force reload css and bypass cache
+  // see also: http://stackoverflow.com/questions/2024486/is-there-an-easy-way-to-reload-css-without-reloading-the-page
+  var uniquer = "?t="+Math.random(0,1).toFixed(8);
+  var relfile = CSSSUBDIR + "/" + mfiles[mfileind];
+  curfile_sel.value = mfileind+1; // will run "twice" if called by curfile_sel_onchange
+  curfile_span.innerHTML = ": " + relfile; //(mfileind+1) +"/"+ mfiles.length +": " + relfile;
+  setAttributes(stylink, {"href": relfile + uniquer });
+  //console.log( uniquer );
+}
+function file_reload() {
+  set_file();
+}
+function file_next() {
+  //~ console.log("file_next");
+  if (mfileind < mfiles.length-1) {
+    mfileind++;
+    set_file();
+  }
+}
+function file_prev() {
+  //~ console.log("file_prev");
+  if (mfileind > 0) {
+    mfileind--;
+    set_file();
+  }
+}
+function initialize() {
+  mfiles = [];
+  mfileind = 0;
+  topper = document.getElementById('topper');
+  topper.innerHTML = ""; //reset at start
+  stylink = document.getElementById('stylink'); //console.log(stylink);
+  var tspan = document.createElement('span');
+  tspan.innerHTML = "Choose files: ";
+  topper.appendChild(tspan);
+  //~ minput = document.getElementById('multiinput');
+  minput = document.createElement('input');
+  setAttributes(minput, {"id": "multiinput", "type": "file", "multiple": "true" });
+  minput.onchange = minput_onchange;
+  topper.appendChild(minput);
+  var but_p = document.createElement('button');
+  but_p.innerHTML = "P-"; //setAttributes(but_p, {"value": "P-" });
+  but_p.onclick = file_prev;
+  topper.appendChild(but_p);
+  var but_n = document.createElement('button');
+  but_n.innerHTML = "N+"; //setAttributes(but_n, {"value": "N+" });
+  but_n.onclick = file_next;
+  topper.appendChild(but_n);
+  var but_r = document.createElement('button');
+  but_r.innerHTML = "R";
+  but_r.onclick = file_reload;
+  topper.appendChild(but_r);
+  var tspan2 = document.createElement('span');
+  tspan2.innerHTML = " Current file: ";
+  topper.appendChild(tspan2);
+  curfile_sel = document.createElement('select');
+  setAttributes(curfile_sel, {"id": "curfile_sel" });
+  curfile_sel.onchange = curfile_sel_onchange;
+  topper.appendChild(curfile_sel);
+  curfile_span = document.createElement('span');
+  setAttributes(curfile_span, {"id": "curfile_span" });
+  curfile_span.innerHTML = "";
+  topper.appendChild(curfile_span);
+  topper.appendChild(document.createElement('br'));
+  var tspan3 = document.createElement('span');
+  tspan3.innerHTML = "<small>(navigate manually to "+CSSSUBDIR+" subdirectory of this file, to choose the files)";
+  topper.appendChild(tspan3);
+}
+window.onload = function(e){ initialize(); }
+//Choose files: <input id="multiinput" type="file" multiple="true" />
+
+</script>
+
+<div id="topper">(JS needed - loading bar...)</div>
+
+<body>
+<h1>Heading 1</h1>
+<p>And now testing inline <code>code</code>, and some more <code>inline_code</code>, just to see how it works; also a pre tag:</p>
+<pre><code>Hello world
+  Hello world
+    Hello world
+</code></pre>
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam at augue dignissim, egestas nulla id, malesuada nibh. Nulla ornare risus imperdiet orci efficitur, at ultricies nisi hendrerit. Sed at condimentum massa. Aliquam congue nisi at lorem suscipit, nec interdum massa tincidunt. Donec vulputate dui vel tortor rutrum, vel ornare nisl tempus.</p>
+<h2>Heading 2</h2>
+<p>Testing now a simple url: http://www.google.com; then a markdown url: <a href="http://www.yahoo.com">Yahoo website</a>.
+Then, will test an unordered list:</p>
+<ul>
+<li>List entry 1</li>
+<li>List entry 2</li>
+<li>List entry 3</li>
+</ul>
+<p>That's it for now...</p>
+</body>

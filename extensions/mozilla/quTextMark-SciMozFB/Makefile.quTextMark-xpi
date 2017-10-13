@@ -1,0 +1,2661 @@
+## based on https://developer.mozilla.org/en/Makefile.mozextension.2
+## "This Makefile.mozextention is for the test extension"
+## the original Makefile.mozextention reconstructs http://kb.mozillazine.org/Getting_started_with_extension_development
+
+# call with (linux):
+# make -f Makefile.quTextMark-xpi make_structure
+## (without args for 'all')
+# call temp_proxy_install, make_xpi etc. separately - `all` just makes structure and files!
+
+# note: @echo silent; without @ the command is written in stdout
+
+# NOTE: seemingly, at first install need to save preferences once?
+# Yup - so now upon first run after install, when it fails, it should raise preferences - those should be saved, AND firefox *restarted* after that - then the extension + plugin start working together....
+# may need xul cache clearing...
+# to debug extension; get Extension Developer Assistant, and enable Enable Debugging Preferences; errors for addons will go to Error (JS) Console
+
+# the full path to the local Mozilla profile's extensions folder
+# (needed for temporary "proxy install")
+MOZPROF_EXTDIR=/media/nonos/mozprofs/sdffoxprof/extensions
+
+
+# lowercase, will be a (local dev) directory name!
+PROJECT=qutextmark-smfb
+
+# regular name
+PROJECT_NAME=quTextMark-SciMozFB
+
+# abbreviation - to prepend to certain filenames; also default javascript object name
+PABBR=qutextmark
+
+# will be a dir (file) name in profiles upon install of xpi
+#~ PROJECT_ID={XXXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}
+PROJECT_ID=quTextMark@SciMozFB.ext
+
+# project weblink and email (temporary)
+PROJECT_URL=http://$(PROJECT_ID)
+PROJECT_EMAIL=$(PROJECT_ID)
+
+PROJECT_VERSION=2011.10.30
+PROJECT_DESC=$(PROJECT_NAME) is an Extension/Addon, coupling the marking facility of TextMarker! 0.3.4 with quoting facility of QuoteURLText 1.0.9b, together with a Scintilla (of SciTE) text editor Mozilla plugin (implemented through FireBreath)
+PROJECT_AUTHOR=sdaau
+PROJECT_CONTRIB1=Simon Shareef (TextMarker! 0.3.4)
+PROJECT_CONTRIB2=Jay Palat (QuoteURLText 1.0.9b)
+PROJECT_CONTRIB2=Many, manu others (Scintilla/Scite authors, FireBreath project, ...)
+
+# default quote format: var str = "@title\\n@url\\n@quote\\n@date";
+DEFLT_QUOTE_FMT=-----\\nTitle: @title\\nAddress: @url\\nDate: @date\\n--\\n@quote\\n-----\\n
+
+# main variable name for ScintillaEditor
+SCABBR=sciMozEd
+
+# default file in Scintilla editor:
+DEFLT_ETEXTFPATH=/tmp/tmpSciMozDump.txt
+
+# plugin name - for packaging
+PLUGIN_NAME=SciMozFB
+
+# note: when downloading .xpi, the download in Firefox will be cached: to force anew, use in Firefox: Tools/Clear Recent History..
+
+# note: building of plugin depends on platform: LoadPlugin: failed to initialize shared library /path/to/profile/extensions/SciMozFB@scimozfbdev.team/plugins/npSciMozFB.i386.so [/usr/lib/libstdc++.so.6: version `GLIBCXX_3.4.14' not found (required by /path/to/profile/extensions/SciMozFB@scimozfbdev.team/plugins/npSciMozFB.i386.so)]
+
+
+
+# MKDIR=$(shell which mkdir)
+MKDIR=/bin/mkdir
+ZIPPROG=/usr/bin/zip
+SHELL = /bin/sh
+NOOP = $(SHELL) -c true
+NOECHO = @
+RM_RF=rm -f
+CP=/bin/cp -i
+
+
+.PHONY: all
+
+
+all ::  make_structure make_files
+	$(NOECHO) $(NOOP)
+
+package:: make_xpi
+	$(NOECHO) $(NOOP)
+
+#install :: make_xpi make_install
+#	$(NOECHO) $(NOOP)
+
+clean :: make_clean
+	$(NOECHO) $(NOOP)
+
+# create the directories
+# (leaving /plugins even if not using it)
+make_structure:
+	@$(MKDIR) $(PROJECT) || { echo "creating directory failed; it probably exists. Either remove (clean it), or choose individual targets to build."; exit 1; }
+	@echo $(MKDIR) $(PROJECT)
+	$(MKDIR) \
+$(PROJECT)/content \
+$(PROJECT)/components/ \
+$(PROJECT)/plugins/ \
+$(PROJECT)/defaults/ \
+$(PROJECT)/defaults/preferences/ \
+$(PROJECT)/skin \
+$(PROJECT)/locale \
+$(PROJECT)/locale/en-US
+
+# name the targets as their relative dirs;
+# should be easier to have an overview in this command!
+# don't include application.ini/prefs.js in extension; it will autostart whenever firefox is started!
+#~ $(PROJECT)/application.ini \ #
+#~ $(PROJECT)/defaults/preferences/prefs.js \ #
+make_files: \
+$(PROJECT)/install.rdf \
+$(PROJECT)/chrome.manifest \
+$(PROJECT)/content/$(PABBR)CMenuOverlay.xul \
+$(PROJECT)/content/$(PABBR)CMenuOverlay.js \
+$(PROJECT)/content/options.xul \
+$(PROJECT)/content/options.js \
+$(PROJECT)/content/ScintillaEditor.xul \
+$(PROJECT)/content/ScintillaEditor.js \
+$(PROJECT)/content/about.xul \
+$(PROJECT)/content/contents.rdf \
+$(PROJECT)/content/Io.js \
+$(PROJECT)/locale/en-US/$(PROJECT).dtd \
+$(PROJECT)/locale/en-US/$(PROJECT).properties \
+$(PROJECT)/locale/en-US/prefwindow.dtd \
+$(PROJECT)/skin/contents.rdf \
+$(PROJECT)/skin/$(PABBR)Icon.png
+	$(NOECHO) $(NOOP)
+
+
+# a few notes for make XPI:
+# first, we will not be using a .jar for chrome - we'll simply zip everything as it is
+# second, note http://www.firebreath.org/display/documentation/Deploying+and+updating+your+plugin
+# "Linux  Copy the .so file into the appropriate location for the browsers you want to support. IE, for firefox and chrome this is ~/.mozilla/plugins for the local user."
+# "By browser: Firefox: In addition to the default methods for deploying on the platform, firefox supports installing your plugin via XPI. THIS IS NOT RECOMMENDED BY THE FIREBREATH TEAM BECAUSE IT ONLY WORKS ON FIREFOX, NOT ON ANY OTHER BROWSERS."
+# anyway, here we'll package just for linux, and the .so inside the xpi for quick delivery... then the user can symlink to ~/.mozilla/plugins
+# NOTE - in makefile, the endline escapes work within comments too! Block with an # at end ... but then end of file unexpected - must be single sh command below.. so must move these commands up..
+# also - to check: file-roller qutextmark-smfb/qutextmark-smfb.xpi
+#	$(MKDIR) $(PROJECT)/chrome && \ #
+#	$(ZIPPROG)  -r  chrome/$(PROJECT).jar content locale skin && \ #
+#	$(ZIPPROG)  -r  $(PROJECT).xpi chrome.manifest install.rdf components defaults chrome && cd ..
+# also: http://blog.iosart.com/2004/08/13/a-multiplatform-extension-for-firefox/
+# to bug description: https://wiki.mozilla.org/Toolkit:Platform_Specific_Extension_Components
+# to actual description as of now: https://developer.mozilla.org/en/Bundles
+# http://colonelpanic.net/2010/01/firefox-3-6-has-removed-support-for-xpcom-plugins/
+# http://stackoverflow.com/questions/6474698/how-does-someone-use-thirdparty-libraries-to-be-included-in-firefox-addons-exten
+# https://developer.mozilla.org/en/XPCOM/XPCOM_changes_in_Gecko_2.0#Binary_components : "Note: Binary XPCOM components must be recompiled for every new major release of Firefox starting with Firefox 4. Your life would be much easier over the long term if you switch to using js-ctypes instead."
+# http://en.wikipedia.org/wiki/NPAPI: "This approach also requires an .xpt file to be installed next to the DLL; otherwise the plugin will appear to work, but scripting won't, causing confusion."
+# http://groups.google.com/group/firebreath-dev/browse_thread/thread/be4037853cf7f64e: "This approach will be fundamentally a problem for you soon; Firefox has removed support for XPT IDL files as of firefox 3.6; whether you decide to use FireBreath or not, you'll need to change to npruntime. "
+# http://stackoverflow.com/questions/5228645/how-to-test-my-npapi-code-i-e-xpcom-to-npruntime-changes-for-my-firefox-plugin
+# ok, so for firebreath, xpt is no longer needed - the .so is enough..
+# "The MIME type recognized by Firefox for XPI files is application/x-xpinstall. Since most HTTP servers are not configured to return this MIME type for the .xpi extension by default, you will probably need to configure your HTTP server. In the Apache HTTP Server, this can be done by adding the following directive to the configuration file or .htaccess:  AddType application/x-xpinstall .xpi "
+# ok, so adding the .so in components as recommended for Gecko 2.0 via binary-component in chrome-manifest - and copying it here in components
+# note: /components dir is for "XPCOM" components; https://developer.mozilla.org/en/Plugins: "The older XPCOM- and LiveConnect-based APIs for plugins should not be used." (even if https://developer.mozilla.org/en/Bundles#Platform-specific_files gives example with components)
+# : /plugins/* is for NPAPI Plugins (FireBreath).
+# : earlier they also used /platform - support removed for that
+# test: http://sdaaubckp.sf.net/ext/quTextMark-SciMozFB/*.xpi
+# https://developer.mozilla.org/en/Multiple_Item_Packaging <+ THIS
+make_extension_xpi:
+	cd $(PROJECT) && \
+	rm -rf $(PROJECT).xpi && \
+	$(ZIPPROG) -r $(PROJECT).xpi chrome.manifest install.rdf components defaults content locale skin plugins && cd ..
+	@echo Generated $(PROJECT)/$(PROJECT).xpi
+	@echo
+
+
+
+# here make the separate .xpi for the plugin
+# # also note: SciMozFB/gen/global/COM_config.h:#define MOZILLA_PLUGINID "scimozfbdev.team/SciMozFB"
+# # better page: https://developer.mozilla.org/en/Shipping_a_plugin_as_a_Toolkit_bundle
+# http://www.quakelive.com/forum/showthread.php?7195&p=162645&viewfull=1#post162645 / http://lam.pl/QuakeLivePlugin_433_ff6.xpi
+# note possible problems the Gtk/Gnome incompatibilities: http://stackoverflow.com/questions/7941388/packaging-mozilla-firebreath-plugins-into-xpi-for-firefox
+#         <!-- <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id> --> # this inside rdf may fail AMO validation
+#     <em:id>toolkit@mozilla.org</em:id> : No Mozilla products listed as target applications
+
+
+define INSTALL_RDF_PLUGIN
+<?xml version="1.0"?>
+
+<RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:em="http://www.mozilla.org/2004/em-rdf#">
+  <Description about="urn:mozilla:install-manifest">
+    <em:id>SciMozFB@scimozfbdev.team</em:id>
+    <em:version>$(PROJECT_VERSION)</em:version>
+    <em:type>2</em:type>
+    <em:targetApplication>
+      <Description>
+        <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
+        <em:minVersion>4.0</em:minVersion>
+        <em:maxVersion>9.*</em:maxVersion>
+      </Description>
+    </em:targetApplication>
+    <em:name>Scintilla Mozilla (FireBreath) Plugin</em:name>
+    <em:description>Scintilla Plugin for Mozilla</em:description>
+    <em:creator>$(PROJECT_AUTHOR)</em:creator>
+    <em:unpack>true</em:unpack>
+  </Description>
+</RDF>
+endef
+export INSTALL_RDF_PLUGIN
+
+# BUT: Could not read chrome manifest file '../extensions/SciMozFB@scimozfbdev.team/chrome.manifest'. (but even with that it may show in extensions list - though not plugin list!)
+# so:
+define CHROME_MANIFEST_PLUGIN
+
+binary-component	plugins/npSciMozFB.so ABI=Linux_x86-gcc4
+
+endef
+export CHROME_MANIFEST_PLUGIN
+
+# but not even chrome.manifest helps - gets installed as extension, not plugin.. so not even multiple helps..
+# https://developer.mozilla.org/en/Plugins/Logging
+# NSPR_LOG_MODULES=IPCPlugins:5 NSPR_LOG_FILE=/tmp/plugins.log firefox
+
+make_plugin_xpi:
+	@echo 'NOTE: this step depends on having already have built npSciMozFB.so in advance succesfully, with a symlink to it in ~/.mozilla/plugins/ (see http://sdaaubckp.svn.sf.net/viewvc/sdaaubckp/xtra/scintilla_FB/getSciMozFB.sh)'
+	rm -rf $(PROJECT)/tmp_plugin # if leftover
+	mkdir $(PROJECT)/tmp_plugin
+	mkdir $(PROJECT)/tmp_plugin/plugins
+	cp -L ~/.mozilla/plugins/npSciMozFB*.so $(PROJECT)/tmp_plugin/plugins/npSciMozFB.i386.so
+	@echo "$$INSTALL_RDF_PLUGIN" > $(PROJECT)/tmp_plugin/install.rdf
+	@#echo "$$CHROME_MANIFEST_PLUGIN" > $(PROJECT)/tmp_plugin/chrome.manifest
+	cd $(PROJECT)/tmp_plugin && \
+$(ZIPPROG) -r $(PLUGIN_NAME).xpi install.rdf chrome.manifest plugins && cd ../..
+	mv $(PROJECT)/tmp_plugin/$(PLUGIN_NAME).xpi $(PROJECT)/
+	rm -rf $(PROJECT)/tmp_plugin
+	@echo Generated $(PROJECT)/$(PLUGIN_NAME).xpi
+	@echo
+
+# note - MUST have an ID as email address,
+# only then do two packages get offered for install when loading the merged xpi! (also, make sure all ID's are unique)
+define INSTALL_RDF_MERGE
+<RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:em="http://www.mozilla.org/2004/em-rdf#">
+  <Description about="urn:mozilla:install-manifest">
+    <!-- nsIUpdateItem type for a Multiple Item Package -->
+    <em:type>32</em:type>
+    <em:id>$(PROJECT_NAME)@Merged</em:id>
+    <em:name>$(PROJECT) extension and $(PLUGIN_NAME) Scintilla Mozilla (FireBreath) Plugin</em:name>
+    <em:version>$(PROJECT_VERSION)</em:version>
+    <em:targetApplication>
+      <Description>
+        <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
+        <em:minVersion>4.0</em:minVersion>
+        <em:maxVersion>9.*</em:maxVersion>
+      </Description>
+    </em:targetApplication>
+    <em:unpack>true</em:unpack>
+  </Description>
+</RDF>
+endef
+export INSTALL_RDF_MERGE
+
+# make_xpi for the merged (extension + plugin) xpi
+# https://developer.mozilla.org/en/Multiple_Item_Packaging
+make_xpi: make_extension_xpi make_plugin_xpi
+	mkdir $(PROJECT)/tmp_merge
+	@echo "$$INSTALL_RDF_MERGE" > $(PROJECT)/tmp_merge/install.rdf
+	cp $(PROJECT)/$(PROJECT).xpi $(PROJECT)/tmp_merge/
+	cp $(PROJECT)/$(PLUGIN_NAME).xpi $(PROJECT)/tmp_merge/
+	cd $(PROJECT)/tmp_merge && \
+$(ZIPPROG) -r $(PROJECT_NAME).xpi install.rdf $(PROJECT).xpi $(PLUGIN_NAME).xpi && cd ../..
+	mv $(PROJECT)/tmp_merge/$(PROJECT_NAME).xpi $(PROJECT)/
+	rm -rf $(PROJECT)/tmp_merge
+	@echo Generated $(PROJECT)/$(PROJECT_NAME).xpi
+	@echo
+
+
+
+
+make_clean:
+	rm -rf $(PROJECT)
+
+remake:: make_clean all
+	$(NOECHO) $(NOOP)
+
+
+
+# probably old - but leaving it anyways..
+real_install:
+	$(CP) chrome/$(PROJECT).jar ~/.mozilla/default/32p27fdr.slt/chrome/
+
+# for temporary "proxy install"; that is:
+# https://developer.mozilla.org/en/Setting_up_extension_development_environment#Firefox_extension_proxy_file
+temp_proxy_install:
+	echo "$$(dirname $$(readlink -f $(PROJECT)/install.rdf))/" > $(MOZPROF_EXTDIR)/$(PROJECT_ID)
+
+temp_proxy_uninstall:
+	rm $(MOZPROF_EXTDIR)/$(PROJECT_ID)
+
+# http://kb.mozillazine.org/Unable_to_install_themes_or_extensions_-_Firefox#Corrupt_extension_files
+# refers to the profile folder given in makefile;
+# backs up the files (and deletes them) from there
+# into a subdirectory at the Makefile location
+# note: export env vars doesn't really work between shell calls!
+#  and `make` usually calls `sh` as interpreted - which cannot handle the {,} like `bash` can!
+# note - also we need the profile dir, not the expension dir!
+# After clearing cache - it forgets which extensions are disabled!
+# that is kept in extbckptmp.XX/extensions.ini, so you may want to copy it back to profile
+clear_corrupt_ext_cache:
+	@bash -c 'echo start ; PROFDIR=$$(dirname $(MOZPROF_EXTDIR)) ; \
+echo $$PROFDIR ; \
+TMPDIREC=extbckp$$(basename $$(mktemp -d)) ; export TMPDIREC ; \
+echo $$TMPDIREC ; \
+mkdir $$TMPDIREC ; \
+for ix in $$(ls $$PROFDIR/extensions.{ini,cache,rdf,sqlite,sqlite-journal} 2>/dev/null) ; do \
+echo mv $$ix $$TMPDIREC/ ; \
+mv $$ix $$TMPDIREC/ ; \
+done ; \
+echo You may want to copy back $$TMPDIREC/extensions.ini to $$PROFDIR; as it keeps track of which extensions are enabled and which not (which will be forgotten after next restart)'
+
+
+
+####################################
+
+######
+#Firefox 	{ec8030f7-c20a-464f-9b0e-13a3a9e97384}
+#Thunderbird 	{3550f703-e582-4d05-9a08-453d09bdfdc6}
+#Nvu 	{136c295a-4a5a-41cf-bf24-5cee526720d5}
+#Mozilla Suite 	{86c18b42-e466-45a9-ae7a-9b95ba6f5640}
+#SeaMonkey 	{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}
+#Sunbird 	{718e30fb-e89b-41dd-9da7-e25a45638b28}
+#Netscape Browser	{3db10fab-e461-4c80-8b97-957ad5f8ea47}
+#https://developer.mozilla.org/en/install.rdf#unpack
+######
+define INSTALL_RDF_EXT
+<?xml version="1.0"?>
+<RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#"     xmlns:em="http://www.mozilla.org/2004/em-rdf#">
+
+<Description about="urn:mozilla:install-manifest">
+
+<em:id>$(PROJECT_ID)</em:id>
+<em:unpack>true</em:unpack>
+<em:name>$(PROJECT_NAME)</em:name>
+<em:version>$(PROJECT_VERSION)</em:version>
+<em:description>$(PROJECT_DESC)</em:description>
+<em:creator>$(PROJECT_AUTHOR)</em:creator>
+
+<!-- optional items -->
+<em:optionsURL>chrome://$(PROJECT)/content/options.xul</em:optionsURL>
+
+<em:contributor>$(PROJECT_CONTRIB1)</em:contributor>
+<em:contributor>$(PROJECT_CONTRIB2)</em:contributor>
+<em:homepageURL>http://$(PROJECT).mozdev.org/</em:homepageURL>
+<em:aboutURL>chrome://$(PROJECT)/content/about.xul</em:aboutURL>
+<em:iconURL>chrome://$(PROJECT)/skin/$(PABBR)Icon.png</em:iconURL>
+<!-- <em:updateURL>http://$(PROJECT).mozdev.org/update.rdf</em:updateURL>  -->
+<em:type>2</em:type> <!-- type=extension -->
+
+<em:targetApplication>
+  <Description>
+    <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id> <!-- Firefox -->
+    <em:minVersion>4.0</em:minVersion>
+    <em:maxVersion>9.*</em:maxVersion>
+  </Description>
+</em:targetApplication>
+
+</Description>
+</RDF>
+endef
+export INSTALL_RDF_EXT
+
+$(PROJECT)/install.rdf:
+	@echo Generating $(PROJECT)/install.rdf
+	@echo "$$INSTALL_RDF_EXT" > $(PROJECT)/install.rdf
+
+
+######
+define CHROME_MANIFEST
+content	$(PROJECT) 	content/
+overlay	chrome://browser/content/browser.xul 	chrome://$(PROJECT)/content/$(PABBR)CMenuOverlay.xul
+
+locale	$(PROJECT)	en-US	locale/en-US/
+skin	$(PROJECT)	classic/1.0	skin/
+
+endef
+export CHROME_MANIFEST
+
+$(PROJECT)/chrome.manifest:
+	@echo Generating $(PROJECT)/chrome.manifest
+	@echo "$$CHROME_MANIFEST" > $(PROJECT)/chrome.manifest
+
+
+######
+# careful with modifying self-closing tags < /> to open/close!
+define OVERLAY_XUL
+<?xml version="1.0"?>
+<!DOCTYPE window SYSTEM "chrome://$(PROJECT)/locale/$(PROJECT).dtd">
+
+<!-- mostly taken from /textmarkerOverlay.xul -->
+<overlay id="$(PABBR)CMenuOverlay"
+  xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:nc="http://home.netscape.com/NC-rdf#">
+
+  <script type="application/x-javascript" src="chrome://$(PROJECT)/content/$(PABBR)CMenuOverlay.js">
+</script>
+
+<popup id="contentAreaContextMenu">
+    <menu id="context-$(PABBR)OptionsMenu"
+      insertafter="context-stop"
+    label="&highlighted.text;">
+
+      <menupopup id="context-$(PABBR)-popup">
+
+  <menuitem id="context-$(PABBR)CopyThisHighlight"
+    oncommand="return $(PABBR).copyThisHL();"
+    label="&copy.this;"
+    insertafter="context-stop"/>
+  <menuitem id="context-$(PABBR)CopyHighlights"
+    oncommand="return $(PABBR).copyHL();"
+    label="&copy.all;"
+    insertafter="context-stop"/>
+  <menuitem id="context-$(PABBR)QuoteHighlights"
+    oncommand="return $(PABBR).quoteHLToSciEditor();"
+    label="&quote.allscieditor;"
+    insertafter="context-stop"/>
+  <menuseparator/>
+  <menuitem id="context-$(PABBR)ClearThisHighlight"
+    oncommand="return $(PABBR).clearThisHL();"
+    label="&erase.this;"
+    insertafter="context-stop"/>
+  <menuitem id="context-$(PABBR)ClearHighlights"
+    oncommand="return $(PABBR).clearHL();"
+    label="&erase.all;"
+    insertafter="context-stop"/>
+  </menupopup>
+  </menu>
+  <menu id="context-$(PABBR)Action"
+    label="&action.label;"
+    insertafter="context-stop">
+
+      <menupopup id="context-$(PABBR)-popup0">
+
+  <menuitem id="context-$(PABBR)QuoteToClipboard"
+    oncommand="return $(PABBR).quoteToClipboard(event);"
+    label="&quote.toclipboard;"
+    insertafter="context-stop"/>
+  <menuitem id="context-$(PABBR)QuoteToSciEditor"
+    oncommand="return $(PABBR).quoteToSciEditor(event);"
+    label="&quote.toscieditor;"
+    insertafter="context-stop"/>
+  <menuitem id="context-$(PABBR)HighlightThis"
+    oncommand="return $(PABBR).highlight(event);"
+    label="&highlight.this;"
+    insertafter="context-stop"/>
+
+  </menupopup>
+  </menu>
+
+</popup>
+
+<stringbundleset id="stringbundleset">
+   <stringbundle id="$(PABBR)-strings-cmenu" src="chrome://$(PROJECT)/locale/$(PROJECT).properties"/>
+</stringbundleset>
+
+</overlay>
+endef
+export OVERLAY_XUL
+
+$(PROJECT)/content/$(PABBR)CMenuOverlay.xul:
+	@echo Generating $(PROJECT)/content/$(PABBR)CMenuOverlay.xul
+	@echo "$$OVERLAY_XUL" > $(PROJECT)/content/$(PABBR)CMenuOverlay.xul
+
+
+######
+# note, here the \ escapes need to be doubled (make converts them)!
+define OVERLAY_JS
+/*
+  Original file: textmarkerOverlay.js
+  A simple text highlighter for webpages using context menu
+  By   Simon Shareef (simonshareef@gmail.com)
+    Male', Republic of Maldives
+  http://maldivian.blogs.com/tech/
+  This is free software licensed under the GPL
+
+  Change log is @ CHANGES.LOG
+  modded $(PROJECT_AUTHOR); $(PROJECT_VERSION)
+*/
+
+
+// copy from quoteurltext; - for access to DirIO
+// (must load it here too; in case we haven't raised options first!)
+/*
+ * Load Io.js
+ */
+( ( Components.classes["@mozilla.org/moz/jssubscript-loader;1"] ).getService(
+     Components.interfaces.mozIJSSubScriptLoader ) ).loadSubScript(
+        "chrome://$(PROJECT)/content/Io.js" );
+// end copy from quoteurltext;
+
+// do NOT jsdump empty strings - it clears the log!!
+function jsdump(str)
+{
+  Components.classes['@mozilla.org/consoleservice;1']
+            .getService(Components.interfaces.nsIConsoleService)
+            .logStringMessage(str);
+}
+
+// #defines in Scintilla.h:
+var SCI_INSERTTEXT = 2003;
+var SCI_REPLACESEL = 2170;
+var SCI_ADDTEXT = 2001;
+var SCI_APPENDTEXT = 2282;
+var SCI_SETSEL = 2160;
+var SCI_SETTEXT = 2181;
+
+
+var $(PABBR) = {
+  /* function to do some initialisation work */
+  init : function () {
+
+    //* localizing initial description :o)
+
+    //~ var $(PABBR)LocalizationPrefs = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService).getBranch("extensions.{1c530060-b0ae-11d9-9669-0800200c9a66}.");
+    var $(PABBR)LocalizationPrefs = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService).getBranch("extensions.$(PROJECT_ID).");
+    var str = Components.classes[ "@mozilla.org/supports-string;1" ].createInstance( Components.interfaces.nsISupportsString );
+    str.data = document.getElementById("$(PABBR)-strings-cmenu").getString("$(PABBR).description");
+    $(PABBR)LocalizationPrefs.setComplexValue( "description", Components.interfaces.nsISupportsString, str );
+
+    var context = document.getElementById("contentAreaContextMenu");
+    $(PABBR).optionsMenu = document.getElementById("context-$(PABBR)OptionsMenu");
+    $(PABBR).copyHighlights = document.getElementById("context-$(PABBR)CopyHighlights");
+    $(PABBR).copyThisHighlight = document.getElementById("context-$(PABBR)CopyThisHighlight");
+    $(PABBR).clearHighlights = document.getElementById("context-$(PABBR)ClearHighlights");
+    $(PABBR).clearThisHighlight = document.getElementById("context-$(PABBR)ClearThisHighlight");
+    $(PABBR).highlightThis = document.getElementById("context-$(PABBR)HighlightThis");
+    $(PABBR).action = document.getElementById("context-$(PABBR)Action");
+    context.addEventListener("popupshowing",$(PABBR).popup,false);
+  },
+
+  extalert : function(instr) {
+    //~ alert(instr); // no title
+    // https://developer.mozilla.org/en/XUL_School/Adding_windows_and_dialogs
+    // http://stackoverflow.com/questions/7203372/how-to-add-image-in-alert-or-in-propmts-alert-using-javascript-xul
+    var prompts = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
+                        .getService(Components.interfaces.nsIPromptService);
+    prompts.alert(this, "$(PROJECT_NAME)", instr);
+  },
+
+  /* function to display the context menu depending on various factors */
+  popup : function() {
+
+    $(PABBR).action.hidden = !gContextMenu.isTextSelected;
+    // $(PABBR).highlightThis.hidden = !gContextMenu.isTextSelected;
+
+    if (gContextMenu.target.ownerDocument) {
+      //$(PABBR).currentDocument = gContextMenu.target.ownerDocument;
+      $(PABBR).currentDocument = document.popupNode.ownerDocument;
+      var targetClass = gContextMenu.target.getAttribute("name");
+      $(PABBR).optionsMenu.hidden = !($(PABBR).currentDocument.slindex > 0);
+      $(PABBR).clearHighlights.hidden = !($(PABBR).currentDocument.slindex > 0);
+      $(PABBR).copyHighlights.hidden = !($(PABBR).currentDocument.slindex > 0);
+
+      $(PABBR).currentDocument.hlCurrentBlock = "";
+      $(PABBR).clearThisHighlight.hidden = true;
+      $(PABBR).copyThisHighlight.hidden = true;
+      if (targetClass != null) {
+        if (targetClass.substr(0,"$(PABBR)".length-1) == "$(PABBR)") {
+          $(PABBR).optionsMenu.hidden = false;
+          $(PABBR).clearThisHighlight.hidden = false;
+          $(PABBR).copyThisHighlight.hidden = false;
+          $(PABBR).clearHighlights.hidden = false;
+          $(PABBR).copyHighlights.hidden = false;
+          $(PABBR).currentDocument.hlCurrentBlock = targetClass;
+          //$(PABBR).debug($(PABBR).currentDocument.hlcount + ' | ' + $(PABBR).currentDocument.slindex);
+        }
+      }
+    }
+  },
+
+
+  /* function to get the selected range and start of the highlighting process is here */
+  /* This function code has been replaced by Hemiola SUN's code from his work of TextMarker Plus! 0.3*/
+  highlight: function(evt) {
+    var focusedWindow = document.commandDispatcher.focusedWindow;
+    if (focusedWindow == window)
+      focusedWindow = _content;
+    var selection = focusedWindow.getSelection();
+    if ($(PABBR).currentDocument != focusedWindow.document)
+      $(PABBR).currentDocument = focusedWindow.document;
+
+    var iss=""; //for (ix in evt) {iss += " " + ix + " -> " + evt[ix] + "\\n"; };
+    //iss += "--------------\\n"; for (ix in document.commandDispatcher.focusedWindow) {iss += " " + ix + " -> " + eval("document.commandDispatcher.focusedWindow."+ix) + "\\n"; };
+    //~ iss += "--------------\\n"; for (ix in selection.anchorNode) {iss += " " + ix + " -> " + eval("selection.anchorNode."+ix) + "\\n"; };
+    //iss += "--------------\\n"; for (ix in selection) {iss += " " + ix + " -> " + eval("selection."+ix) + "\\n"; };
+    //jsdump(iss); // do NOT jsdump empty strings - it clears the log!!
+    // evt.originalTarget : [object HTMLHtmlElement] uniqueID - undefined for all; className undef or empty;
+    // if you're searching from Ctrl-F field in FF; then evt.originalTarget.className = "textbox-input"
+    // if typing in search bar: "autocomplete-textbox textbox-input"
+    // "autocomplete-textbox urlbar-input textbox-input uri-element-right-align" - address bar
+    // either originalTarget.id = "interestingTag"; or originalTarget.className = "textbox" (from page), or as above for Firefox UI.. if both orig.id and className are empty - then they come from "plain page"
+    // but also - we can only mark if we've made a selection! However, then using the bar to search, selection automatically gets made :)
+    var sepr = " ; ";
+    var is1 = "";
+    try {
+      is1 = document.commandDispatcher.focusedWindow.frameElement.uniqueID ;
+    } catch (ex) {
+      is1 = ex;
+    }
+    var ch1 = ""; if (evt.originalTarget.className == "textbox-input") ch1 = "yes";
+    var ch2 = ""; if (evt.originalTarget.className == "autocomplete-textbox textbox-input") ch2 = "yes";
+    var c3 = (!evt.originalTarget.className); var c4 = (!evt.originalTarget.id);
+    var ch3 = ""; if (c3) ch3 = "yes";
+    var ch4 = ""; if (c4) ch4 = "yes";
+    var ch5 = ""; if (c3 && c4) ch5="from plain win";
+    var c6 = (evt.originalTarget == $(PABBR).highlightThis);
+    var iss = selection + sepr
+            + evt.originalTarget.className + sepr
+            + ch1+"/"+ch2 + " " + ch3+"/"+ch4+":"+ch5 + sepr
+            + evt.target.className + sepr
+            + evt.currentTarget.className + sepr
+            + evt.rangeParent.className + sepr
+            + evt.explicitOriginalTarget.className + " ::: "
+            + evt.originalTarget.id + sepr
+            + ch1+"/"+ch2 + sepr
+            + evt.target.id + sepr
+            + evt.currentTarget.id + sepr
+            + evt.rangeParent.id + sepr
+            + evt.explicitOriginalTarget.id + " ::: "
+            + document.commandDispatcher.focusedWindow.URL + sepr
+            + is1 + sepr
+            + document.commandDispatcher.focusedWindow.window.uniqueID + sepr
+            + document.commandDispatcher.focusedWindow.document.uniqueID + sepr
+            + c6 + sepr
+            + $(PABBR).currentDocument;
+
+    //~ jsdump(iss);
+
+    $(PABBR).currentDocument.hlcolor = $(PABBR).getColor(1);
+
+    if (!$(PABBR).currentDocument.hlcount) {
+      $(PABBR).currentDocument.slindex = 0;
+      $(PABBR).currentDocument.hlcount = 0;
+      $(PABBR).currentDocument.hlCycleIndex = 0;
+    }
+
+    // however, these conditions may be too hard - c3 && c4 fail for context menu!
+    // context menu has originalTarget.id == "context-$(PABBR)HighlightThis" $(PABBR).highlightThis; needs to be let through (c6)
+    // aahh - in brief, when hitting from empty page, there should NOT be evt.originalTarget.className! and ALWAYS check selection - some need it, some don't! (actually, condition needed to just be moved up)
+      if ((evt) && (!c6)) {
+        var unUsed = !(evt.charCode == 109 || evt.charCode == 77 || evt.charCode == 98 || evt.charCode == 66 || evt.charCode == 110 || evt.charCode == 78 || evt.charCode == 88 || evt.charCode == 113 || evt.charCode == 114 || evt.charCode == 81 || evt.charCode == 82 );
+        if (unUsed)
+          return;
+        try {
+          var gPref = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefBranch);
+          if (!gPref.getBoolPref("$(PABBR).useshortcuts")) {
+            return;
+          }
+        } catch(e) {
+          return;
+        }
+
+        if (evt.charCode == 88) //only capital X! doesn't depend on selection
+        {
+          $(PABBR).clearHL();
+          return;
+        }
+        if (evt.charCode == 81) //Q ; doesn't depend on selection (only on marked highlights)
+        {
+          $(PABBR).quoteHLToSciEditor();
+          return;
+        }
+        if (evt.charCode == 82) //R ; doesn't depend on selection (only on marked highlights)
+        {
+          $(PABBR).copyHL();
+          return;
+        }
+
+        // moved these conditions up:
+        // handle empty selection - note it is empty string when problem!
+        // (below evaluates false, false, false, true)
+        //~ alert("-" + selection + " : " + (selection == null) + " : " + (selection==undefined) + " : " + ( !selection )  + " : " + ( selection == "" ) );
+        var dont_let_through = ((!(c3 && c4)) && (!c6));
+        iss = ":-"+dont_let_through+"-: :-" + (!selection) + "-:" + (selection=="") + "-:";
+        //~ jsdump(iss);
+
+        // apparently must handle both ?! if no selection, get out
+        if ((!selection) || (selection == "")) {// (selection == "") {
+          return;
+        }
+        if (dont_let_through) { return; }; //if we're typing places like textboxes in webpages and Firefox UI
+
+        // https://developer.mozilla.org/en/DOM/KeyboardEvent
+        // "The Unicode reference number of the key; this attribute is used only by the keypress event; Warning: This attribute is deprecated; you should use char instead, if available."
+        // latin unicode table - values as below: http://www.utf8-chartable.de/unicode-utf8-table.pl?utf8=dec
+        if (evt.charCode == 109 || evt.charCode == 77)
+          $(PABBR).currentDocument.hlcolor = $(PABBR).getColor(1);
+        if (evt.charCode == 98 || evt.charCode == 66)
+          $(PABBR).currentDocument.hlcolor = $(PABBR).getColor(2);
+        if (evt.charCode == 110 || evt.charCode == 78)
+          $(PABBR).currentDocument.hlcolor = $(PABBR).getColor(3);
+        if (evt.charCode == 113) //q
+        {
+          $(PABBR).quoteToSciEditor();
+          return;
+        }
+        if (evt.charCode == 114) //r
+        {
+          $(PABBR).quoteToClipboard();
+          return;
+        }
+      }
+    var range = focusedWindow.document.createRange();
+    var startNode;
+    var endNode;
+    var startOffset;
+    var endOffset;
+
+
+    // handle who goes first and who goes last
+    // if selection is one and same word - or several words in the same paragraph element (same node); then (selection.anchorNode == selection.focusNode) - and we can just check the offsets to see who is first
+    // for selection spanning multiple nodes, we cannot do that; but there is Node.compareDocumentPosition which returns bitmask like DOCUMENT_POSITION_FOLLOWING = 0x04;
+    var selInSameNode = (selection.anchorNode == selection.focusNode);
+    //jsdump(selInSameNode + ":| " + selection.anchorNode.name + "/" + selection.anchorNode.type + " a- " + selection.anchorOffset + " ; " + selection.focusNode.name + "/" + selection.focusNode.type + " f- " + selection.focusOffset);
+
+    // assume all usual first
+    startNode = selection.anchorNode;
+    endNode = selection.focusNode;
+    startOffset = selection.anchorOffset;
+    endOffset = selection.focusOffset;
+
+    if (selInSameNode) {// if reverce selection, invert
+      if (selection.focusOffset < selection.anchorOffset) {
+        endNode = selection.anchorNode;
+        startNode = selection.focusNode;
+        endOffset= selection.anchorOffset;
+        startOffset  = selection.focusOffset;
+      }
+    } else {
+      // multi-node selection; check which is which
+      // assumption is: anchor node precedes focus node
+      var anchCompResult = selection.anchorNode.compareDocumentPosition(selection.focusNode);
+      // note the result is a bitmask (could be CONTAINS too)
+      // we only care if it test as preceding..
+      // so if assumption that anchor precedes is wrong;
+      //   again invert start and end node ;
+      // well, seems its opposite from my logic so no ! there
+      if ((anchCompResult & selection.anchorNode.DOCUMENT_POSITION_PRECEDING)) {
+        //jsdump("not preceding");
+        endNode = selection.anchorNode;
+        startNode = selection.focusNode;
+        endOffset= selection.anchorOffset;
+        startOffset  = selection.focusOffset;
+      }
+    }
+
+    // *now* set the range
+    range.setStart(startNode, startOffset);
+    range.setEnd(endNode, endOffset);
+
+    //~ try {
+      //~ range.setStart(selection.anchorNode, selection.anchorOffset);
+      //~ range.setEnd(selection.focusNode, selection.focusOffset);
+      //~ startNode = selection.anchorNode;
+      //~ endNode = selection.focusNode;
+      //~ startOffset = selection.anchorOffset;
+      //~ endOffset = selection.focusOffset;
+    //~ } catch(ex) {
+      //~ try { // second try - if we're typing in javascript textarea (like on StackOverflow)
+            //~ // OR if we type in the Firefox search bar !!
+            //~ // we will have nothing selected - yet m,n,b will trigger (and cause exceptions)
+      //~ range.setStart(selection.focusNode, selection.focusOffset);
+      //~ range.setEnd(selection.anchorNode, selection.anchorOffset);
+      //~ startNode = selection.focusNode;
+      //~ endNode = selection.anchorNode;
+      //~ startOffset = selection.focusOffset;
+      //~ endOffset = selection.anchorOffset;
+      //~ } catch(ex2) {
+        //~ /// alert(ex + " " + ex2);
+        //~ $(PABBR).debug("dbltry: " + ex + " " + ex2 );
+        //~ return;
+      //~ }
+    //~ }
+    range.detach();
+
+    // however, sometimes there's no exception if typing in textarea,
+    // and there is selection (i.e. pre on SO.com)
+    // yet startNode is still null here... so handle null selection at start!
+    //~ alert("startNode: " + startNode + " - " + selection);
+
+    // note: if we're selecting right-to-left ("backwards"); could be
+    // endOffset-startOffset < 0 ! (Exception... "Index or size is negative or greater than the allowed amount")
+    // correct that (also fixed some selection in <pre problems, it seems?!)
+    // but still better to go default left-to-right (while no exceptions, can still mess up)
+    //~ var tdiff = endOffset-startOffset;
+    //~ if (tdiff < 0) {
+      //~ var tso = startOffset;
+      //~ var teo = endOffset;
+      //~ endOffset = tso;
+      //~ startOffset = teo;
+      //~ // AND repeat the matchtext again!? not anymore.
+      //~ ///~ matchtext = startNode.splitText(startOffset);
+    //~ }
+    //jsdump(startOffset + " s e " + endOffset);
+
+
+    // increment highlights count
+      $(PABBR).currentDocument.slindex++;
+
+      var matchtext;
+      var markedNodeSpan; // added
+      if ( startNode != endNode ) { // selection across many nodes (!selInSameNode)
+        matchtext = startNode.splitText(startOffset);
+        startNode = matchtext.splitText(matchtext.data.length);
+        markedNodeSpan = $(PABBR).markNode(matchtext);
+
+        // matchtext - from after the selection; startNode.data - empty?
+        //jsdump(matchtext.data + " :: "+ startNode.data);
+
+        // code borrowed from Line Marker of Shimoda Hiroshi, and modified by Hemiola SUN
+        var node = startNode;
+        traceTree:
+        do {
+          if (node.hasChildNodes()) {
+            node = node.firstChild;
+          } else {
+            while (!node.nextSibling) {
+              node = node.parentNode;
+              if (!node)
+                break traceTree;
+            }
+          node = node.nextSibling;
+          }
+          if (node == endNode)
+            break traceTree;
+          if (node.nodeType == Node.TEXT_NODE && !$(PABBR).is_all_ws(node) ) {
+            matchtext = node;
+            node = matchtext.splitText(node.data.length);
+            markedNodeSpan = $(PABBR).markNode(matchtext);
+          }
+        }
+        while (node != endNode);
+
+        matchtext = endNode;
+        // inside pre (for code) in StackOverflow (seems fixed with above inversion, now all are false when here):
+        //~ alert("mt:" + matchtext + " : " + (matchtext == null) + " : " + (matchtext==undefined) + " : " + ( !matchtext )  + " : " + ( matchtext == "" ) );
+        //jsdump(endNode + " " + matchtext);
+        try { // can be matchtext.splitText not a function!
+        endNode = matchtext.splitText(endOffset);
+        markedNodeSpan = $(PABBR).markNode(matchtext);
+        } catch(ex) {
+        markedNodeSpan = $(PABBR).markNode(startNode);
+        }
+      }
+      else { // selection in one node
+        //jsdump("selInSameNode") ;
+        matchtext = startNode.splitText(startOffset);
+        //~ alert("on:" + tdiff + " : " + startOffset + " " + endOffset);
+        // here matchtest had from sel, beyond sel to end (start has before matchtest)
+        //jsdump(matchtext.data + " :: "+ startNode.data);
+        startNode = matchtext.splitText(endOffset-startOffset);
+        // here matchtest has the actual selection, and startNode has the rest of it to the end.
+        //jsdump(matchtext.data + " :: "+ startNode.data);
+        markedNodeSpan = $(PABBR).markNode(matchtext);//(startNode);
+      }
+    selection.collapseToStart();
+
+    // added - if activated, copy this highlight
+    // automatically when highlighting:
+    if ($(PABBR).getIsAutocopy()) {
+      //~ $(PABBR).copyThisHL(); // misses, relies on mouse position
+      $(PABBR).copy_a_HL("$(PABBR)_" + $(PABBR).currentDocument.slindex);//(markedNodeSpan); //
+    }
+  },
+
+  markNode: function(matchtext) {
+    var clone = matchtext.cloneNode(true);
+    var span = $(PABBR).createSpan(clone,matchtext.parentNode);
+    matchtext.parentNode.replaceChild(span,matchtext);
+    return span;
+  },
+
+  /* function to create a span to hold highlight*/
+  createSpan : function (node,pNode) { // node is a TEXT node
+    nam = pNode.getAttribute("name");
+    if (nam != null)
+      if (nam.substr(0,10) == "$(PABBR)") {
+        return node;
+      }
+    var span = document.createElementNS("http://www.w3.org/1999/xhtml", "html:span");
+    //var span = document.createElementNS("", "span");
+    var id_stuff = "textmarked_" + $(PABBR).currentDocument.hlcount++;
+    var name_stuff = "$(PABBR)_" + $(PABBR).currentDocument.slindex;
+    span.setAttribute("id", id_stuff);
+    span.setAttribute("name", name_stuff);
+    span.style.backgroundColor = $(PABBR).currentDocument.hlcolor; // "rgb(255,255,0)";
+    span.appendChild(node);
+    return span;
+  },
+
+  quoteToClipboard : function(evt) { // prob. don't need event here
+    //jsdump("quoteToClipboard");
+    var focusedWindow = document.commandDispatcher.focusedWindow;
+    if (focusedWindow == window)
+      focusedWindow = _content;
+    var selection = focusedWindow.getSelection();
+
+    $(PABBR).copyToClipboard(selection);
+  },
+
+  //Error: missing : after property id
+  //~ var sciEditorTabRef, // reference to window tab
+  //~ var sciEditorTabRefDS, // reference to SciMoz plugin in document
+  // just refer to them as $(PABBR).sciEditorTabRef/sciEditorTabRefDS, initialization from null should also be handled like that
+
+  getSciEditorTabRef : function(instr) {
+
+    //gBrowser.loadOneTab("chrome://.../window.xul");
+    var wm = Components.classes["@mozilla.org/appshell/window-mediator;1"] .getService(Components.interfaces.nsIWindowMediator);
+
+    var mainWindow = wm.getMostRecentWindow("navigator:browser");
+
+    $(PABBR).sciEditorTabRef = gBrowser.getBrowserForTab(mainWindow.gBrowser.addTab("chrome://$(PROJECT)/content/ScintillaEditor.xul")); // mainWindow.gBrowser.selectedTab
+    // :( Error: Error calling method on NPObject! if no wait!
+    //~ $(PABBR).sciEditorTabRef.addEventListener("DOMContentLoaded", function (evt) { // nowork? we must emit it, maybe? // nah, anyways: "Fired at the page's Document object when parsing of the document is finished... use the "load" event to detect a fully-loaded page."
+    //~ $(PABBR).sciEditorTabRef.addEventListener("load", function (evt) { // argument for onload IS event ALWAYS - regardless if we call it instr!
+      // so probably best to emit an event from scintilla after loading text file, and subscribe to that here?
+    $(PABBR).sciEditorTabRef.addEventListener("$(PABBR)ContentLoaded", function (evt) { // argument for onload IS event ALWAYS - regardless if we call it instr!
+
+      // NOTE: this func. seems to hit BEFORE the FileIO/ScintillaEditor one!!
+      // hence, the retstat is NOT yet set!
+      var scidoc = $(PABBR).sciEditorTabRef.contentDocument;
+      $(PABBR).sciEditorTabRefDS = scidoc.getElementById('SciMozFB_plugin');
+      jsdump("CMenuOverlay.js: getSciEditorTabRef: onload: " + $(PABBR).sciEditorTabRefDS);// + " _" + retstat+"_"+retstatO);
+
+      // a bit delayed, but should make it, also this first time
+      // selection in instr - it should be referrable here from previously, as long as we have function(evt) instead of function(instr) in definition.
+      //~ $(PABBR).sendQtdStringToSciEditor(instr);
+      // well, apparently it needs to be delayed, in case we're loading file in scintilla
+      // cuz this event fires before the scintilla load
+      //~ var wm = Components.classes["@mozilla.org/appshell/window-mediator;1"] .getService(Components.interfaces.nsIWindowMediator);
+      //~ var mainWindow = wm.getMostRecentWindow("navigator:browser");
+      //~ var timer = mainWindow.setTimeout($(PABBR).sendQtdStringToSciEditor(instr), 100); // ?? Error: useless setTimeout call (missing quotes around argument?)
+      // should be ok now if we run on a later event, $(PABBR)ContentLoaded? Yes...
+       $(PABBR).sendQtdStringToSciEditor(instr);
+    }, true);
+  },
+
+  // writes the text string at end of the document in the SciMoz plugin
+  sendQtdStringToSciEditor : function(instr) {
+
+    var toSend = "" + instr;
+    var strToSend = "\\n" + $(PABBR).quoteUrlText(toSend) + "\\n";
+
+    $(PABBR).sciEditorTabRefDS.SciSendMessageIS(SCI_APPENDTEXT, strToSend.length, strToSend); //"Error: Bad NPObject as private data!" if the tab has been closed; so ...
+    $(PABBR).sciEditorTabRefDS.SciSendMessageII(SCI_SETSEL, -1, -1);
+
+    // show notification, since sciEditorTab should always be in background, so we're sure something happened..
+    // show localized - must have stringbundleset on the xul file, then can refer to it from js:
+    // read from CMenuOverlay.xul (this js xul) - not $(PABBR).sciEditorTabRef.contentDocument!
+    // get the id of the xul element *inside* the stringbundleset!
+
+    // also exceptions: Mozilla Add-ons Forum • View topic - problems with access the locale files - https://forums.mozilla.org/addons/viewtopic.php?f=12&t=367
+    // change the ID - make sure each string bundle has unique ID!
+    // but if changing id of stringbundleset, then Error: stringsBundle is null :(
+    // could be getting exceptions also because the document (context menu) has by now dissapeared?
+    // NO - do NOT put strings as entities in .dtd - they cannot be read! Only in .properties file!
+
+    var stringsBundle = document.getElementById("$(PABBR)-strings-cmenu");
+    //~ var stringsBundle = $(PABBR).sciEditorTabRef.contentDocument.getElementById("$(PABBR)-strings-scied"); // also: Exception... "Component returned failure code: 0x80004005 (NS_ERROR_FAILURE) [nsIStringBundle.GetStringFromName]"  nsresult: "0x80004005 (NS_ERROR_FAILURE)"
+    var qtdToString = stringsBundle.getString("$(PABBR).qtd.alerttext") + " ";
+
+    // from above
+    //~ var $(PABBR)LocalizationPrefs = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService).getBranch("extensions.$(PROJECT_ID).");
+    //~ var str = Components.classes[ "@mozilla.org/supports-string;1" ].createInstance( Components.interfaces.nsISupportsString );
+    //~ str.data = document.getElementById("$(PABBR)-strings-cmenu").getString("qtd.alerttext"); // again failure..
+    //~ var qtdToString = str.data; // stringsBundle.getString('qtd.alerttext') + " ";
+
+    //~ let stringBundleService = Cc["@mozilla.org/intl/stringbundle;1"].getService(Ci.nsIStringBundleService);
+    //~ let bundle = stringBundleService.createBundle("chrome://$(PROJECT)/locale/$(PROJECT).properties");
+    //~ try{
+    //~ let str = bundle.GetStringFromName("qtd.alerttext"); // AGAIN exception?!
+    //~ } catch (ex) {alert(ex)};
+
+    // notify if options set
+    if ($(PABBR).getIsNotifyqte()) {
+      var alertsSvc = Cc["@mozilla.org/alerts-service;1"].getService(Ci.nsIAlertsService);
+      // (in AString aImageUrl, in AString aAlertTitle, in AString aAlertText, in boolean alertTextClickable, in AString aAlertCookie, in nsIObserver aAlertListener
+      alertsSvc.showAlertNotification("chrome://$(PROJECT)/skin/$(PABBR)Icon-small.png", "$(PROJECT_NAME)", qtdToString + toSend.substr(0,10) + " ...", true, null, null);
+    }
+
+    // if options set, also quote to clipboard too...
+    if ($(PABBR).getIsAutocopy()) {
+      $(PABBR).quoteToClipboard(null);
+    }
+
+    // if options set, also save
+    if ($(PABBR).getIsAutosaveqte()) {
+      var scref = $(PABBR).sciEditorTabRef;
+      var scidoc = scref.contentDocument;
+      //var iss = "--------------\\n"; for (ix in scidoc) {var str1="" ; try { str1 = eval("scidoc."+ix); } catch (ex) {str1 = ex; } ;  iss += " " + ix + " -> " + str1 + "\\n"; }; jsdump("_"+iss);
+      //alert(scidoc.$(SCABBR).saveCurrentSciMozFile); // ok if added as property to ScintillaEditor in its .js
+      scidoc.$(SCABBR).saveCurrentSciMozFile();
+    }
+  },
+
+  quoteToSciEditor : function() {
+    //jsdump("quoteToSciEditor");
+    var focusedWindow = document.commandDispatcher.focusedWindow;
+    if (focusedWindow == window)
+      focusedWindow = _content;
+    var selection = focusedWindow.getSelection();
+
+    if (!($(PABBR).sciEditorTabRef)) {
+      jsdump("No sci editor");
+      $(PABBR).getSciEditorTabRef(selection); // also writes selection
+      //~ iss = "--------------\\n"; for (ix in $(PABBR).sciEditorTabRef) {iss += " " + ix + " -> " + eval("$(PABBR).sciEditorTabRef."+ix) + "\\n"; }; jsdump(iss);
+    } else if (($(PABBR).sciEditorTabRef.closed) || (!($(PABBR).sciEditorTabRef._contentWindow))) {
+      // this check must be done separately, otherwise calling property of null obj will cause fail?
+      // Unfortunately, this property don't seem to be set if we close the tab, so we must check in the final else again..
+      // but can use parentNode -> null instead ?! Not reliable;
+      // use _contentWindow instead -> null ?! .. seems fine..
+      jsdump("Sci editor closed");
+      $(PABBR).getSciEditorTabRef(selection); // also writes selection
+    } else {
+      jsdump("Yes sci editor: ");
+      //~ iss = "--------------\\n"; for (ix in $(PABBR).sciEditorTabRef) {iss += " " + ix + " -> " + eval("$(PABBR).sciEditorTabRef."+ix) + "\\n"; }; jsdump(iss);
+
+      // $(PABBR).sciEditorTabRef.getScintillaPlugin() // not a function
+      //~ jsdump( $(PABBR).sciEditorTabRef.getElementById('SciMozFB_plugin') ); // nope
+      //~ var bgzi = $(PABBR).sciEditorTabRef.ownerDocument ; // current html window, not the sciEditor tab!
+      //~ var bgzi = $(PABBR).sciEditorTabRef ;
+      //~ ///~ var iss = "--------------\\n"; for (ix in bgzi) {iss += " " + ix + " -> " + eval("bgzi."+ix) + "\\n"; };
+      //~ ///~ jsdump(iss);
+      //~ //jsdump( "_" + $(PABBR).sciEditorTabRef.getElementById('SciMozFB_plugin') ); // nope
+      //~ var toSend = "" + selection;
+      //~ var strToSend = $(PABBR).quoteUrlText(toSend) + "\\n\\n";
+
+      //~ $(PABBR).sciEditorTabRefDS.SciSendMessageIS(SCI_APPENDTEXT, strToSend.length, strToSend);
+      //~ $(PABBR).sciEditorTabRefDS.SciSendMessageII(SCI_SETSEL, -1, -1);
+      $(PABBR).sendQtdStringToSciEditor(selection);
+    }
+
+    jsdump("quoteToSciEditor: " + $(PABBR).sciEditorTabRefDS);
+
+  },
+
+
+  /* function to clear highlighting
+     Code adapted from Ben Basson's Context Highlighter */
+  clearHL : function() {
+    if (!$(PABBR).currentDocument)
+      return;
+    while ($(PABBR).currentDocument.hlcount > 0) {
+      var id_stuff = "textmarked_" + --$(PABBR).currentDocument.hlcount;
+      var oldSpan = $(PABBR).currentDocument.getElementById(id_stuff);
+      if (oldSpan) {
+        var parent = oldSpan.parentNode;
+           parent.replaceChild(oldSpan.childNodes[0], oldSpan);
+           parent.normalize();
+      }
+    }
+    $(PABBR).currentDocument.hlcount = 0;
+    $(PABBR).currentDocument.slindex= 0;
+  },
+
+  getAllHighlightsMerged : function() {
+    var textToCopy = "";
+    var count = $(PABBR).currentDocument.hlcount;
+    var sep = $(PABBR).getSeparator(); //"\\r\\n";
+
+    if (count) {
+    for (var i = 0; i < count ; i++) {
+      var id_stuff = "textmarked_" + i;
+      var nod = $(PABBR).currentDocument.getElementById(id_stuff);
+      if (i == 0)
+        hlFlag = nod.getAttribute("name");
+      if (nod) {
+        if (hlFlag != nod.getAttribute("name")) { // are we in the same highlight
+          textToCopy += sep + nod.firstChild.data; // was "\\r\\n"
+          hlFlag = nod.getAttribute("name");
+        } else
+          textToCopy += nod.firstChild.data;
+      }
+    }
+    }
+    return textToCopy;
+  },
+
+  /* function to copy all highlighted text */
+  copyHL : function() {
+    if (!$(PABBR).currentDocument)
+      return;
+    var textToCopy = $(PABBR).getAllHighlightsMerged();
+    if (textToCopy == "") return;
+
+    $(PABBR).copyToClipboard(textToCopy);//copy to clipboard
+
+  },
+
+  quoteHLToSciEditor : function() {
+    //~ jsdump("quoteHLToSciEditor");
+    if (!$(PABBR).currentDocument)
+      return;
+    var textToCopy = $(PABBR).getAllHighlightsMerged();
+    if (textToCopy == "") return;
+
+    if (!($(PABBR).sciEditorTabRef)) {
+      //jsdump("No sci editor");
+      $(PABBR).getSciEditorTabRef(textToCopy); // also writes selection
+    } else if (($(PABBR).sciEditorTabRef.closed) || (!($(PABBR).sciEditorTabRef._contentWindow))) {
+      //jsdump("Sci editor closed");
+      $(PABBR).getSciEditorTabRef(textToCopy); // also writes selection
+    } else {
+      //jsdump("Yes sci editor: ");
+      $(PABBR).sendQtdStringToSciEditor(textToCopy);
+    }
+
+    if ($(PABBR).getIsAutocopy()) {
+      $(PABBR).copyToClipboard(textToCopy);//copy to clipboard
+    }
+
+    jsdump("quoteHLToSciEditor: " + $(PABBR).sciEditorTabRefDS);
+  },
+
+  /* function to clear highlighting from a particular block */
+  clearThisHL : function() {
+    if (!$(PABBR).currentDocument)
+      return;
+    currentBlock = $(PABBR).currentDocument.hlCurrentBlock;
+    var nodesToClear = $(PABBR).currentDocument.getElementsByName(currentBlock);
+    $(PABBR).clearNodes(nodesToClear);
+    $(PABBR).currentDocument.slindex--;
+  },
+
+  clearNodes : function (nodesToClear) {
+    if (!$(PABBR).currentDocument)
+      return;
+    for (var i = nodesToClear.length-1; i >= 0; i--) {
+      var oldSpan = nodesToClear.item(i);
+      var parent = oldSpan.parentNode;
+           parent.replaceChild(oldSpan.childNodes[0], oldSpan);
+           parent.normalize();
+    }
+  },
+
+  /* function to copy only the Highlighted text under the mouse */
+  copyThisHL : function () {
+    if (!$(PABBR).currentDocument)
+      return;
+    currentBlock = $(PABBR).currentDocument.hlCurrentBlock;
+    var nodesToCopy = $(PABBR).currentDocument.getElementsByName(currentBlock);
+    var textToCopy = "";
+    for (var i = 0; i < nodesToCopy.length; i++) {
+      var nod = nodesToCopy.item(i);
+      textToCopy += nod.firstChild.data;
+    }
+    $(PABBR).copyToClipboard(textToCopy);//copy to clipboard
+  },
+
+  // by reference
+  copy_a_HL : function (inelemn) {
+    if (!$(PABBR).currentDocument)
+      return;
+    //~ var nodesToCopy = inelem;
+    var nodesToCopy = $(PABBR).currentDocument.getElementsByName(inelemn);
+    var textToCopy = "";
+    for (var i = 0; i < nodesToCopy.length; i++) {
+      var nod = nodesToCopy.item(i);
+      textToCopy += nod.firstChild.data;
+    }
+    $(PABBR).copyToClipboard(textToCopy);//copy to clipboard
+  },
+
+  copyToClipboard : function (toCopy) {
+    //~ var clipboard = Components.classes["@mozilla.org/widget/clipboardhelper;1"]
+        //~ .getService(Components.interfaces.nsIClipboardHelper);
+    //~ //toCopy += "\\r\\n(Source URL: " + $(PABBR).currentDocument.URL + ")";
+    //~ clipboard.copyString(toCopy);
+
+    // expecting "plain text" here; so quoting it:
+    //~ alert("toCopy:" + toCopy);
+    // copyToClipboard always quotes!
+    var copyTxt = $(PABBR).quoteUrlText(toCopy);
+
+    // copy from quoteurltext() - w./ unicode transferable
+    //create object for transfer
+    var xferable = Components.classes["@mozilla.org/widget/transferable;1"].createInstance(Components.interfaces.nsITransferable);
+    // add plaintext flavor
+    xferable.addDataFlavor("text/unicode");
+    var unicodestring = Components.classes["@mozilla.org/supports-string;1"].createInstance(Components.interfaces.nsISupportsString);
+    unicodestring.data = copyTxt;
+    xferable.setTransferData("text/unicode", unicodestring, copyTxt.length * 2);
+    //send to clipboard
+    var clipboard = Components.classes["@mozilla.org/widget/clipboard;1"].getService(Components.interfaces.nsIClipboard);
+    clipboard.setData(xferable, null, Components.interfaces.nsIClipboard.kGlobalClipboard);
+  },
+
+  /* function to dump messages on the Javascript console */
+  debug : function (aMessage) {
+      var consoleService = Components.classes["@mozilla.org/consoleservice;1"]
+                       .getService(Components.interfaces.nsIConsoleService);
+      consoleService.logStringMessage("$(PROJECT): " + aMessage);
+  },
+
+  /* helper function to check for new lines, carriage returns and tabs */
+  is_all_ws :  function( nod ) {
+      // Use ECMA-262 Edition 3 String and RegExp features
+      return !(/[^\\t\\n\\r ]/.test(nod.data));
+  },
+
+
+  getColor : function (id) {
+    try {
+      var gPref = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefBranch);
+      if ((gPref.getBoolPref("$(PABBR).cyclecolors") == true) && (id == 1)) {
+        $(PABBR).currentDocument.hlCycleIndex++;
+        if ($(PABBR).currentDocument.hlCycleIndex == 4)
+          $(PABBR).currentDocument.hlCycleIndex = 1;
+        return gPref.getCharPref("$(PABBR).color" + $(PABBR).currentDocument.hlCycleIndex);
+      } else
+        return gPref.getCharPref("$(PABBR).color" + id);
+    } catch(e) {
+      return "#FFFF00"; // yellow
+    }
+
+  },
+
+  getSeparator : function () {
+    try{
+      var gPref = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefBranch);
+      // parse also escaped \\r \\n \\t...
+      return gPref.getCharPref("$(PABBR).separator").replace(/\\\\n/g,"\\n").replace(/\\\\t/g,"\\t").replace(/\\\\r/g,"\\r");
+    } catch(e) {
+      return e;
+    }
+  },
+
+  getIsAutocopy : function () {
+    try{
+      var gPref = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefBranch);
+      return gPref.getBoolPref("$(PABBR).autocopy");
+    } catch(e) {
+      alert(e);
+      return false;
+    }
+  },
+
+  getIsAutosaveqte : function () {
+    try{
+      var gPref = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefBranch);
+      return gPref.getBoolPref("$(PABBR).autosaveqte");
+    } catch(e) {
+      alert(e);
+      return false;
+    }
+  },
+
+  getIsNotifyqte : function () {
+    try{
+      var gPref = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefBranch);
+      return gPref.getBoolPref("$(PABBR).notifyqte");
+    } catch(e) {
+      alert(e);
+      return false;
+    }
+  },
+
+  // from quoteurltext:
+
+  quoteurltext_setmetadata : function(){
+
+    // Init Metadata
+    var location, title, metadata;
+    var browser = window.getBrowser();
+    var webNav = browser.webNavigation;
+    var win = browser.contentWindow;
+
+    //Set metadata
+    location = win.location.href.toString();
+
+    if(win.document.title){
+      title = win.document.title;
+    } else{
+     title = location;
+    }
+
+    //create return object
+    metadata = [location, title];
+
+    //return object
+    return metadata;
+  },
+
+
+  quoteurltext_advformat_text : function (inText, mypagedata){
+    var location = mypagedata[0];
+    var title = mypagedata[1];
+
+    var title_token = '@title';
+    var location_token = '@url';
+    var quote_token = '@quote';
+    var time_token = '@date';
+
+
+    // here default quoting format is specified:
+    //~ var format = "Title @title\\nAddress:";
+    //~ format = "@title\\n@url\\n@date";
+    //~ var format = "<blockquote>\\n@date, <a href='@url'>@title</a>\\n@quote\\n</blockquote>"
+    //~ var format = "-----\\nTitle: @title\\nAddress: ";
+    var format = "$(DEFLT_QUOTE_FMT)";
+
+
+    var fileIn = DirIO.get('ProfD');
+    fileIn.append("quotepformat.txt");
+
+    if (fileIn.exists()) {
+      fileIn = FileIO.open(fileIn.path);
+      format = FileIO.read(fileIn);
+    }
+
+    format = format.replace(/@title/gi, title);
+    format = format.replace(/@url/gi, location);
+    format = format.replace(/@quote/gi, inText);
+    format = format.replace(/@date/gi, Date());
+
+    return format;
+
+  },
+
+  // modified from quoteurltext
+  quoteUrlText : function (selTxt) {
+  try{  //open try
+    //set metadata
+    var metadata = $(PABBR).quoteurltext_setmetadata();
+
+    copyTxt = $(PABBR).quoteurltext_advformat_text(selTxt, metadata);
+    //copyRich = quoteurltext_advformat_rich(selRich, metadata); // not doing rich (HTML) copy here (only plaintext)
+    return copyTxt; // we're called from copy, so we return formatted text
+
+  }  //close try
+  catch(err) {alert("An unknown error has occurred\\n" + err);}
+  }, //close function
+
+}
+
+window.addEventListener("load", $(PABBR).init,false);
+window.addEventListener("keypress", $(PABBR).highlight,false);
+endef
+export OVERLAY_JS
+
+$(PROJECT)/content/$(PABBR)CMenuOverlay.js:
+	@echo Generating $(PROJECT)/content/$(PABBR)CMenuOverlay.js
+	@echo "$$OVERLAY_JS" > $(PROJECT)/content/$(PABBR)CMenuOverlay.js
+
+
+######
+define OPTIONS_XUL
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<!DOCTYPE window SYSTEM "chrome://$(PROJECT)/locale/$(PROJECT).dtd">
+
+<!-- Mostly taken from TextMarker's optionsOverlay.xul -->
+
+<dialog buttons="accept, cancel"
+    id="$(PABBR)-options-dialog"
+    onload="$(PABBR)OptionsInit()"
+    ondialogaccept="$(PABBR)OptionsSave()"
+    title="&options.title;"
+    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+
+  <script type="application/x-javascript" src="chrome://$(PROJECT)/content/options.js"/>
+
+
+<!--
+parts copied from options.xul; dialog id="QuoteURLTextOptions"
+quoteurltext addon by Vijaykumar Palat
+added: $(PROJECT_AUTHOR), 2011
+-->
+<tabbox>
+  <tabs>
+    <tab label="Basic (TextMarker)"/>
+    <tab label="Advanced Formatting (QuoteUrlText)"/>
+  </tabs>
+  <tabpanels>
+    <tabpanel id="functionstab">
+      <!-- orig from textmarker -->
+  <groupbox align="center" orient="vertical">
+      <caption label="&highlight.colors;"/>
+      <grid>
+        <columns>
+          <column/>
+          <column/>
+        </columns>
+        <rows>
+          <row>
+              <label value="&default.color;"/>
+            <colorpicker id="$(PABBR)-colorpicker1" palettename="standard" type="button"
+            prefstring="$(PABBR).color1"/>
+          </row>
+          <row>
+              <label value="&second.color;"/>
+            <colorpicker id="$(PABBR)-colorpicker2" palettename="standard" type="button"
+            prefstring="$(PABBR).color2"/>
+          </row>
+          <row>
+            <label value="&third.color;"/>
+            <colorpicker id="$(PABBR)-colorpicker3" palettename="standard" type="button"
+                prefstring="$(PABBR).color3"/>
+          </row>
+          <row>
+              <label value="&cancelnote.string;"/>
+          </row>
+        </rows>
+      </grid>
+  </groupbox>
+  <groupbox align="center" orient="vertical">
+      <caption label="&other.options;"/>
+      <grid>
+          <columns>
+              <column/>
+          </columns>
+          <rows>
+              <row>
+                  <checkbox id="$(PABBR)-cyclecolors" label="&cycle.colors;" checked="false"/>
+              </row>
+              <row>
+                  <checkbox id="$(PABBR)-useshortcuts" label="&keyboard.shortcuts;" checked="true"/>
+              </row>
+              <!-- added $(PABBR)-autocopy -->
+              <row>
+                  <checkbox id="$(PABBR)-autocopy" label="&autocopy.string;" checked="false"/>
+              </row>
+              <!-- added $(PABBR)-separator -->
+              <row>
+                <hbox align="baseline" style="background-color: gray;">
+                  <textbox id="$(PABBR)-separator" width="100" multiline="false" flex ="0" value=""/> <!-- label attr for screen reader only -->
+                  <label value="&separator.string;"/>
+                </hbox>
+              </row>
+              <!-- added $(PABBR)-etextfpath -->
+              <row>
+                <label value="&default.etextfpath;" style="background-color:LightGray;"/>
+              </row>
+              <row>
+                <hbox align="baseline" style="background-color:LightGray;">
+                  <textbox id="$(PABBR)-etextfpath" width="200" multiline="false" flex ="0" value=""/> <!-- label attr for screen reader only -->
+                </hbox>
+              </row>
+              <!-- added $(PABBR)-autosaveqte -->
+              <row>
+                  <checkbox id="$(PABBR)-autosaveqte" label="&autosaveqte.string;" checked="false"/>
+              </row>
+              <!-- added $(PABBR)-notifyqte -->
+              <row>
+                  <checkbox id="$(PABBR)-notifyqte" label="&notifyqte.string;" checked="true"/>
+              </row>
+          </rows>
+      </grid>
+  </groupbox>
+      <!-- end orig from textmarker -->
+    </tabpanel>
+    <tabpanel id="operatorstab">
+      <grid>
+
+      <rows>
+      <caption label="Change the format by arranging keywords"/>
+        <row/>
+        <row/>
+        <row/>
+        <row/>
+        <row/>
+      </rows>
+
+      <columns>
+
+        <column>
+      <caption label="Value "/>
+          <caption label="Date:"/>
+          <caption label="Title: "/>
+          <caption label="Quote:"/>
+          <caption label="location/URL:"/>
+        </column>
+
+        <column>
+      <caption label="Keyword"/>
+          <caption label="@date "/>
+          <caption label="@title "/>
+          <caption label="@quote "/>
+          <caption label="@url"/>
+        </column>
+      </columns>
+      </grid>
+      <textbox id="$(PABBR)-formattemplate" multiline="true"  flex ="1" value=""/>
+    </tabpanel>
+  </tabpanels>
+</tabbox>
+
+</dialog>
+
+endef
+export OPTIONS_XUL
+
+$(PROJECT)/content/options.xul:
+	@echo Generating $(PROJECT)/content/options.xul
+	@echo "$$OPTIONS_XUL" > $(PROJECT)/content/options.xul
+
+
+
+######
+# note, here the \ escapes need to be doubled (make converts them)!
+define OPTIONS_JS
+
+/*
+  Originally, TextMarker's optionsOverlay.js:
+  Options Panel
+  - this code is by Hemiola SUN (textMarker! Plus! 0.3) and modified by me for use in this version
+  Changes (23-10-2011, $(PROJECT_AUTHOR))
+    * Added Shift-X keyboard shortcut for "erase all highlights"
+    * Added 'Autocopy' option - with it active, every highlight will be automatically copied to clipboard
+    * Added option for customizable separator (when multiple in "copy all highlights")
+    * Integrated quoteurltext add-on (Vijaykumar Palat):
+      https://addons.mozilla.org/en-US/firefox/addon/quoteurltext/versions/1.0.9b
+    * * Now there is 'advanced formatting (quoteurltext)' tab in TextMarker options;
+        it accepts the quoteurltext 'syntax' for metadata (@url, @title, @date, @quote)
+        ... and ALL copying to clipboard is formatted according to this setting!
+  Changes (03-06-05)
+    * added checkbox option for use keyboard shortcuts
+  Changes (25-05-05)
+    * added options for cycling colours
+*/
+
+var gPref = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefBranch);
+var lists = ["$(PABBR)-colorpicker1","$(PABBR)-colorpicker2","$(PABBR)-colorpicker3"];
+var defaultColor = ["#FFFF00","#FFFF00","#FFFF00"];
+
+
+// copy from quoteurltext; - for access to DirIO
+/*
+ * Load Io.js
+ */
+( ( Components.classes["@mozilla.org/moz/jssubscript-loader;1"] ).getService(
+     Components.interfaces.mozIJSSubScriptLoader ) ).loadSubScript(
+        //~ "chrome://quoteurltext/content/Io.js" );
+        "chrome://$(PROJECT)/content/Io.js" );
+// end copy from quoteurltext;
+
+
+// load all preferences into the dialog
+function $(PABBR)OptionsInit()
+{
+  var element, pref;
+  for (i = 0; i < lists.length; i++) {
+    element = document.getElementById(lists[i]);
+    pref = element.getAttribute("prefstring");
+    try {
+      element.color = gPref.getCharPref(pref);
+    }
+    catch (e) {
+      element.color = defaultColor[i];
+    }
+  }
+  element = document.getElementById("$(PABBR)-cyclecolors");
+  try {
+    element.checked = gPref.getBoolPref("$(PABBR).cyclecolors");
+  } catch(e) {
+    element.checked = false;
+  }
+  element = document.getElementById("$(PABBR)-useshortcuts");
+  try {
+    element.checked = gPref.getBoolPref("$(PABBR).useshortcuts");
+  } catch(e) {
+    element.checked = true;
+  }
+  // added $(PABBR)-autocopy
+  element = document.getElementById("$(PABBR)-autocopy");
+  try {
+    element.checked = gPref.getBoolPref("$(PABBR).autocopy");
+  } catch(e) {
+    element.checked = false;
+  }
+  // added $(PABBR)-separator
+  element = document.getElementById("$(PABBR)-separator");
+  try {
+    element.value = gPref.getCharPref("$(PABBR).separator");
+  } catch(e) {
+    element.value = "\\\\n[...]\\\\n";
+  }
+  // added $(PABBR)-etextfpath
+  element = document.getElementById("$(PABBR)-etextfpath");
+  try {
+    element.value = gPref.getCharPref("$(PABBR).etextfpath");
+  } catch(e) {
+    element.value = "$(DEFLT_ETEXTFPATH)";
+  }
+  // added $(PABBR)-autosaveqte
+  element = document.getElementById("$(PABBR)-autosaveqte");
+  try {
+    element.checked = gPref.getBoolPref("$(PABBR).autosaveqte");
+  } catch(e) {
+    element.checked = false;
+  }
+  // added $(PABBR)-notifyqte
+  element = document.getElementById("$(PABBR)-notifyqte");
+  try {
+    element.checked = gPref.getBoolPref("$(PABBR).notifyqte");
+  } catch(e) {
+    element.checked = true;
+  }
+
+  // copy from quoteurltext;
+  // needs also Io.js from there copied..
+  // skipping the bool preferences; only using the quote format part
+  //get adv pref format from file (s?)
+  var fileIn = DirIO.get('ProfD');
+  fileIn.append("quotepformat.txt");
+  //var fileIn = FileIO.open(DirIO.get('ProfD').path + '/test.txt');
+  //~ var str = "@title\\n@url\\n@quote\\n@date";
+  var str = "$(DEFLT_QUOTE_FMT)";
+
+  if (fileIn.exists()) {
+    fileIn = FileIO.open(fileIn.path);
+    str = FileIO.read(fileIn);
+  }
+  document.getElementById("$(PABBR)-formattemplate").value = str;
+  // end copy from quoteurltext;
+
+}
+
+// save all preferences entered into the dialog
+function $(PABBR)OptionsSave()
+{
+  var element, pref;
+  for (i = 0; i < lists.length; i++) {
+    element = document.getElementById(lists[i]);
+    pref = element.getAttribute("prefstring");
+    try {
+      gPref.setCharPref(pref, element.color);
+    }
+    catch (e) {
+      gPref.setCharPref(pref, defaultColor[i]);
+    }
+  }
+  element = document.getElementById("$(PABBR)-cyclecolors");
+  try {
+    gPref.setBoolPref("$(PABBR).cyclecolors",element.checked);
+  } catch(e) {
+    gPref.setBoolPref("$(PABBR).cyclecolors",false);
+  }
+  element = document.getElementById("$(PABBR)-useshortcuts");
+  try {
+    gPref.setBoolPref("$(PABBR).useshortcuts",element.checked);
+  } catch(e) {
+    gPref.setBoolPref("$(PABBR).useshortcuts",true);
+  }
+  // added $(PABBR)-autocopy
+  element = document.getElementById("$(PABBR)-autocopy");
+  try {
+    gPref.setBoolPref("$(PABBR).autocopy",element.checked);
+  } catch(e) {
+    gPref.setBoolPref("$(PABBR).autocopy",false);
+  }
+  // added $(PABBR)-separator
+  element = document.getElementById("$(PABBR)-separator");
+  try {
+    gPref.setCharPref("$(PABBR).separator",element.value);
+  } catch(e) {
+    gPref.setCharPref("$(PABBR).separator","\\\\n[...]\\\\n");
+  }
+  // added $(PABBR)-etextfpath
+  element = document.getElementById("$(PABBR)-etextfpath");
+  try {
+    gPref.setCharPref("$(PABBR).etextfpath",element.value);
+  } catch(e) {
+    gPref.setCharPref("$(PABBR).etextfpath","$(DEFLT_ETEXTFPATH)");
+  }
+  // added $(PABBR)-autosaveqte
+  element = document.getElementById("$(PABBR)-autosaveqte");
+  try {
+    gPref.setBoolPref("$(PABBR).autosaveqte",element.checked);
+  } catch(e) {
+    gPref.setBoolPref("$(PABBR).autosaveqte",false);
+  }
+  // added $(PABBR)-notifyqte
+  element = document.getElementById("$(PABBR)-notifyqte");
+  try {
+    gPref.setBoolPref("$(PABBR).notifyqte",element.checked);
+  } catch(e) {
+    gPref.setBoolPref("$(PABBR).notifyqte",true);
+  }
+
+  // copy from quoteurltext;
+  var str = document.getElementById("$(PABBR)-formattemplate").value;
+  var target = Components.classes["@mozilla.org/file/directory_service;1"]
+                   .getService(Components.interfaces.nsIProperties)
+                   .get("ProfD", Components.interfaces.nsIFile);
+
+
+  target.append("quotepformat.txt");
+  //var target = componentFile.append("/test.txt");
+  var fileOut = FileIO.open(target.path);
+  var rv = FileIO.write(fileOut, str);
+  if (!rv)
+    alert('File write: ' + rv + ' -- Error on write to' + target);
+  // end copy from quoteurltext;
+
+}
+
+endef
+export OPTIONS_JS
+
+$(PROJECT)/content/options.js:
+	@echo Generating $(PROJECT)/content/options.js
+	@echo "$$OPTIONS_JS" > $(PROJECT)/content/options.js
+
+
+
+######
+define ABOUT_XUL
+
+<!-- Taken mostly from TextMarker's about.xul -->
+
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<!DOCTYPE window SYSTEM "chrome://$(PROJECT)/locale/$(PROJECT).dtd">
+
+<window class="dialog"
+	title="&about.title;"
+	orient="vertical"
+	autostretch="always"
+	onload="sizeToContent()"
+	xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+
+<groupbox align="center" orient="horizontal">
+<vbox>
+  <text value="$(PROJECT_NAME)" style="font-weight: bold; font-size: x-large;"/>
+  <text value="$(PROJECT_VERSION)"/>
+  <text value="&desc.value;"/>
+  <separator class="thin"/>
+  <text value="&created.by;" style="font-weight: bold;"/>
+  <text value="$(PROJECT_AUTHOR)" class="url"
+		  onclick="window.open('$(PROJECT_URL)','_blank'); window.close();"/>
+  <separator class="thin"/>
+    <text value="&home.page;" style="font-weight: bold;"/>
+    <text value="$(PROJECT_URL)" style="color:blue;"
+          class="url"
+		  onclick="window.open('$(PROJECT_URL)','_blank'); window.close();"/>
+  <separator class="thin"/>
+</vbox>
+<spring flex="1"/>
+<image src="chrome://$(PROJECT)/skin/$(PABBR)Icon.png"/>
+</groupbox>
+
+  <hbox>
+  <spacer flex="1"/>
+   <button label="&close.button;" oncommand="window.close();"/>
+  </hbox>
+
+</window>
+
+endef
+export ABOUT_XUL
+
+$(PROJECT)/content/about.xul:
+	@echo Generating $(PROJECT)/content/about.xul
+	@echo "$$ABOUT_XUL" > $(PROJECT)/content/about.xul
+
+
+######
+# note, here the \ escapes need to be doubled (make converts them)!
+define IO_JS
+
+/////////////////////////////////////////////////
+/////////////////////////////////////////////////
+//
+// Basic JavaScript File and Directory IO module
+// By: MonkeeSage, v0.1
+//
+/////////////////////////////////////////////////
+/////////////////////////////////////////////////
+
+
+if (typeof(JSIO) != 'boolean') {
+
+  var JSIO = true;
+
+  /////////////////////////////////////////////////
+  // Basic file IO object based on Mozilla source
+  // code post at forums.mozillazine.org
+  /////////////////////////////////////////////////
+
+  // Example use:
+  // var fileIn = FileIO.open('/test.txt');
+  // if (fileIn.exists()) {
+  //   var fileOut = FileIO.open('/copy of test.txt');
+  //   var str = FileIO.read(fileIn);
+  //   var rv = FileIO.write(fileOut, str);
+  //   alert('File write: ' + rv);
+  //   rv = FileIO.write(fileOut, str, 'a');
+  //   alert('File append: ' + rv);
+  //   rv = FileIO.unlink(fileOut);
+  //   alert('File unlink: ' + rv);
+  // }
+
+  var FileIO = {
+
+    localfileCID  : '@mozilla.org/file/local;1',
+    localfileIID  : Components.interfaces.nsILocalFile,
+
+    finstreamCID  : '@mozilla.org/network/file-input-stream;1',
+    finstreamIID  : Components.interfaces.nsIFileInputStream,
+
+    foutstreamCID : '@mozilla.org/network/file-output-stream;1',
+    foutstreamIID : Components.interfaces.nsIFileOutputStream,
+
+    sinstreamCID  : '@mozilla.org/scriptableinputstream;1',
+    sinstreamIID  : Components.interfaces.nsIScriptableInputStream,
+
+    suniconvCID   : '@mozilla.org/intl/scriptableunicodeconverter',
+    suniconvIID   : Components.interfaces.nsIScriptableUnicodeConverter,
+
+    open   : function(path) {
+      try {
+        var file = Components.classes[this.localfileCID]
+                .createInstance(this.localfileIID);
+        file.initWithPath(path);
+        return file;
+      }
+      catch(e) {
+        return false;
+      }
+    },
+
+    read   : function(file, charset) {
+      try {
+        var data     = new String();
+        var fiStream = Components.classes[this.finstreamCID]
+                  .createInstance(this.finstreamIID);
+        var siStream = Components.classes[this.sinstreamCID]
+                  .createInstance(this.sinstreamIID);
+        fiStream.init(file, 1, 0, false);
+        siStream.init(fiStream);
+        data += siStream.read(-1);
+        siStream.close();
+        fiStream.close();
+        if (charset) {
+          data = this.toUnicode(charset, data);
+        }
+        return data;
+      }
+      catch(e) {
+        return false;
+      }
+    },
+
+    write  : function(file, data, mode, charset) {
+      try {
+        var foStream = Components.classes[this.foutstreamCID]
+                  .createInstance(this.foutstreamIID);
+        if (charset) {
+          data = this.fromUnicode(charset, data);
+        }
+        var flags = 0x02 | 0x08 | 0x20; // wronly | create | truncate
+        if (mode == 'a') {
+          flags = 0x02 | 0x10; // wronly | append
+        }
+        foStream.init(file, flags, 0664, 0);
+        foStream.write(data, data.length);
+        // foStream.flush();
+        foStream.close();
+        return true;
+      }
+      catch(e) {
+        return false;
+      }
+    },
+
+    create : function(file) {
+      try {
+        file.create(0x00, 0664);
+        return true;
+      }
+      catch(e) {
+        return false;
+      }
+    },
+
+    unlink : function(file) {
+      try {
+        file.remove(false);
+        return true;
+      }
+      catch(e) {
+        return false;
+      }
+    },
+
+    path   : function(file) {
+      try {
+        return 'file:///' + file.path.replace(/\\\\/g, '\\/')
+              .replace(/^\\s*\\/?/, '').replace(/\\ /g, '%20');
+      }
+      catch(e) {
+        return false;
+      }
+    },
+
+    toUnicode   : function(charset, data) {
+      try{
+        var uniConv = Components.classes[this.suniconvCID]
+                  .createInstance(this.suniconvIID);
+        uniConv.charset = charset;
+        data = uniConv.ConvertToUnicode(data);
+      }
+      catch(e) {
+        // foobar!
+      }
+      return data;
+    },
+
+    fromUnicode : function(charset, data) {
+      try {
+        var uniConv = Components.classes[this.suniconvCID]
+                  .createInstance(this.suniconvIID);
+        uniConv.charset = charset;
+        data = uniConv.ConvertFromUnicode(data);
+        // data += uniConv.Finish();
+      }
+      catch(e) {
+        // foobar!
+      }
+      return data;
+    }
+
+  }
+
+
+  /////////////////////////////////////////////////
+  // Basic Directory IO object based on JSLib
+  // source code found at jslib.mozdev.org
+  /////////////////////////////////////////////////
+
+  // Example use:
+  // var dir = DirIO.open('/test');
+  // if (dir.exists()) {
+  //   alert(DirIO.path(dir));
+  //   var arr = DirIO.read(dir, true), i;
+  //   if (arr) {
+  //     for (i = 0; i < arr.length; ++i) {
+  //       alert(arr[i].path);
+  //     }
+  //   }
+  // }
+  // else {
+  //   var rv = DirIO.create(dir);
+  //   alert('Directory create: ' + rv);
+  // }
+
+  // ---------------------------------------------
+  // ----------------- Nota Bene -----------------
+  // ---------------------------------------------
+  // Some possible types for get are:
+  //   'ProfD'        = profile
+  //   'DefProfRt'      = user (e.g., /root/.mozilla)
+  //   'UChrm'        = %profile%/chrome
+  //   'DefRt'        = installation
+  //   'PrfDef'        = %installation%/defaults/pref
+  //   'ProfDefNoLoc'    = %installation%/defaults/profile
+  //   'APlugns'      = %installation%/plugins
+  //   'AChrom'        = %installation%/chrome
+  //   'ComsD'        = %installation%/components
+  //   'CurProcD'      = installation (usually)
+  //   'Home'        = OS root (e.g., /root)
+  //   'TmpD'        = OS tmp (e.g., /tmp)
+
+  var DirIO = {
+
+    sep        : '/',
+
+    dirservCID : '@mozilla.org/file/directory_service;1',
+
+    propsIID   : Components.interfaces.nsIProperties,
+
+    fileIID    : Components.interfaces.nsIFile,
+
+    get    : function(type) {
+      try {
+        var dir = Components.classes[this.dirservCID]
+                .createInstance(this.propsIID)
+                .get(type, this.fileIID);
+        return dir;
+      }
+      catch(e) {
+        return false;
+      }
+    },
+
+    open   : function(path) {
+      return FileIO.open(path);
+    },
+
+    create : function(dir) {
+      try {
+        dir.create(0x01, 0664);
+        return true;
+      }
+      catch(e) {
+        return false;
+      }
+    },
+
+    read   : function(dir, recursive) {
+      var list = new Array();
+      try {
+        if (dir.isDirectory()) {
+          if (recursive == null) {
+            recursive = false;
+          }
+          var files = dir.directoryEntries;
+          list = this._read(files, recursive);
+        }
+      }
+      catch(e) {
+        // foobar!
+      }
+      return list;
+    },
+
+    _read  : function(dirEntry, recursive) {
+      var list = new Array();
+      try {
+        while (dirEntry.hasMoreElements()) {
+          list.push(dirEntry.getNext()
+                  .QueryInterface(FileIO.localfileIID));
+        }
+        if (recursive) {
+          var list2 = new Array();
+          for (var i = 0; i < list.length; ++i) {
+            if (list[i].isDirectory()) {
+              files = list[i].directoryEntries;
+              list2 = this._read(files, recursive);
+            }
+          }
+          for (i = 0; i < list2.length; ++i) {
+            list.push(list2[i]);
+          }
+        }
+      }
+      catch(e) {
+         // foobar!
+      }
+      return list;
+    },
+
+    unlink : function(dir, recursive) {
+      try {
+        if (recursive == null) {
+          recursive = false;
+        }
+        dir.remove(recursive);
+        return true;
+      }
+      catch(e) {
+        return false;
+      }
+    },
+
+    path   : function (dir) {
+      return FileIO.path(dir);
+    },
+
+    split  : function(str, join) {
+      var arr = str.split(/\\/|\\\\/), i;
+      str = new String();
+      for (i = 0; i < arr.length; ++i) {
+        str += arr[i] + ((i != arr.length - 1) ?
+                    join : '');
+      }
+      return str;
+    },
+
+    join   : function(str, split) {
+      var arr = str.split(split), i;
+      str = new String();
+      for (i = 0; i < arr.length; ++i) {
+        str += arr[i] + ((i != arr.length - 1) ?
+                    this.sep : '');
+      }
+      return str;
+    }
+
+  }
+
+  if (navigator.platform.toLowerCase().indexOf('win') > -1) {
+    DirIO.sep = '\\\\';
+  }
+
+}
+endef
+export IO_JS
+
+$(PROJECT)/content/Io.js:
+	@echo Generating $(PROJECT)/content/Io.js
+	@echo "$$IO_JS" > $(PROJECT)/content/Io.js
+
+
+######
+define SCIEDITOR_XUL
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<!-- window width/height seem not to matter in firefox, xulrunner only -->
+<!-- onload="return $(SCABBR).ScintillaEditorInit()" // nowork with $(SCABBR); parse error if comment inside attributes! -->
+<window
+  id="main" title="$(PROJECT_NAME) editor"
+  width="300" height="300"
+  xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+>
+
+  <stringbundleset id="stringbundleset">
+     <stringbundle id="$(PABBR)-strings-scied" src="chrome://$(PROJECT)/locale/$(PROJECT).properties"/>
+  </stringbundleset>
+
+
+  <script type="application/javascript" src="chrome://$(PROJECT)/content/ScintillaEditor.js">
+    // src="chrome://$(PROJECT)/content/$(PABBR)CMenuOverlay.js" messes up!
+  </script>
+  <script type="application/javascript" src="chrome://$(PROJECT)/content/options.js">
+    // just a reference? doesn't hurt, but calling functions in it will result with null?
+  </script>
+
+  <box>
+    <hbox style="display:inherit;" align="stretch" flex="1">
+      <textbox id="sciFilePathTB" multiline="false" spellcheck="false" flex="1" value="/path/to" readonly="true"/>
+    </hbox>
+    <hbox align="right">
+      <button label="Open" oncommand="return $(SCABBR).openFileEditorDialog();"/>
+      <button label="Save" oncommand="return $(SCABBR).saveFileEditorDialog();"/>
+      <button label="Options" oncommand="return $(SCABBR).bump();"/>
+    </hbox>
+  </box>
+  <separator class="thin"/>
+  <vbox align="stretch" flex="1">
+    <tabbox flex="1">
+      <tabs>
+        <tab id="sciFilePathTLabel" label="Filename"/>
+        <hbox flex="100">
+          <spacer flex="1" align="left"/>
+          <label value="$(PROJECT_NAME) $(PROJECT_VERSION)" style="font-weight:bold;vertical-align:bottom;"/>
+        </hbox>
+      </tabs>
+      <tabpanels style="min-height:150px;" flex="1">
+        <tabpanel flex="1">
+          <description id="SciMozFB_plugin_holder" align="stretch" style="background-color:LightGray;" flex="1" height="100%">
+            <html:object id="SciMozFB_plugin" type="application/x-scimozfb"
+              width="100%" height="300px"
+              style="background-color:blue;border-style:solid;border-width:2px;">
+              <!-- insert my object into "SciMozFB_plugin_holder" -->
+            </html:object>
+          </description>
+        </tabpanel>
+      </tabpanels>
+    </tabbox>
+  </vbox>
+</window>
+
+endef
+export SCIEDITOR_XUL
+
+$(PROJECT)/content/ScintillaEditor.xul:
+	@echo Generating $(PROJECT)/content/ScintillaEditor.xul
+	@echo "$$SCIEDITOR_XUL" > $(PROJECT)/content/ScintillaEditor.xul
+
+
+######
+define SCIEDITOR_JS
+
+var gPref = Components.classes["@mozilla.org/preferences-service;1"].getService(
+Components.interfaces.nsIPrefBranch);
+
+// copy from quoteurltext; - for access to DirIO
+/*
+ * Load Io.js
+ */
+( ( Components.classes["@mozilla.org/moz/jssubscript-loader;1"] ).getService(
+     Components.interfaces.mozIJSSubScriptLoader ) ).loadSubScript(
+        "chrome://$(PROJECT)/content/Io.js" );
+// end copy from quoteurltext;
+
+// do NOT jsdump empty strings - it clears the log!!
+function jsdump(str)
+{
+  Components.classes['@mozilla.org/consoleservice;1']
+            .getService(Components.interfaces.nsIConsoleService)
+            .logStringMessage(str);
+}
+
+// #defines in Scintilla.h:
+var SCI_INSERTTEXT = 2003;
+var SCI_REPLACESEL = 2170;
+var SCI_ADDTEXT = 2001;
+var SCI_APPENDTEXT = 2282;
+var SCI_SETSEL = 2160;
+var SCI_SETTEXT = 2181;
+var SCI_GETLENGTH  = 2006;
+var SCI_GETTEXT = 2182;
+
+//http://planetozh.com/blog/2008/04/javascript-basename-and-dirname/
+//http://www.davekb.com/browse_programming_tips:javascript_dirname_basename:txt
+function basename(path) {
+  return path.replace(/\\\\/g,'/').replace( /.*\\//, '' );
+  //return path.replace(/.*\//, '');
+}
+
+function dirname(path) {
+  return path.replace(/\\\\/g,'/').replace(/\\/[^\\/]*$$/, '');
+  //return path.replace(/\/[^\/]*$/,'');
+}
+
+var $(SCABBR) = {
+
+  getScintillaPlugin : function() {
+    return document.getElementById('SciMozFB_plugin');
+  },
+
+  // note - the right cross-platform way to handle files is here:
+  // https://developer.mozilla.org/en/Code_snippets/File_I%2F%2FO#Absolute_path_%28nsILocalFile%29
+  // here just doing a quickie that would work for linux
+
+  ScintillaEditorInit : function () {
+    // since it's init, nothings opened yet
+    // upon first run, even prefs are not inited! handle..
+    var def_tfpath;
+    try {
+      def_tfpath = gPref.getCharPref("$(PABBR).etextfpath");
+    } catch (ex) {
+      //~ $(PABBR)OptionsInit(); // Error: element is null Source File: chrome://qutextmark-smfb/content/options.js Line: 43 which is element = document.getElementById(lists[i]);...
+      //~ def_tfpath = gPref.getCharPref("$(PABBR).etextfpath");
+      // so best to raise options here and return?
+      let instantApply =
+        Application.prefs.get("browser.preferences.instantApply");
+      let features =
+        "chrome,titlebar,toolbar,centerscreen" +
+        (instantApply.value ? ",dialog=no" : ",modal");
+
+      var _preferencesWindow =
+        window.openDialog(
+          "chrome://$(PROJECT)/content/options.xul",
+          "$(PROJECT_NAME) options", features);
+
+      _preferencesWindow.focus();
+
+      return;
+    }
+
+    var sciedplugin = $(SCABBR).getScintillaPlugin();
+
+    var filepathTB = document.getElementById('sciFilePathTB');
+    var filepathTLabel = document.getElementById('sciFilePathTLabel');
+
+    // open file: read it in memory, and send with SCI_SETTEXT (<unused>, const char *text)
+    var strToSend = "";
+
+    //~ var fileIn = DirIO.get('ProfD');
+    //~ fileIn.append("quotepformat.txt");
+
+    //~ if (fileIn.exists()) {
+      //~ fileIn = FileIO.open(fileIn.path);
+      //~ format = FileIO.read(fileIn);
+    //~ }
+
+    //~ var fileOut = FileIO.open('/copy of test.txt');
+    //~ var rv = FileIO.write(fileOut, str);
+    //~ alert('File write: ' + rv);
+    //~ rv = FileIO.write(fileOut, str, 'a');
+    //~ alert('File append: ' + rv);
+    //~ rv = FileIO.unlink(fileOut);
+    //~ alert('File unlink: ' + rv);
+
+    // see also:
+    // http://jsdoodnauth.wordpress.com/2008/11/26/xul-file-io-write-files/
+    // https://developer.mozilla.org/en/PR_Open#Parameters
+
+    // this one hits before the loading events in menu overlay
+    // scheduling: Chapter Six: Events - http://mb.eschew.org/6
+    // https://developer.mozilla.org/en/Code_snippets/On_page_load
+
+    jsdump("scieditor.js: ScintillaEditorInit: FileIO");
+    var strToSend = "";
+    var retstat;
+    var fileIn = FileIO.open(def_tfpath); // should create a new one?! automatically if not exist
+    if (fileIn.exists()) {
+      strToSend = FileIO.read(fileIn);
+      retstat = 0;
+      filepathTB.value = def_tfpath;
+      filepathTLabel.label = basename(def_tfpath);
+    } else {
+      // if (fileIn.create()) { //def_tfpath // the create in fileIO doesn't seem to have the right flags?
+      if (FileIO.write(fileIn, "")) { // we have to write in order to trigger a file create! function(file, data, mode, charset)
+        retstat = 1;
+        filepathTB.value = def_tfpath;
+        filepathTLabel.label = basename(def_tfpath);
+        //~ alert("Created " + def_tfpath); //jsdump
+      } else {
+        retstat = 2;
+        //~ alert(def_tfpath + ": " + qtdToString); //not Alert!
+        filepathTB.value = "";
+        //filepathTLabel.label // remains "Filename"
+      }
+    }
+    jsdump("FileIOB");
+
+    //~ var retstatO = scidoc.getElementById('SciMozFB_initstat'); // removed this hidden element
+    //~ var iss = "--------------\\n"; for (ix in retstatO) {var str1="" ; try { str1 = eval("retstatO."+ix); } catch (ex) {str1 = ex; } ;  iss += " " + ix + " -> " + str1 + "\\n"; }; jsdump("_"+iss); //+
+
+    //~ var retstat = retstatO.value; //getAttribute("value");
+    // compose alert string - then raise alert using timeout, so as not to interrupt the rest of procedure
+    // but note: when file cannot be created; default Scintilla text is loaded, and the first quote insert (append) after it works
+    // however, if file gets created - then it gets read in apparently after the insert, and so it deletes the content!
+    // that is since we insert the file load stuff here..
+    // it goes:
+    // CMenuOverlay.js: getSciEditorTabRef: onload: [object HTMLObjectElement]
+    // scieditor.js: ScintillaEditorInit: FileIO
+
+    var strAlert="";
+    if (retstat > 0) {
+      var stringsBundle = document.getElementById("$(PABBR)-strings-scied");
+      //var gPref = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefBranch);
+      //var def_tfpath = gPref.getCharPref("$(PABBR).etextfpath");
+
+      if (retstat == 1 ) {
+        var qtdToString = stringsBundle.getString("$(PABBR).alert.filecreate") + " ";
+        strAlert=qtdToString + def_tfpath; //was jsdump
+      } else if (retstat == 2) {
+        var qtdToString = stringsBundle.getString("$(PABBR).alert.filenotcreate");
+        strAlert=def_tfpath + ": " + qtdToString; //not Alert!
+      }
+
+      // (http://stackoverflow.com/questions/2983354/xpcom-array-can-transfer-in-different-xul-files)
+      // try this to delay alert, and have it issued in main window!
+      var wm = Components.classes["@mozilla.org/appshell/window-mediator;1"].getService(Components.interfaces.nsIWindowMediator);
+      var mainWindow = wm.getMostRecentWindow("navigator:browser");
+      //~ timer = mainWindow.setTimeout('alert(strAlert);', 1000); // unsafe warning, doesn't trigger
+      //~ var timer = mainWindow.setTimeout(mainWindow.$(PABBR).extalert(strAlert), 1000); //500 ; 100: Warning: Unsafe use of setTimeout (string rather than function callback) - with 100 ms doesn't even fire?!
+      // unsafe: Mozilla Add-ons Forum • View topic - setInterval unsafe? - https://forums.mozilla.org/addons/viewtopic.php?p=57 ...use nsITimer interface
+      // http://stackoverflow.com/questions/6256669/how-to-use-nsitimer-in-a-firefox-extension
+      var timer = Components.classes["@mozilla.org/timer;1"].createInstance(Components.interfaces.nsITimer);
+      timer.initWithCallback(function() {mainWindow.$(PABBR).extalert(strAlert); }, 100, Components.interfaces.nsITimer.TYPE_ONE_SHOT);
+
+    }
+
+    // here strToSend is loaded file initial content (or "" if file cannot be created, or if file empty)
+    sciedplugin.SciSendMessageIS(SCI_SETTEXT, 0, strToSend);
+
+    // emit|generate event!
+    var e = document.createEvent('HTMLEvents');
+    e.initEvent('$(PABBR)ContentLoaded', true, true);
+    document.dispatchEvent(e);
+  },
+
+  openFileEditorDialog : function() {
+    //alert("openFileEditorDialog");
+    var nsIFilePicker = Components.interfaces.nsIFilePicker;
+    var fp = Components.classes["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
+    fp.init(window, "Select a File", nsIFilePicker.modeOpen);
+    var res = fp.show();
+    if (res == nsIFilePicker.returnOK){
+      var thefile = fp.file;
+      //var iss = "--------------\\n"; for (ix in thefile) {var str1="" ; try { str1 = eval("thefile."+ix); } catch (ex) {str1 = ex; } ;  iss += " " + ix + " -> " + str1 + "\\n"; }; jsdump("_"+iss);
+      // alert(thefile.path);
+      // --- do something with the file here ---
+      var fileIn = FileIO.open(thefile.path); // should create a new one?! automatically if not exist
+      if (fileIn.exists()) {
+        var sciedplugin = $(SCABBR).getScintillaPlugin();
+        var filepathTB = document.getElementById('sciFilePathTB');
+        var filepathTLabel = document.getElementById('sciFilePathTLabel');
+        var strToSend = FileIO.read(fileIn);
+        sciedplugin.SciSendMessageIS(SCI_SETTEXT, 0, strToSend);
+        filepathTB.value = thefile.path;
+        filepathTLabel.label = basename(thefile.path);
+      } else {
+        alert("Problem open: " + thefile.path);
+      }
+    }
+  },
+
+  saveCurrentSciMozFile : function() {
+    // we rely on filepathTB to give us the path to the file
+    // then we get the Scintilla plugin content, and save it to that path
+    var filepathTB = document.getElementById('sciFilePathTB');
+    var thefilePath = filepathTB.value;
+    var fileIn = FileIO.open(thefilePath);
+    if (fileIn.exists()) {
+      var sciedplugin = $(SCABBR).getScintillaPlugin();
+      // now retrieve the text from the Scintilla plugin
+      var textlen = sciedplugin.iSciSendMessage(SCI_GETLENGTH);
+      var textlen1 = textlen + 1;
+      var textcontent = sciedplugin.sSciSendMessageI(SCI_GETTEXT, textlen1);
+      if (FileIO.write(fileIn, textcontent)) {
+        //success
+        return 1;
+      } else return 0; //failure
+    } else {
+      //alert("Problem save: " + thefilePath);
+      return 0; //failure
+    }
+  },
+
+  saveFileEditorDialog : function() {
+    //alert("saveFileEditorDialog");
+    var filepathTB = document.getElementById('sciFilePathTB');
+    var thefilePath = filepathTB.value;
+    var retval = $(SCABBR).saveCurrentSciMozFile();
+    strret = "";
+    if (retval) strret = "Saved OK:\\n";
+    else strret = "Problem saving:\\n";
+    alert(strret + thefilePath);
+  },
+
+  bump : function() {
+    // the plugin should be:
+    // (in xulrunner): [JSAPI-Auto Javascript Object]
+    // (in firefox): [object HTMLObjectElement]
+    //alert(document.getElementById('SciMozFB_plugin')); $(PABBR)
+    //$(PABBR).openPreferences();
+    $(SCABBR).openPreferences();
+  },
+
+  //this._preferencesWindow;
+  //Error: missing : after property id
+  // just refer to them as $(SCABBR)._preferencesWindow, initialization from null should also be handled like that
+
+
+  // https://developer.mozilla.org/en/XUL_School/Handling_Preferences#Preference_Windows
+  openPreferences : function() {
+    if (null == this._preferencesWindow || this._preferencesWindow.closed) {
+      let instantApply =
+        Application.prefs.get("browser.preferences.instantApply");
+      let features =
+        "chrome,titlebar,toolbar,centerscreen" +
+        (instantApply.value ? ",dialog=no" : ",modal");
+
+      this._preferencesWindow =
+        window.openDialog(
+          "chrome://$(PROJECT)/content/options.xul",
+          "$(PROJECT_NAME) options", features);
+    }
+
+    this._preferencesWindow.focus();
+  },
+}
+
+// if we're using $(SCABBR) - cannot call onload from XUL anymore, as javascript needs to be loaded for SCABBR to exist.. so define onload from here
+window.addEventListener("load", $(SCABBR).ScintillaEditorInit,false);
+// also try this - dynamically add variable as property? seems to work
+document.$(SCABBR) = $(SCABBR);
+
+endef
+export SCIEDITOR_JS
+
+$(PROJECT)/content/ScintillaEditor.js:
+	@echo Generating $(PROJECT)/content/ScintillaEditor.js
+	@echo "$$SCIEDITOR_JS" > $(PROJECT)/content/ScintillaEditor.js
+
+
+######
+define CONTENTS_RDF
+
+<?xml version="1.0"?>
+
+<!-- mostly copied from TextMarker's contents.rdf -->
+
+<RDF:RDF xmlns:RDF="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+xmlns:chrome="http://www.mozilla.org/rdf/chrome#">
+
+  <RDF:Seq RDF:about="urn:mozilla:package:root">
+    <RDF:li RDF:resource="urn:mozilla:package:$(PROJECT)"/>
+  </RDF:Seq>
+
+  <RDF:Seq RDF:about="urn:mozilla:overlays">
+    <RDF:li RDF:resource="chrome://browser/content/browser.xul"/>
+    <RDF:li RDF:resource="chrome://navigator/content/navigator.xul"/>
+  </RDF:Seq>
+
+  <RDF:Seq RDF:about="chrome://browser/content/browser.xul">
+    <RDF:li>chrome://$(PROJECT)/content/$(PABBR)CMenuOverlay.xul</RDF:li>
+  </RDF:Seq>
+
+  <RDF:Seq about="chrome://navigator/content/navigator.xul">
+    <RDF:li>chrome://$(PROJECT)/content/$(PABBR)CMenuOverlay.xul</RDF:li>
+  </RDF:Seq>
+
+  <RDF:Description RDF:about="urn:mozilla:package:$(PROJECT)"
+    chrome:displayName="$(PROJECT_NAME) $(PROJECT_VERSION)"
+    chrome:author="$(PROJECT_AUTHOR)"
+    <!-- chrome:authorURL="mailto:$(PROJECT_EMAIL)" -->
+    chrome:name="$(PROJECT)"
+    chrome:extension="true"
+    chrome:description="$(PROJECT_DESC)">
+  </RDF:Description>
+
+</RDF:RDF>
+
+endef
+export CONTENTS_RDF
+
+$(PROJECT)/content/contents.rdf:
+	@echo Generating $(PROJECT)/content/contents.rdf
+	@echo "$$CONTENTS_RDF" > $(PROJECT)/content/contents.rdf
+
+
+######
+# mostly taken from TextMarker's textmarker.dtd:
+define PROJECT_DTD
+
+<!ENTITY $(PROJECT) "$(PROJECT_NAME)">
+<!ENTITY action.label       "$(PABBR) Action">
+<!ENTITY highlight.this     "Highlight this (m,n,b)">
+<!ENTITY quote.toclipboard  "Quote to RAM (r)">
+<!ENTITY quote.toscieditor  "Quote to Editor (q)">
+<!ENTITY highlighted.text   "$(PABBR) Highlighted">
+<!ENTITY copy.this          "Copy this Highlight">
+<!ENTITY copy.all           "Copy all Highlights (R)">
+<!ENTITY quote.allscieditor "Quote all HL to Editor (Q)">
+<!ENTITY erase.this         "Erase this Highlight">
+<!ENTITY erase.all          "Erase all Highlights (X)">
+
+<!ENTITY options.title       "$(PROJECT) Options">
+<!ENTITY highlight.colors    "Highlight Colours">
+<!ENTITY default.color       "Default Colour (M key)">
+<!ENTITY second.color        "Colour #2 (B key)">
+<!ENTITY third.color         "Colour #3 (N key)">
+<!ENTITY other.options       "Other Options">
+<!ENTITY cycle.colors        "Cycle colours (for mouse and M key highlights)">
+<!ENTITY keyboard.shortcuts  "Use keyboard shortcuts">
+<!ENTITY cancelnote.string   "[Cancel all (Shift+X key)]">
+<!ENTITY autocopy.string     "Auto-copy on highlight">
+<!ENTITY separator.string    "Separator string (all h.)">
+<!ENTITY default.etextfpath  "Default editor text file path">
+<!ENTITY autosaveqte.string  "Auto-save on 'quote to editor'">
+<!ENTITY notifyqte.string    "Notify on 'quote to editor'">
+
+<!ENTITY desc.value           "$(PROJECT_DESC)">
+<!ENTITY created.by           "Created By:">
+<!ENTITY about.title          "$(PROJECT_NAME) v$(PROJECT_VERSION) - About">
+<!ENTITY home.page            "Home Page:">
+<!ENTITY close.button         "Close">
+
+
+endef
+export PROJECT_DTD
+
+$(PROJECT)/locale/en-US/$(PROJECT).dtd:
+	@echo Generating $(PROJECT)/locale/en-US/$(PROJECT).dtd
+	@echo "$$PROJECT_DTD" > $(PROJECT)/locale/en-US/$(PROJECT).dtd
+
+
+######
+define PROJ_PROPERTIES
+$(PABBR).description=$(PROJECT_DESC)
+$(PABBR).qtd.alerttext=Qtd to editor:
+$(PABBR).alert.filecreate=Created
+$(PABBR).alert.filenotcreate=Cannot create file. \\n Make sure you specify a file which Mozilla can write to in Options (as 'Default editor text file path').
+endef
+export PROJ_PROPERTIES
+
+$(PROJECT)/locale/en-US/$(PROJECT).properties:
+	@echo Generating $(PROJECT)/locale/en-US/$(PROJECT).properties
+	@echo "$$PROJ_PROPERTIES" > $(PROJECT)/locale/en-US/$(PROJECT).properties
+
+
+######
+define PREFWINDOW_DTD
+<!ENTITY prefwindow.title "$(PROJECT_NAME) preferences">
+<!ENTITY pane1.title "$(PROJECT_NAME) preferences">
+<!ENTITY checkboolpref.label "A Boolean Preference">
+<!ENTITY checkboolpref.accesskey "B">
+<!ENTITY intpref.label "An Integer Preference">
+<!ENTITY intpref.accesskey "I">
+<!ENTITY stringpref.label "A String Preference">
+<!ENTITY stringpref.accesskey "S">
+
+endef
+export PREFWINDOW_DTD
+
+$(PROJECT)/locale/en-US/prefwindow.dtd:
+	@echo Generating $(PROJECT)/locale/en-US/prefwindow.dtd
+	@echo "$$PREFWINDOW_DTD" > $(PROJECT)/locale/en-US/prefwindow.dtd
+
+
+
+######
+define SKIN_CONTENTS_RDF
+<?xml version="1.0"?>
+<RDF:RDF xmlns:RDF="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:chrome="http://www.mozilla.org/rdf/chrome#">
+
+  <RDF:Seq about="urn:mozilla:skin:root">
+    <RDF:li resource="urn:mozilla:skin:classic/1.0" />
+  </RDF:Seq>
+
+  <RDF:Description about="urn:mozilla:skin:classic/1.0">
+    <chrome:packages>
+      <RDF:Seq about="urn:mozilla:skin:classic/1.0:packages">
+        <RDF:li resource="urn:mozilla:skin:classic/1.0:$(PROJECT)" />
+      </RDF:Seq>
+    </chrome:packages>
+  </RDF:Description>
+
+</RDF:RDF>
+
+endef
+export SKIN_CONTENTS_RDF
+
+$(PROJECT)/skin/contents.rdf:
+	@echo Generating $(PROJECT)/skin/contents.rdf
+	@echo "$$SKIN_CONTENTS_RDF" > $(PROJECT)/skin/contents.rdf
+
+
+# sample application.ini, to raise ScintillaEditor.xul standalone
+# call from build dir w/:
+# xulrunner qutextmark-smfb/application.ini
+# only open and save button work (no options etc)
+# damn it - if we leave application.ini within extension; then it will get raised automatically whenever firefox is started! (so remove it from extension build)
+######
+define APPLICATION_INI
+[App]
+Vendor=$(PROJECT_NAME)
+Name=$(PLUGIN_NAME) editor test app
+Version=1.0
+BuildID=$(PROJECT_VERSION)
+ID=testapp@$(PLUGIN_NAME).plugin
+
+[Gecko]
+MinVersion=1.8
+MaxVersion=2.*
+EOF
+
+endef
+export APPLICATION_INI
+
+$(PROJECT)/application.ini:
+	@echo Generating $(PROJECT)/application.ini
+	@echo "$$APPLICATION_INI" > $(PROJECT)/application.ini
+
+# application.ini needs prefs.js to specify default xul to load
+######
+define PREFS_JS
+pref("toolkit.defaultChromeURI", "chrome://$(PROJECT)/content/ScintillaEditor.xul");
+/* debugging prefs */
+pref("browser.dom.window.dump.enabled", true);
+pref("javascript.options.showInConsole", true);
+pref("javascript.options.strict", true);
+pref("nglayout.debug.disable_xul_cache", true);
+pref("nglayout.debug.disable_xul_fastload", true);
+
+endef
+export PREFS_JS
+
+$(PROJECT)/defaults/preferences/prefs.js:
+	@echo Generating $(PROJECT)/defaults/preferences/prefs.js
+	@echo "$$PREFS_JS" > $(PROJECT)/defaults/preferences/prefs.js
+
+
+
+####################################
+
+# use imagemagick `convert` to generate icon
+$(PROJECT)/skin/$(PABBR)Icon.png:
+	@echo "Generating $(PROJECT)/skin/$(PABBR)Icon.png"
+	@convert -size 128x128 xc:white -pointsize 70 -draw "text 10,40 'qu' text 10,100 'TM'" $(PROJECT)/skin/$(PABBR)Icon.png
+	@echo "Generating $(PROJECT)/skin/$(PABBR)Icon-small.png"
+	@convert $(PROJECT)/skin/$(PABBR)Icon.png -resize 20x20 $(PROJECT)/skin/$(PABBR)Icon-small.png
+

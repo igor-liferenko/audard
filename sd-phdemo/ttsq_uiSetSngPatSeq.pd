@@ -1,0 +1,129 @@
+#N canvas 311 81 659 456 10;
+#X text 16 31 [ttsq_uiSetSngPatSeq 0];
+#X text 16 10 handle sequence update on click of song/pattern GUI btns
+;
+#X text 16 20 (was [pd setSeq] - instantiate as [.. deck-id]:;
+#X obj 32 297 pack f f f;
+#X obj 221 590 prepend setpatseq;
+#X obj 17 54 pddp/pddplink http://forum.pdpatchrepo.info/topic/8948/controlling-the-order-of-calculation-execution-and-packing-in-pd
+-text Controlling the order of calculation execution and packing in
+PD?;
+#X obj 61 168 t b b b;
+#X text 18 68 NOTE: since here I have to "bang" using s/r \; so as
+to update GUI state as well - here \; it is enough just for patnum
+to trigger \; (to avoid triggering twice!);
+#X text 840 199 00v 0 0 0 0 2.45 0 2.45 0 0 0 0 2.2 2.45 0 2.45 0 0
+| 01v 0 2.2 0 2.2 2.2 2.2 2.2 2.2 0 2.2 0 2.2 0 2.2 0 2.2 0 | 02v 0
+0 0 0 0 2.5 0 0 2.1 0 0 0 0 2.5 0 0 0 | 03v 0 0 0 0 0 2.5 0 0 0 0 2.2
+0 0 2.5 0 0 0 | 04v 0 2.5 0 0 0 2.5 0 0 0 2.5 0 0 0 2.5 0 0 0 | 10v
+0 0 0 0 0 0 0 2.35 0 0 0 0 2.35 0 0 0 2.2 | 11v 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 | 12v 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 13v 0 2.2 0.2
+0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0 0 0 0 | 14v 0 0 0 0 0 0 0
+0 0 0 0 0 2.2 0.2 0 0 0;
+#X text 842 174 some saves here;
+#X obj 223 371 demux 1 2 3 4;
+#X text 439 419 Song 2 \, pattern 2;
+#X text 432 457 Song 2 \, pattern 1;
+#X text 422 497 Song 1 \, pattern 2;
+#X text 412 538 Song 1 \, pattern 1;
+#X obj 417 387 demux 1 2 3 4;
+#X msg 333 250 getsequence;
+#X obj 333 220 t b b;
+#X obj 417 318 spigot;
+#X obj 450 297 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
+1;
+#X obj 417 342 prepend set;
+#X obj 417 365 t a b;
+#X obj 504 251 loadbang;
+#X msg 504 272 set 0;
+#X obj 223 341 t b f f b;
+#X text 296 299 signal to clear \; seq due to pat- \; tern change;
+#X obj 468 365 delay 1;
+#X obj 21 129 r sngnum\$1;
+#X obj 90 129 r patnum\$1;
+#X obj 20 201 v sngnm\$1;
+#X obj 80 201 v patnm\$1;
+#X text 144 155 note - expr directly "couldn't create": \; [expr 2*sngnm\$1+patnm\$1]
+;
+#X obj 20 246 expr 2*$f1+$f2;
+#X obj 20 222 t f f;
+#X obj 80 222 t f f;
+#X msg 32 321 sng \$2 pat \$3: \$1;
+#X obj 32 345 print s/p;
+#X obj 20 267 t f f;
+#X obj 333 198 r sBtnSave\$1;
+#X obj 333 274 s rseqintf\$1;
+#X obj 417 273 r rcvpatseq\$1;
+#X obj 295 341 s clrseqpatchg\$1;
+#X obj 363 436 s rSq2pat2\$1;
+#X obj 445 436 r sSq2pat2\$1;
+#X obj 363 476 s rSq2pat1\$1;
+#X obj 445 476 r sSq2pat1\$1;
+#X obj 363 516 s rSq1pat2\$1;
+#X obj 445 516 r sSq1pat2\$1;
+#X obj 363 556 s rSq1pat1\$1;
+#X obj 445 556 r sSq1pat1\$1;
+#X obj 221 613 s rseqintf\$1;
+#X msg 32 461 clearpatseq;
+#X text 29 423 just bang here;
+#X obj 32 440 r sBtnClr\$1;
+#X obj 32 482 s rseqintf\$1;
+#X text 29 400 (moved from [pd AudioSequence] \; clear pat seq belongs
+here);
+#X obj 464 83 route patsequence;
+#X obj 464 110 route bang;
+#X text 531 104 handle bang (for \; empty sequence) \; separately;
+#X obj 464 59 r sseqintf\$1;
+#X obj 521 171 s rcvpatseq\$1;
+#X obj 464 148 s emptpatseq\$1;
+#X text 462 40 was in ttsq_classicSeqEng_lua;
+#X connect 3 0 35 0;
+#X connect 4 0 50 0;
+#X connect 6 1 29 0;
+#X connect 6 2 30 0;
+#X connect 10 0 48 0;
+#X connect 10 1 46 0;
+#X connect 10 2 44 0;
+#X connect 10 3 42 0;
+#X connect 15 0 48 0;
+#X connect 15 1 46 0;
+#X connect 15 2 44 0;
+#X connect 15 3 42 0;
+#X connect 16 0 39 0;
+#X connect 17 0 16 0;
+#X connect 17 1 19 0;
+#X connect 18 0 20 0;
+#X connect 19 0 18 1;
+#X connect 20 0 21 0;
+#X connect 21 0 15 0;
+#X connect 21 1 26 0;
+#X connect 22 0 23 0;
+#X connect 23 0 19 0;
+#X connect 24 0 10 0;
+#X connect 24 1 10 1;
+#X connect 24 2 15 1;
+#X connect 24 3 41 0;
+#X connect 26 0 19 0;
+#X connect 28 0 6 0;
+#X connect 29 0 33 0;
+#X connect 30 0 34 0;
+#X connect 32 0 37 0;
+#X connect 33 0 32 0;
+#X connect 33 1 3 1;
+#X connect 34 0 32 1;
+#X connect 34 1 3 2;
+#X connect 35 0 36 0;
+#X connect 37 0 3 0;
+#X connect 37 1 24 0;
+#X connect 38 0 17 0;
+#X connect 40 0 18 0;
+#X connect 43 0 4 0;
+#X connect 45 0 4 0;
+#X connect 47 0 4 0;
+#X connect 49 0 4 0;
+#X connect 51 0 54 0;
+#X connect 53 0 51 0;
+#X connect 56 0 57 0;
+#X connect 57 0 61 0;
+#X connect 57 1 60 0;
+#X connect 59 0 56 0;

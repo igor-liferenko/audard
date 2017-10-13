@@ -1,0 +1,143 @@
+* Schematics Netlist; file: ngspice_load_dsource.net *
+* must have first comment on top - 'tis a circuit name! *
+* call with: ngspice -b ngspice_load_dsource.net *
+
+
+*==============  Begin SPICE netlist of main design ============
+C1 0 1 10n
+R1 2 1 1K
+
+* note: if just `input_file=source_simple.text`: Undefined number [SOURCE_SIMPLE.TEXT]
+* if direct pin added: EVTinit: ERROR - node 2 cannot be both analog and digital
+*~ A3 [2] input_vector
+*~ .model input_vector d_source(input_file="source_simple.text")
+
+* 12.4.21 Digital Source: output pin 3
+A3 [3] input_vector
+.model input_vector d_source(input_file="source_simple.text")
+
+* Digital-to-Analog Node Bridge: input pin 3; output pin 2
+* if `abridge1 3 2 dac1`: Missing [, an array connection was expected.
+*~ `abridge1 [3 2] dac1`: ERROR - node 2 cannot be both analog and digitalError on line 21 : abridge1 [3 2] dac1
+abridge1 [3] [2] dac1
+.model dac1 dac_bridge(out_low = 0.7 out_high = 3.5 out_undef = 2.2
++ input_load = 5.0e-12 t_rise = 50e-9 t_fall = 20e-9)
+
+
+*==============    End SPICE netlist of main design ============
+
+
+.control
+echo ...........
+
+* set color for postscript output
+set hcopypscolor=1
+
+* perform transient sim
+tran 1us 39us
+
+* show all accessible vectors
+display
+
+* save the plot of node voltage V(1)
+* in a ngspice_load_dsource.ps file
+hardcopy ngspice_load_dsource.ps V(2) V(1)
+
+.endc
+
+.end
+
+
+
+*~ 12.4.21 Digital Source
+*~ Description: The digital source provides for straightforward descriptions of digital signal vec- tors in a tabular format. The model reads input from the input file and, at the times specified in the file, generates the inputs along with the strengths listed.
+*~ The format of the input file is as shown below. Note that comment lines are delineated through the use of a single “*” character in the first column of a line. This is similar to the way the SPICE program handles comments.
+
+*~ > * T        c   n   n . . .
+*~ > * i        l   o   o . . .
+*~ > * m        o   d   d . . .
+*~ > * e        c   e   e . . .
+*~ > *          k   a   c . . .
+*~ > 0.0000     Uu  Uu  Uu . . .
+*~ > 1.234e-9   0s  1s  0z . . .
+*~ > 1.376e-9   0s  0s  0z . . .
+*~ > 2.5e-7     1s  0s  0z . . .
+*~ > 2.5006e-7  1s  1s  0z . . .
+*~ > 5.0e-7     0s  1s  0z . . .
+
+*~ Note that in the example shown, whitespace (any combination of blanks, tabs, commas) is used to separate the time and strength/state tokens. The order of the input columns is important; the first column is always interpreted to mean “time”. The second through the N’th columns map to the out[0] through out[N-2] output nodes. A non-commented line which does not contain enough tokens to completely define all outputs for the digital source will cause an error.
+
+*~ 7.3.5 Code Model d_source
+*~ loading_error:
+*~ ***ERROR***
+*~ D_SOURCE: source.txt file was not read successfully.
+*~ This message occurs whenever the d source model has experienced any difficulty in loading the source.txt (or user-specified) file. This will occur with any of the following problems:
+*~ • Width of a vector line of the source file is incorrect.
+*~ • A time-point value is duplicated or is otherwise not monotonically increasing.
+*~ • One of the output values was not a valid 12-State value (0s, 1s, Us, 0r, 1r, Ur, 0z, 1z, Uz, 0u, 1u, Uu).
+
+
+*~ http://espice.ugr.es/espice/src/xspice/idn/idndig.c
+    *~ This file contains the definition of the 'digital' node type
+    *~ used by 12-state digital models in the code model library.
+    *~ These functions are called exclusively through function
+    *~ pointers in an Evt_Udn_Info_t data structure.
+
+*~ > switch(dig_struct->strength) {
+*~ >
+*~ > case STRONG:
+*~ >     *val = 0.1;
+*~ >     return;
+*~ >
+*~ > case RESISTIVE:
+*~ >     *val = 0.6;
+*~ >     return;
+*~ >
+*~ > case HI_IMPEDANCE:
+*~ >     *val = 1.1;
+*~ >     return;
+*~ >
+*~ > case UNDETERMINED:
+*~ >     *val = -0.4;
+*~ >     return;
+*~ > }
+
+*~ > switch(dig_struct->state) {
+*~ >
+*~ > case ZERO:
+*~ >     *val = 0.0;
+*~ >     return;
+*~ >
+*~ > case ONE:
+*~ >     *val = 1.0;
+*~ >     return;
+*~ >
+*~ > case UNKNOWN:
+*~ >     *val = 0.5;
+*~ >     return;
+*~ > }
+
+* generate file
+
+*~ > cat > source_simple.text <<EOF
+*~ > * clk      sigout
+*~ > 0.0000     Uu
+*~ > 1.234e-6   0s
+*~ > 1.376e-6   0s
+*~ > 20e-6      1s
+*~ > 20.006e-6  1s
+*~ > 30.0e-6    0s
+*~ > EOF
+
+
+
+
+
+
+
+
+
+
+
+
+

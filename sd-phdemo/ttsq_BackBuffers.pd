@@ -1,0 +1,19 @@
+#N canvas 596 129 408 238 10;
+#X text 15 65 ids: Deck-BackbufferNum;
+#X text 16 7 instantiate this as [ttsq_BackBuffers 0 1] \; first arg:
+actual deck id num (0-based \, unused here) \, second: id increased
+by 1 - so can generate snd1-... here without calculating;
+#X text 15 75 actually \, here needed per-track \, so:;
+#X text 15 85 ids: Deck-Track-BackbufferNum (all 1-based);
+#X obj 59 125 table bbuf-\$2-1-1L;
+#X obj 59 147 table bbuf-\$2-1-1R;
+#X obj 179 125 table bbuf-\$2-1-2L;
+#X obj 179 147 table bbuf-\$2-1-2R;
+#X text 10 134 Track 1;
+#X text 95 103 bbuf 1;
+#X text 215 103 bbuf 2;
+#X text 10 184 Track 2;
+#X obj 59 175 table bbuf-\$2-2-1L;
+#X obj 59 197 table bbuf-\$2-2-1R;
+#X obj 179 175 table bbuf-\$2-2-2L;
+#X obj 179 197 table bbuf-\$2-2-2R;

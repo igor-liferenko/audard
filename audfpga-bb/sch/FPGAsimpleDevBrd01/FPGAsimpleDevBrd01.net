@@ -1,0 +1,678 @@
+# EESchema Netlist Version 1.1 created  Sun 30 Aug 2009 11:40:19 PM CEST
+(
+ ( /4A946CE8 SM1812 C1 1u
+  ( 1 /vcc_xo_oe )
+  ( 2 GND )
+ )
+ ( /4A944B99 SM1812 C2 100n
+  ( 1 +9V )
+  ( 2 GND )
+ )
+ ( /4A944C07 SM1812 C3 100n
+  ( 1 +5V )
+  ( 2 GND )
+ )
+ ( /4A944C53 SM1812 C5 100n
+  ( 1 +3.3V_AUX )
+  ( 2 GND )
+ )
+ ( /4A947235 SM1812 C6 100n
+  ( 1 +3.3V_O012 )
+  ( 2 GND )
+ )
+ ( /4A944D6F SM1812 C9 100n
+  ( 1 +1.2V )
+  ( 2 GND )
+ )
+ ( /4A951386 SM1812 CC1 1n
+  ( 1 +3.3V_O012 )
+  ( 2 GND )
+ )
+ ( /4A951387 SM1812 CC2 47n
+  ( 1 +3.3V_O012 )
+  ( 2 GND )
+ )
+ ( /4A951367 SM1812 CC3 1n
+  ( 1 +3.3V_O012 )
+  ( 2 GND )
+ )
+ ( /4A951368 SM1812 CC4 47n
+  ( 1 +3.3V_O012 )
+  ( 2 GND )
+ )
+ ( /4A9513A4 SM1812 CC5 1n
+  ( 1 +3.3V_O012 )
+  ( 2 GND )
+ )
+ ( /4A9513A5 SM1812 CC6 47n
+  ( 1 +3.3V_O012 )
+  ( 2 GND )
+ )
+ ( /4A95129D SM1812 CC7 1n
+  ( 1 +3.3V_O012 )
+  ( 2 GND )
+ )
+ ( /4A95129E SM1812 CC8 47n
+  ( 1 +3.3V_O012 )
+  ( 2 GND )
+ )
+ ( /4A951269 SM1812 CC9 1n
+  ( 1 +3.3V_AUX )
+  ( 2 GND )
+ )
+ ( /4A95118A SM1812 CC10 1n
+  ( 1 +1.2V )
+  ( 2 GND )
+ )
+ ( /4A95126A SM1812 CC11 47n
+  ( 1 +3.3V_AUX )
+  ( 2 GND )
+ )
+ ( /4A95119E SM1812 CC12 47n
+  ( 1 +1.2V )
+  ( 2 GND )
+ )
+ ( /4A944C9F C2V10 CP4 10u/25V
+  ( 1 +5V )
+  ( 2 GND )
+ )
+ ( /4A944D47 C2V10 CP7 10u/25V
+  ( 1 +3.3V_AUX )
+  ( 2 GND )
+ )
+ ( /4A947237 C2V10 CP8 10u/25V
+  ( 1 +3.3V_O012 )
+  ( 2 GND )
+ )
+ ( /4A944D71 C2V10 CP10 10u/25V
+  ( 1 +1.2V )
+  ( 2 GND )
+ )
+ ( /4A94E06E PIN_ARRAY_2X1 JP_PROG_B1 JUMPER
+  ( 1 GND )
+  ( 2 /PROG_B )
+ )
+ ( /4A94598F PIN_ARRAY_2X1 JP_VCCXO1 JUMPER
+  ( 1 +5V )
+  ( 2 /vcc_xo_oe )
+ )
+ ( /4A9AE1DF PIN_ARRAY_2X1 JP_VCCXOOE1 JUMPER
+  ( 1 /vcc_xo_oe )
+  ( 2 /xo_oe )
+ )
+ ( /4A94F222 LEDV LED_AWAKE1 LED
+  ( 1 N-000031 )
+  ( 2 GND )
+ )
+ ( /4A94D6C0 LEDV LED_DONE1 LED
+  ( 1 N-000020 )
+  ( 2 GND )
+ )
+ ( /4A94D649 LEDV LED_INIT1 LED
+  ( 1 N-000021 )
+  ( 2 /INIT_B )
+ )
+ ( /4A94EF37 LEDV LED_TEST1 LED
+  ( 1 N-000018 )
+  ( 2 GND )
+ )
+ ( /4A944216 JACK_ALIM P1 CONN_2
+  ( 1 N-000011 )
+  ( 2 GND )
+ )
+ ( /4A9478F2 PIN_ARRAY-6X1 P2 JTAG_6pin
+  ( 1 /TMS )
+  ( 2 /TDI-CABLE )
+  ( 3 /TDO-S3A )
+  ( 4 /TCK )
+  ( 5 +3.3V_O012 )
+  ( 6 GND )
+ )
+ ( /4A952D68 SIL-10 P3 CONN_10
+  ( 1 ? )
+  ( 2 +5V )
+  ( 3 ? )
+  ( 4 +3.3V_AUX )
+  ( 5 ? )
+  ( 6 +3.3V_O012 )
+  ( 7 ? )
+  ( 8 +1.2V )
+  ( 9 ? )
+  ( 10 GND )
+ )
+ ( /4A94E7CF pin_array_3x2 P4 CONN_3X2
+  ( 1 N-000029 )
+  ( 2 /MODE0 )
+  ( 3 N-000019 )
+  ( 4 /MODE1 )
+  ( 5 N-000028 )
+  ( 6 /MODE2 )
+ )
+ ( /4A94EF54 PINTST P5 CONN_1
+  ( 1 N-000030 )
+ )
+ ( /4A952F60 HE10_40D P6 CONN_20X2
+  ( 1 /IO_L07N_1-p93 )
+  ( 2 GND )
+  ( 3 /IO_L06N_1-P92 )
+  ( 4 GND )
+  ( 5 /IO_L07p_1-p91 )
+  ( 6 GND )
+  ( 7 /IO_L06P_1-p90 )
+  ( 8 GND )
+  ( 9 /IO_L05N_1-p88 )
+  ( 10 GND )
+  ( 11 /IO_L05P_1-p87 )
+  ( 12 GND )
+  ( 13 /IO_L04N_1-p85 )
+  ( 14 GND )
+  ( 15 /IO_L03N_1-p84 )
+  ( 16 GND )
+  ( 17 /IO_L04P_1-p83 )
+  ( 18 GND )
+  ( 19 /IO_LO3P_1-p82 )
+  ( 20 GND )
+  ( 21 /IO_L07P_2-p50 )
+  ( 22 /IO_L07N_3-p20 )
+  ( 23 /IO_L06N_2-p49 )
+  ( 24 /IO_L08N_3-p21 )
+  ( 25 /IO_L05N_2-p48 )
+  ( 26 /IO_L09P_3-p24 )
+  ( 27 /IO_L06P_2-p47 )
+  ( 28 /IO_L09N_3-p25 )
+  ( 29 /IO_L05P_2-p46 )
+  ( 30 /IO_L10P_3-p27 )
+  ( 31 /IO_L04N_2-p45 )
+  ( 32 /IO_L11P_3-p28 )
+  ( 33 /IO_L03N_2-p44 )
+  ( 34 /IO_L10N_3-p29 )
+  ( 35 /IO_L04P_2-p43 )
+  ( 36 /IO_L11N_3-p30 )
+  ( 37 /IO_L03P_2-p42 )
+  ( 38 /IO_L12P_3-p31 )
+  ( 39 /IO_L02N_2-p41 )
+  ( 40 /IO_L12N_3-p32 )
+ )
+ ( /4A947DEB R3 R1 100
+  ( 1 /TMS-S3A )
+  ( 2 /TMS )
+ )
+ ( /4A947E3D R3 R2 100
+  ( 1 /TDI-S3A )
+  ( 2 /TDI-CABLE )
+ )
+ ( /4A947E4E R3 R3 100
+  ( 1 /TCK-S3A )
+  ( 2 /TCK )
+ )
+ ( /4A94E80B R6 R4 220
+  ( 1 N-000029 )
+  ( 2 GND )
+ )
+ ( /4A94E803 R6 R5 220
+  ( 1 N-000019 )
+  ( 2 GND )
+ )
+ ( /4A94E7F1 R6 R6 220
+  ( 1 N-000028 )
+  ( 2 GND )
+ )
+ ( /4A94E88F R3 R7 10K
+  ( 1 +3.3V_O012 )
+  ( 2 /MODE2 )
+ )
+ ( /4A94E88E R3 R8 10K
+  ( 1 +3.3V_O012 )
+  ( 2 /MODE1 )
+ )
+ ( /4A94E88D R3 R9 10K
+  ( 1 +3.3V_O012 )
+  ( 2 /MODE0 )
+ )
+ ( /4A94D593 R3 R10 4K7
+  ( 1 +3.3V_AUX )
+  ( 2 /PROG_B )
+ )
+ ( /4A94D5B2 R3 R11 4K7
+  ( 1 +3.3V_AUX )
+  ( 2 /DONE )
+ )
+ ( /4A94D68D R3 R12 680
+  ( 1 /DONE )
+  ( 2 N-000020 )
+ )
+ ( /4A94D613 R3 R13 680
+  ( 1 +3.3V_O012 )
+  ( 2 N-000021 )
+ )
+ ( /4A94D669 R3 R14 4K7
+  ( 1 +3.3V_O012 )
+  ( 2 /INIT_B )
+ )
+ ( /4A94F221 R3 R15 680
+  ( 1 /AWAKE )
+  ( 2 N-000031 )
+ )
+ ( /4A94EF36 R3 R16 680
+  ( 1 N-000030 )
+  ( 2 N-000018 )
+ )
+ ( /4A94DF6E PUSH_BUTT_SHAPE1 SW1 SW_PUSH
+  ( 1 GND )
+  ( 2 /PROG_B )
+ )
+ ( /4A95877F SIL-3 SW_POWER_SLIDE1 SWITCH_INV
+  ( 1 N-000011 )
+  ( 2 +9V )
+  ( 3 GND )
+ )
+ ( /4A94E674 SIL-3 SW_SUSPEND_SLIDE1 SWITCH_INV
+  ( 1 +3.3V_O012 )
+  ( 2 /SUSPEND )
+  ( 3 GND )
+ )
+ ( /4A93011B xilinx_spartan3_virtex4_and_5-TQ144 U1 XC3S50ATQ144
+  ( P1 /TMS-S3A )
+  ( P2 /TDI-S3A )
+  ( P3 ? )
+  ( P4 ? )
+  ( P5 ? )
+  ( P6 ? )
+  ( P7 ? )
+  ( P8 ? )
+  ( P9 GND )
+  ( P10 ? )
+  ( P11 ? )
+  ( P12 ? )
+  ( P13 ? )
+  ( P14 +3.3V_O012 )
+  ( P15 ? )
+  ( P16 ? )
+  ( P17 GND )
+  ( P18 ? )
+  ( P19 ? )
+  ( P20 /IO_L07N_3-p20 )
+  ( P21 /IO_L08N_3-p21 )
+  ( P22 +1.2V )
+  ( P23 +3.3V_O012 )
+  ( P24 /IO_L09P_3-p24 )
+  ( P25 /IO_L09N_3-p25 )
+  ( P26 GND )
+  ( P27 /IO_L10P_3-p27 )
+  ( P28 /IO_L11P_3-p28 )
+  ( P29 /IO_L10N_3-p29 )
+  ( P30 /IO_L11N_3-p30 )
+  ( P31 /IO_L12P_3-p31 )
+  ( P32 /IO_L12N_3-p32 )
+  ( P33 ? )
+  ( P34 GND )
+  ( P35 ? )
+  ( P36 +3.3V_AUX )
+  ( P37 /MODE1 )
+  ( P38 /MODE0 )
+  ( P39 /MODE2 )
+  ( P40 +3.3V_O012 )
+  ( P41 /IO_L02N_2-p41 )
+  ( P42 /IO_L03P_2-p42 )
+  ( P43 /IO_L04P_2-p43 )
+  ( P44 /IO_L03N_2-p44 )
+  ( P45 /IO_L04N_2-p45 )
+  ( P46 /IO_L05P_2-p46 )
+  ( P47 /IO_L06P_2-p47 )
+  ( P48 /IO_L05N_2-p48 )
+  ( P49 /IO_L06N_2-p49 )
+  ( P50 /IO_L07P_2-p50 )
+  ( P51 ? )
+  ( P52 +1.2V )
+  ( P53 ? )
+  ( P54 ? )
+  ( P55 ? )
+  ( P56 GND )
+  ( P57 ? )
+  ( P58 ? )
+  ( P59 ? )
+  ( P60 ? )
+  ( P61 +3.3V_O012 )
+  ( P62 ? )
+  ( P63 /AWAKE )
+  ( P64 ? )
+  ( P65 GND )
+  ( P66 +3.3V_AUX )
+  ( P67 /INIT_B )
+  ( P68 ? )
+  ( P69 ? )
+  ( P70 ? )
+  ( P71 ? )
+  ( P72 ? )
+  ( P73 /DONE )
+  ( P74 /SUSPEND )
+  ( P75 ? )
+  ( P76 ? )
+  ( P77 ? )
+  ( P78 ? )
+  ( P79 ? )
+  ( P80 ? )
+  ( P81 GND )
+  ( P82 /IO_LO3P_1-p82 )
+  ( P83 /IO_L04P_1-p83 )
+  ( P84 /IO_L03N_1-p84 )
+  ( P85 /IO_L04N_1-p85 )
+  ( P86 +3.3V_O012 )
+  ( P87 /IO_L05P_1-p87 )
+  ( P88 /IO_L05N_1-p88 )
+  ( P89 GND )
+  ( P90 /IO_L06P_1-p90 )
+  ( P91 /IO_L07p_1-p91 )
+  ( P92 /IO_L06N_1-P92 )
+  ( P93 /IO_L07N_1-p93 )
+  ( P94 +1.2V )
+  ( P95 +3.3V_O012 )
+  ( P96 ? )
+  ( P97 ? )
+  ( P98 ? )
+  ( P99 ? )
+  ( P100 GND )
+  ( P101 ? )
+  ( P102 ? )
+  ( P103 ? )
+  ( P104 ? )
+  ( P105 ? )
+  ( P106 GND )
+  ( P107 /TDO-S3A )
+  ( P108 +3.3V_AUX )
+  ( P109 /TCK-S3A )
+  ( P110 ? )
+  ( P111 ? )
+  ( P112 ? )
+  ( P113 ? )
+  ( P114 ? )
+  ( P115 ? )
+  ( P116 ? )
+  ( P117 ? )
+  ( P118 GND )
+  ( P119 +3.3V_O012 )
+  ( P120 ? )
+  ( P121 ? )
+  ( P122 +1.2V )
+  ( P123 ? )
+  ( P124 ? )
+  ( P125 ? )
+  ( P126 /xo_clk_3v3 )
+  ( P127 ? )
+  ( P128 GND )
+  ( P129 ? )
+  ( P130 ? )
+  ( P131 ? )
+  ( P132 ? )
+  ( P133 +3.3V_AUX )
+  ( P134 ? )
+  ( P135 ? )
+  ( P136 +3.3V_O012 )
+  ( P137 GND )
+  ( P138 ? )
+  ( P139 ? )
+  ( P140 ? )
+  ( P141 ? )
+  ( P142 ? )
+  ( P143 ? )
+  ( P144 /PROG_B )
+ )
+ ( /4A944A5C SOT223 U2 LM2940IMP-5.0
+  ( 1 +9V )
+  ( 2 GND )
+  ( 3 +5V )
+ )
+ ( /4A947233 SOT223 U3 LM3940IMP-3.3
+  ( 1 +5V )
+  ( 2 GND )
+  ( 3 +3.3V_O012 )
+ )
+ ( /4A944AA5 SOT223 U4 LM3940IMP-3.3
+  ( 1 +5V )
+  ( 2 GND )
+  ( 3 +3.3V_AUX )
+ )
+ ( /4A944B0F SOT223 U5 FAN1112SX-1.2
+  ( 1 GND )
+  ( 2 +1.2V )
+  ( 3 +5V )
+ )
+ ( /4A946280 SOT23-5 U6 SN_74CB3T
+  ( 1 GND )
+  ( 2 /xo_out )
+  ( 3 GND )
+  ( 4 /xo_clk_3v3 )
+  ( 5 +3.3V_O012 )
+ )
+ ( /4A9459C5 8DIP-ELL300 X1 XO-8S
+  ( 1 /xo_oe )
+  ( 4 GND )
+  ( 5 /xo_out )
+  ( 8 /vcc_xo_oe )
+ )
+)
+*
+{ Allowed footprints by component:
+$component C1
+ CP*
+ SM*
+$endlist
+$component C2
+ SM*
+ C?
+ C1-1
+$endlist
+$component C3
+ SM*
+ C?
+ C1-1
+$endlist
+$component C5
+ SM*
+ C?
+ C1-1
+$endlist
+$component C6
+ SM*
+ C?
+ C1-1
+$endlist
+$component C9
+ SM*
+ C?
+ C1-1
+$endlist
+$component CC1
+ SM*
+ C?
+ C1-1
+$endlist
+$component CC2
+ SM*
+ C?
+ C1-1
+$endlist
+$component CC3
+ SM*
+ C?
+ C1-1
+$endlist
+$component CC4
+ SM*
+ C?
+ C1-1
+$endlist
+$component CC5
+ SM*
+ C?
+ C1-1
+$endlist
+$component CC6
+ SM*
+ C?
+ C1-1
+$endlist
+$component CC7
+ SM*
+ C?
+ C1-1
+$endlist
+$component CC8
+ SM*
+ C?
+ C1-1
+$endlist
+$component CC9
+ SM*
+ C?
+ C1-1
+$endlist
+$component CC10
+ SM*
+ C?
+ C1-1
+$endlist
+$component CC11
+ SM*
+ C?
+ C1-1
+$endlist
+$component CC12
+ SM*
+ C?
+ C1-1
+$endlist
+$component CP4
+ CP*
+ SM*
+$endlist
+$component CP7
+ CP*
+ SM*
+$endlist
+$component CP8
+ CP*
+ SM*
+$endlist
+$component CP10
+ CP*
+ SM*
+$endlist
+$component LED_AWAKE1
+ LED-3MM
+ LED-5MM
+ LED-10MM
+ LED-0603
+ LED-0805
+ LED-1206
+ LEDV
+$endlist
+$component LED_DONE1
+ LED-3MM
+ LED-5MM
+ LED-10MM
+ LED-0603
+ LED-0805
+ LED-1206
+ LEDV
+$endlist
+$component LED_INIT1
+ LED-3MM
+ LED-5MM
+ LED-10MM
+ LED-0603
+ LED-0805
+ LED-1206
+ LEDV
+$endlist
+$component LED_TEST1
+ LED-3MM
+ LED-5MM
+ LED-10MM
+ LED-0603
+ LED-0805
+ LED-1206
+ LEDV
+$endlist
+$component R1
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R2
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R3
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R4
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R5
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R6
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R7
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R8
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R9
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R10
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R11
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R12
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R13
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R14
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R15
+ R?
+ SM0603
+ SM0805
+$endlist
+$component R16
+ R?
+ SM0603
+ SM0805
+$endlist
+$endfootprintlist
+}

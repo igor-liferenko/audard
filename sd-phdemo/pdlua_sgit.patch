@@ -1,0 +1,172 @@
+diff --git a/Makefile b/Makefile
+index 395b691..9144624 100644
+--- a/Makefile
++++ b/Makefile
+@@ -61,15 +61,18 @@ CFLAGS = -Wall -W -g
+ LDFLAGS =
+ LIBS =
+ 
+-LUA_CFLAGS = -I/usr/include/lua
+-LUA_LIBS   = -llua
++#LUA_CFLAGS = -I/usr/include/lua
++LUA_CFLAGS = -I/usr/include/lua5.1
++#LUA_LIBS   = -llua
++LUA_LIBS   = -llua5.1
+ 
+ # get library version from meta file
+ LIBRARY_VERSION = $(shell sed -n 's|^\#X text [0-9][0-9]* [0-9][0-9]* VERSION \(.*\);|\1|p' $(LIBRARY_META))
+ 
+ ALL_CFLAGS += -DPD -DVERSION='"$(LIBRARY_VERSION)"'
+ 
+-PD_INCLUDE = $(PD_PATH)/include/pd
++#PD_INCLUDE = $(PD_PATH)/include/pd
++PD_INCLUDE = /DISKPATHTO/pd-extended_0.43.4-1/usr/include/pdextended
+ # where to install the library, overridden below depending on platform
+ prefix = /usr/local
+ libdir = $(prefix)/lib
+diff --git a/src/pd.lua b/src/pd.lua
+index fdd1c4a..3193e44 100644
+--- a/src/pd.lua
++++ b/src/pd.lua
+@@ -165,6 +165,17 @@ function pd.Table:destruct()
+   self._array = nil
+ end
+ 
++function pd.Table:resize(i)
++  if type(i) == "number" and 0 <= i then
++    ret = pd._resizearray(self.name, i)
++    if (ret > 0) then self._length = ret
++    else self:destruct() end
++    return ret
++  else
++    return nil
++  end
++end
++
+ function pd.Table:get(i)
+   if type(i) == "number" and 0 <= i and i < self._length then
+     return pd._readarray(self._length, self._array, i)
+diff --git a/src/pdlua.c b/src/pdlua.c
+index 6891bfc..39337f0 100644
+--- a/src/pdlua.c
++++ b/src/pdlua.c
+@@ -208,6 +208,8 @@ static int pdlua_readarray (lua_State *L);
+ static int pdlua_writearray (lua_State *L);
+ /** Redraw a [table] object's graph. */
+ static int pdlua_redrawarray (lua_State *L);
++/** resize a [table] . */
++static int pdlua_resizearray (lua_State *L);
+ /** Post to Pd's console. */
+ static int pdlua_post (lua_State *L);
+ /** Report an error from a Lua object to Pd's console. */
+@@ -239,9 +241,10 @@ static t_class *pdlua_proxyreceive_class;
+ static t_class *pdlua_proxyclock_class;
+ 
+ /** Lua file reader callback. */
++// __attribute__((unused)) to silence gcc "warning: unused parameter ‘L’"
+ static const char *pdlua_reader
+ (
+-    lua_State *L, /**< Lua interpreter state. */
++    __attribute__((unused)) lua_State *L, /**< Lua interpreter state. */
+     void *rr, /**< Lua file reader state. */
+     size_t *size /**< How much data we have read. */
+ )
+@@ -500,7 +503,8 @@ static void pdlua_free( t_pdlua *o /**< The object to destruct. */)
+     return;
+ }
+ 
+-static void pdlua_stack_dump (lua_State *L)
++// __attribute__((unused)) to silence gcc "warning: ‘pdlua_stack_dump’ defined but not used"
++__attribute__((unused)) static void pdlua_stack_dump (lua_State *L)
+ {
+     int i;
+     int top = lua_gettop(L);
+@@ -1347,6 +1351,45 @@ static int pdlua_getarray(lua_State *L)
+     }
+ }
+ 
++/** resize a [table] . */
++static int pdlua_resizearray(lua_State *L)
++/**< Lua interpreter state.
++  * \par Inputs:
++  * \li \c 1 Table name string.
++  * \li \c 2 Table new size number.
++  * \par Outputs:
++  * \li \c 1 New table size, or nil for error.
++  * */
++{
++    const char  *namestr = luaL_checkstring(L, 1);
++    int             nsize = luaL_checknumber(L, 2);
++
++    t_garray    *a;
++
++    if ((a = (t_garray *) pd_findbyclass(gensym(namestr), garray_class))) {
++      // code from soundfiler -resize is in pd/src/d_soundfile.c
++      // sizes should be in (float) samples; garray_resize takes care of bytes
++      int vecsize;
++      garray_resize(a, nsize);
++        /* for sanity's sake let's clear the save-in-patch flag here */
++      garray_setsaveit(a, 0);
++      // #define MAXSFCHANS 64 ; t_word *vecs[MAXSFCHANS];
++      t_word *vecs[1];
++      garray_getfloatwords(a, &vecsize, &vecs[0]);
++      lua_pushnumber(L, vecsize); // output 1
++        /* if the resize failed, garray_resize reported the error */
++      if (vecsize != nsize)
++      {
++        error("pdlua_resizearray failed (%d : %d)", nsize, vecsize);
++        return 0; // nil?
++      }
++      return 1;
++    } else {
++        error("pdlua_resizearray failed - canoot find garray '%s'", namestr);
++        return 0; // nil?
++    }
++}
++
+ /** Read from a [table] object's array. */
+ static int pdlua_readarray(lua_State *L)
+ /**< Lua interpreter state.
+@@ -1676,6 +1719,9 @@ static void pdlua_init(lua_State *L)
+     lua_pushstring(L, "_redrawarray");
+     lua_pushcfunction(L, pdlua_redrawarray);
+     lua_settable(L, -3);
++    lua_pushstring(L, "_resizearray");
++    lua_pushcfunction(L, pdlua_resizearray);
++    lua_settable(L, -3);
+     lua_pushstring(L, "post");
+     lua_pushcfunction(L, pdlua_post);
+     lua_settable(L, -3);
+@@ -1754,7 +1800,8 @@ void pdlua_setup(void)
+     char*               luaver = "lua 0.6~svn (GPL) 2008 Claude Heiland-Allen <claude@mathr.co.uk>";
+     char                compiled[MAXPDSTRING];
+     char                luaversionStr[MAXPDSTRING];
+-    const lua_Number    *luaversion = lua_version (NULL);
++    lua_Number          myLuaVersion = LUA_VERSION_NUM;
++    const lua_Number    *luaversion = &myLuaVersion; //lua_version (NULL); lua_version crashes my 5.1
+     int                 lvm, lvl;
+ 
+     snprintf(compiled, MAXPDSTRING-1, "pdlua: compiled for pd-%d.%d on %s %s",
+@@ -1763,17 +1810,17 @@ void pdlua_setup(void)
+     lvm = (*luaversion)/100;
+     lvl = (*luaversion) - (100*lvm);
+     snprintf(luaversionStr, MAXPDSTRING-1, "Using lua version %d.%d", lvm, lvl);
+-
+ #if PD_MAJOR_VERSION==0 && PD_MINOR_VERSION<43
+     post(pdluaver);
+     post(luaver);
+     post(compiled);
+     post(luaversionStr);
+ #else
+-    logpost(NULL, 3, pdluaver);
+-    logpost(NULL, 3, luaver);
+-    logpost(NULL, 3, compiled);
+-    logpost(NULL, 3, luaversionStr);
++    // added "%s" to avoid "warning: format not a string literal and no format arguments"; also will print only for debug verbosity >= 3, so changed one to 2, which I have as well
++    logpost(NULL, 2, "%s", pdluaver);
++    logpost(NULL, 3, "%s", luaver);
++    logpost(NULL, 3, "%s", compiled);
++    logpost(NULL, 3, "%s", luaversionStr);
+ #endif
+     pdlua_proxyinlet_setup();
+ #ifdef PDLUA_DEBUG

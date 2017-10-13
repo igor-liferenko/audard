@@ -1,0 +1,452 @@
+--- ftdi_sio-2.6.32.c	2011-05-30 16:47:50.777015768 +0200
++++ ftdi_sio-audard.c	2011-05-30 16:21:10.013078023 +0200
+@@ -1,5 +1,6 @@
+ /*
+- * USB FTDI SIO driver
++ * USB FTDI SIO driver - 'AudioArduino' modification (using snd_ftdi_audard.h)
++ * modification 2010 by sdaau (sd@{imi,create}.aau.dk)
+  *
+  *	Copyright (C) 1999 - 2001
+  *	    Greg Kroah-Hartman (greg@kroah.com)
+@@ -29,6 +30,16 @@
+ /* Thanx to gkh and the rest of the usb dev group for all code I have
+    assimilated :-) */
+ 
++/*
++NOTE: this driver code is set up to compile for kernel 2.6.32 (as on Ubuntu Lucid)
++
++If you want to compile it for kernel 2.6.38 (as on Ubuntu Natty), please
++look for comments containing '2.6.38' below, and modify the code accordingly.
++
++Note that for 2.6.38, this code will generate quite a few warnings, but the driver should still work.
++*/
++
++
+ #include <linux/kernel.h>
+ #include <linux/errno.h>
+ #include <linux/init.h>
+@@ -49,16 +60,24 @@
+ /*
+  * Version Information
+  */
+-#define DRIVER_VERSION "v1.5.0"
+-#define DRIVER_AUTHOR "Greg Kroah-Hartman <greg@kroah.com>, Bill Ryder <bryder@sgi.com>, Kuba Ober <kuba@mareimbrium.org>, Andreas Mohr"
+-#define DRIVER_DESC "USB FTDI Serial Converters Driver"
++#define DRIVER_VERSION "v1.5.0audard"
++#define DRIVER_AUTHOR "Greg Kroah-Hartman <greg@kroah.com>, Bill Ryder <bryder@sgi.com>, Kuba Ober <kuba@mareimbrium.org>, Andreas Mohr, sdaau <sd@{imi,create}.aau.dk>"
++#define DRIVER_DESC "Audio Arduino - USB FTDI Serial Converters Driver"
++
++//"ftdi_sio"
++#define DRVNAME "ftdi_sio_audard"
++//"FTDI USB Serial Device"
++#define SIODEVDESC "Audio Arduino FTDI USB Serial Device"
+ 
+ static int debug;
+ static __u16 vendor = FTDI_VID;
+ static __u16 product;
+ 
++struct audard_device; //forward declare, for struct ftdi_private
++
+ struct ftdi_private {
+ 	struct kref kref;
++	struct audard_device *audev; // pointer to audard, added
+ 	ftdi_chip_type_t chip_type;
+ 				/* type of device, either SIO or FT8U232AM */
+ 	int baud_base;		/* baud base clock for divisor setting */
+@@ -94,6 +113,7 @@
+ 	unsigned short max_packet_size;
+ };
+ 
++
+ /* struct ftdi_sio_quirk is used by devices requiring special attention. */
+ struct ftdi_sio_quirk {
+ 	int (*probe)(struct usb_serial *);
+@@ -162,9 +182,6 @@
+ 	{ USB_DEVICE(FTDI_VID, FTDI_SCS_DEVICE_5_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_SCS_DEVICE_6_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_SCS_DEVICE_7_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_USINT_CAT_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_USINT_WKEY_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_USINT_RS232_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_ACTZWAVE_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_IRTRANS_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_IPLUS_PID) },
+@@ -182,11 +199,9 @@
+ 	{ USB_DEVICE(FTDI_VID, FTDI_OPENDCC_SNIFFER_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_OPENDCC_THROTTLE_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_OPENDCC_GATEWAY_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_OPENDCC_GBM_PID) },
+ 	{ USB_DEVICE(INTERBIOMETRICS_VID, INTERBIOMETRICS_IOBOARD_PID) },
+ 	{ USB_DEVICE(INTERBIOMETRICS_VID, INTERBIOMETRICS_MINI_IOBOARD_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_SPROG_II) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_LENZ_LIUSB_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_XF_632_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_XF_634_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_XF_547_PID) },
+@@ -206,7 +221,6 @@
+ 	{ USB_DEVICE(FTDI_VID, FTDI_MTXORB_5_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_MTXORB_6_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_R2000KU_TRUE_RNG) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_VARDAAN_PID) },
+ 	{ USB_DEVICE(MTXORB_VID, MTXORB_FTDI_RANGE_0100_PID) },
+ 	{ USB_DEVICE(MTXORB_VID, MTXORB_FTDI_RANGE_0101_PID) },
+ 	{ USB_DEVICE(MTXORB_VID, MTXORB_FTDI_RANGE_0102_PID) },
+@@ -682,6 +696,7 @@
+ 	{ USB_DEVICE(FTDI_VID, FTDI_RRCIRKITS_LOCOBUFFER_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_ASK_RDR400_PID) },
+ 	{ USB_DEVICE(ICOM_ID1_VID, ICOM_ID1_PID) },
++	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_TMU_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_ACG_HFDUAL_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_YEI_SERVOCENTER31_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_THORLABS_PID) },
+@@ -702,8 +717,6 @@
+ 	{ USB_DEVICE(FTDI_VID, FTDI_NDI_AURORA_SCU_PID),
+ 		.driver_info = (kernel_ulong_t)&ftdi_NDI_device_quirk },
+ 	{ USB_DEVICE(TELLDUS_VID, TELLDUS_TELLSTICK_PID) },
+-	{ USB_DEVICE(RTSYSTEMS_VID, RTSYSTEMS_SERIAL_VX7_PID) },
+-	{ USB_DEVICE(RTSYSTEMS_VID, RTSYSTEMS_CT29B_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_MAXSTREAM_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_PHI_FISCO_PID) },
+ 	{ USB_DEVICE(TML_VID, TML_USB_SERIAL_PID) },
+@@ -723,37 +736,8 @@
+ 		.driver_info = (kernel_ulong_t)&ftdi_jtag_quirk },
+ 	{ USB_DEVICE(RATOC_VENDOR_ID, RATOC_PRODUCT_ID_USB60F) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_REU_TINY_PID) },
+-
+-	/* Papouch devices based on FTDI chip */
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_SB485_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_AP485_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_SB422_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_SB485_2_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_AP485_2_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_SB422_2_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_SB485S_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_SB485C_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_LEC_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_SB232_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_TMU_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_IRAMP_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_DRAK5_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_QUIDO8x8_PID) },
+ 	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_QUIDO4x4_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_QUIDO2x2_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_QUIDO10x1_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_QUIDO30x3_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_QUIDO60x3_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_QUIDO2x16_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_QUIDO3x32_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_DRAK6_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_UPSUSB_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_MU_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_SIMUKEY_PID) },
+ 	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_AD4USB_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_GMUX_PID) },
+-	{ USB_DEVICE(PAPOUCH_VID, PAPOUCH_GMSR_PID) },
+-
+ 	{ USB_DEVICE(FTDI_VID, FTDI_DOMINTELL_DGQG_PID) },
+ 	{ USB_DEVICE(FTDI_VID, FTDI_DOMINTELL_DUSB_PID) },
+ 	{ USB_DEVICE(ALTI2_VID, ALTI2_N3_PID) },
+@@ -779,32 +763,6 @@
+ 	{ USB_DEVICE(FTDI_VID, MJSG_SR_RADIO_PID) },
+ 	{ USB_DEVICE(FTDI_VID, MJSG_HD_RADIO_PID) },
+ 	{ USB_DEVICE(FTDI_VID, MJSG_XM_RADIO_PID) },
+-	{ USB_DEVICE(FTDI_VID, XVERVE_SIGNALYZER_ST_PID),
+-		.driver_info = (kernel_ulong_t)&ftdi_jtag_quirk },
+-	{ USB_DEVICE(FTDI_VID, XVERVE_SIGNALYZER_SLITE_PID),
+-		.driver_info = (kernel_ulong_t)&ftdi_jtag_quirk },
+-	{ USB_DEVICE(FTDI_VID, XVERVE_SIGNALYZER_SH2_PID),
+-		.driver_info = (kernel_ulong_t)&ftdi_jtag_quirk },
+-	{ USB_DEVICE(FTDI_VID, XVERVE_SIGNALYZER_SH4_PID),
+-		.driver_info = (kernel_ulong_t)&ftdi_jtag_quirk },
+-	{ USB_DEVICE(FTDI_VID, SEGWAY_RMP200_PID) },
+-	{ USB_DEVICE(FTDI_VID, ACCESIO_COM4SM_PID) },
+-	{ USB_DEVICE(IONICS_VID, IONICS_PLUGCOMPUTER_PID),
+-		.driver_info = (kernel_ulong_t)&ftdi_jtag_quirk },
+-	{ USB_DEVICE(FTDI_VID, FTDI_CHAMSYS_24_MASTER_WING_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_CHAMSYS_PC_WING_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_CHAMSYS_USB_DMX_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_CHAMSYS_MIDI_TIMECODE_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_CHAMSYS_MINI_WING_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_CHAMSYS_MAXI_WING_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_CHAMSYS_MEDIA_WING_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_CHAMSYS_WING_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_SCIENCESCOPE_LOGBOOKML_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_SCIENCESCOPE_LS_LOGBOOK_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_SCIENCESCOPE_HS_LOGBOOK_PID) },
+-	{ USB_DEVICE(FTDI_VID, FTDI_DOTEC_PID) },
+-	{ USB_DEVICE(QIHARDWARE_VID, MILKYMISTONE_JTAGSERIAL_PID),
+-		.driver_info = (kernel_ulong_t)&ftdi_jtag_quirk },
+ 	{ },					/* Optional parameter entry */
+ 	{ }					/* Terminating entry */
+ };
+@@ -812,7 +770,7 @@
+ MODULE_DEVICE_TABLE(usb, id_table_combined);
+ 
+ static struct usb_driver ftdi_driver = {
+-	.name =		"ftdi_sio",
++	.name =		DRVNAME, //"ftdi_sio",
+ 	.probe =	usb_serial_probe,
+ 	.disconnect =	usb_serial_disconnect,
+ 	.id_table =	id_table_combined,
+@@ -877,9 +835,9 @@
+ static struct usb_serial_driver ftdi_sio_device = {
+ 	.driver = {
+ 		.owner =	THIS_MODULE,
+-		.name =		"ftdi_sio",
++		.name =		DRVNAME, //"ftdi_sio",
+ 	},
+-	.description =		"FTDI USB Serial Device",
++	.description =		SIODEVDESC, //"FTDI USB Serial Device",
+ 	.usb_driver = 		&ftdi_driver ,
+ 	.id_table =		id_table_combined,
+ 	.num_ports =		1,
+@@ -903,6 +861,8 @@
+ 	.break_ctl =		ftdi_break_ctl,
+ };
+ 
++/* include sound related defines here - ftdi_private and ftdi_driver and ftdi_open must be known! */
++#include "snd_ftdi_audard.h"
+ 
+ #define WDR_TIMEOUT 5000 /* default urb timeout */
+ #define WDR_SHORT_TIMEOUT 1000	/* shorter urb timeout */
+@@ -1459,7 +1419,7 @@
+ 	}
+ 
+ 	/* set max packet size based on descriptor */
+-	priv->max_packet_size = le16_to_cpu(ep_desc->wMaxPacketSize);
++	priv->max_packet_size = ep_desc->wMaxPacketSize;
+ 
+ 	dev_info(&udev->dev, "Setting MaxPacketSize %d\n", priv->max_packet_size);
+ }
+@@ -1590,6 +1550,8 @@
+ {
+ 	struct ftdi_sio_quirk *quirk =
+ 				(struct ftdi_sio_quirk *)id->driver_info;
++	int ret; //added
++	//struct usb_device *udev = serial->dev; //added
+ 
+ 	if (quirk && quirk->probe) {
+ 		int ret = quirk->probe(serial);
+@@ -1599,6 +1561,25 @@
+ 
+ 	usb_set_serial_data(serial, (void *)id->driver_info);
+ 
++	// * end of ftdi_sio_probe - call audio _probe here
++
++	// **note: here we don't have a ref to ftdi_private;
++	// ** ftdi_private seems to get allocated per serial port
++	// ** but, we don't (necesarilly) want one soundcard per port!
++	// ** yet, from here we cannot attach a struct pointer to anything..
++	// **  (i.e. usb_serial, usb_device are already predefined)
++	// ** so calling without args here - store card to static var
++	// ** and: audard_probe also allocates PCM substreams
++	// (we will now need 2 substreams (playback/capture) per serial port)
++
++	// ** finally, only ftdi_private remains unknown,
++	// ** which will be set afterwards in _port_probe: audard_probe_fpriv
++	/*struct ftdi_private *priv = usb_get_serial_port_data(port);
++	struct usb_serial *serial = port->serial;
++	struct usb_device *udev = serial->dev;*/
++
++	ret = audard_probe(serial);
++
+ 	return 0;
+ }
+ 
+@@ -1607,6 +1588,7 @@
+ 	struct ftdi_private *priv;
+ 	struct ftdi_sio_quirk *quirk = usb_get_serial_data(port->serial);
+ 
++	int ret; //added
+ 
+ 	dbg("%s", __func__);
+ 
+@@ -1655,6 +1637,10 @@
+ 	ftdi_set_max_packet_size(port);
+ 	read_latency_timer(port);
+ 	create_sysfs_attrs(port);
++
++	// ** end of ftdi_sio_port_probe - try audard_probe_fpriv here
++	// we need to set priv somehow, which is only now known..
++	ret = audard_probe_fpriv(priv);
+ 	return 0;
+ }
+ 
+@@ -1768,6 +1754,11 @@
+ 
+ 	dbg("%s", __func__);
+ 
++	// remove the soundcard here - even though
++	// it is added on _probe (not on _port_probe)
++	// but this should react on hot-unplug..
++	audard_remove();
++
+ 	remove_sysfs_attrs(port);
+ 
+ 	kref_put(&priv->kref, ftdi_sio_priv_release);
+@@ -1799,12 +1790,22 @@
+ { /* ftdi_open */
+ 	struct usb_device *dev = port->serial->dev;
+ 	struct ftdi_private *priv = usb_get_serial_port_data(port);
++	struct audard_device *mydev = priv->audev;
+ 	unsigned long flags;
+ 
+ 	int result = 0;
+ 	char buf[1]; /* Needed for the usb_control_msg I think */
+ 
+-	dbg("%s", __func__);
++	dbg("%s: %p-%p %p/%d", __func__, priv->audev, mydev, mydev->isSerportOpen, mydev->isSerportOpen);
++
++	/** If the port has already been open (i.e. audard), then skip the  */
++	/** rest of the opening procedure, change nothing - and report success */
++	/** isSerportOpen now counter - allow real open only if 0 */
++	if (mydev->isSerportOpen) {
++		mydev->isSerportOpen += 1; // we're already open - increment
++		dbg2("%s - %d: skipping", __func__, mydev->isSerportOpen);
++		return 0;
++	}
+ 
+ 	spin_lock_irqsave(&priv->tx_lock, flags);
+ 	priv->tx_bytes = 0;
+@@ -1838,6 +1839,9 @@
+ 	if (!result)
+ 		kref_get(&priv->kref);
+ 
++	/** If we got here, all is fine, so let's lecord that port has been open in audard */
++	mydev->isSerportOpen = 1;
++
+ 	return result;
+ } /* ftdi_open */
+ 
+@@ -1878,8 +1882,22 @@
+ static void ftdi_close(struct usb_serial_port *port)
+ { /* ftdi_close */
+ 	struct ftdi_private *priv = usb_get_serial_port_data(port);
++	struct audard_device *mydev = priv->audev;
+ 
+-	dbg("%s", __func__);
++	//~ dbg("%s", __func__);
++	dbg("%s: %p-%p %p/%d", __func__, priv->audev, mydev, mydev->isSerportOpen, mydev->isSerportOpen);
++
++	/** make sure audard_device 'open serport' flag is reset */
++	/** but now isSerportOpen is not bool, but counter */
++	/** so decrement - and do real close ONLY if it ends at zero */
++	/** (this to make sure audio ops (i.e. `Audacity`) and cmdline ops (i.e. `cat`) can interact) */
++	if (mydev->isSerportOpen > 0)
++		mydev->isSerportOpen -= 1;
++
++	if (mydev->isSerportOpen) { // is it still not zero?
++		dbg2("%s - %d: skipping", __func__, mydev->isSerportOpen);
++		return; // don't do close - exit in that case
++	}
+ 
+ 	/* shutdown our bulk read */
+ 	usb_kill_urb(port->read_urb);
+@@ -2111,7 +2129,7 @@
+ 	char flag;
+ 	char *ch;
+ 
+-	dbg("%s - port %d", __func__, port->number);
++	dbg3("%s - port %d: %d; r:%d", __func__, port->number, len, priv->audev->running);
+ 
+ 	if (len < 2) {
+ 		dbg("malformed packet");
+@@ -2128,6 +2146,7 @@
+ 		priv->prev_status = status;
+ 	}
+ 
++	dbg3("+ len: %d; packet: '%s';", len, packet);
+ 	/*
+ 	 * Although the device uses a bitmask and hence can have multiple
+ 	 * errors on a packet - the order here sets the priority the error is
+@@ -2157,11 +2176,24 @@
+ 		return 0;	/* status only */
+ 	ch = packet + 2;
+ 
+-	if (!(port->console && port->sysrq) && flag == TTY_NORMAL)
++	// check first for audio processing - and leave tty afterwards ?!
++	if (priv->audev->running) {
++		audard_xfer_buf(priv->audev, ch, len);
++		// but also, tty could be null here - handle it:
++		// meaning, return so we don't kernel panic
++		// at the tty_insert_flip_string afterwards.
++		if (!tty) return len;
++	}
++
++	// note:  port->console for kernel 2.6.32 (lucid)
++  //        port->port.console for kernel 2.6.38 (natty)
++	if (!(port->console && port->sysrq) && flag == TTY_NORMAL) // kernel 2.6.32 (lucid)
++	//~ if (!(port->port.console && port->sysrq) && flag == TTY_NORMAL) // kernel 2.6.38 (natty)
+ 		tty_insert_flip_string(tty, ch, len);
+ 	else {
+ 		for (i = 0; i < len; i++, ch++) {
+-			if (!usb_serial_handle_sysrq_char(tty, port, *ch))
++			if (!usb_serial_handle_sysrq_char(tty, port, *ch)) // for kernel 2.6.32 (lucid)
++			//~ if (!usb_serial_handle_sysrq_char(port, *ch)) // for kernel 2.6.38 (natty)
+ 				tty_insert_flip_char(tty, *ch, flag);
+ 		}
+ 	}
+@@ -2178,8 +2210,25 @@
+ 	int len;
+ 	int count = 0;
+ 
++	// check if we are running audio processing
++	// - if so, process accordingly (as below, to keep all counts)
++	//~ if (priv->audev->running) {
++
++		//~ for (i = 0; i < urb->actual_length; i += priv->max_packet_size) {
++			//~ len = min_t(int, urb->actual_length - i, priv->max_packet_size);
++			//~ count += ftdi_process_packet(tty, port, priv, &data[i], len);
++		//~ }
++
++		//~ // since we're returning void, just return here
++		//~ // (have it commented, to leave the tty engine running in 'parallel')
++		//~ // return;
++	//~ }
++	// naah - for parallel, we try a bit different: && (!priv->audev->running)
++	// return early only if BOTH no tty AND no audio running
++	// and then handle in ftdi_process_packet
++
+ 	tty = tty_port_tty_get(&port->port);
+-	if (!tty)
++	if ( (!tty) && (!priv->audev->running) )
+ 		return;
+ 
+ 	for (i = 0; i < urb->actual_length; i += priv->max_packet_size) {
+@@ -2187,6 +2236,10 @@
+ 		count += ftdi_process_packet(tty, port, priv, &data[i], len);
+ 	}
+ 
++	// here we could have 'count', but tty could be NULL (if it is just audio);
++	// handle that:
++	if (!tty) return;
++
+ 	if (count)
+ 		tty_flip_buffer_push(tty);
+ 	tty_kref_put(tty);
+@@ -2596,6 +2649,10 @@
+ 	if (retval)
+ 		goto failed_usb_register;
+ 
++	//~ retval = alsa_card_audard_init();
++	//~ if (retval)
++		//~ goto failed_usb_register;
++
+ 	printk(KERN_INFO KBUILD_MODNAME ": " DRIVER_VERSION ":"
+ 	       DRIVER_DESC "\n");
+ 	return 0;
+@@ -2608,6 +2665,14 @@
+ 
+ static void __exit ftdi_exit(void)
+ {
++	// ** exit seems to run before ftdi_sio_port_remove
++
++	// we cannot pass any structs to audard_remove
++	// from here anyways - so use static var there
++	//audard_remove();
++	// well, this is called when module exits, which is
++	// not the same as hot-unplug when the module is
++	// insmodded ! so moving to ftdi_sio_port_remove
+ 
+ 	dbg("%s", __func__);
+ 

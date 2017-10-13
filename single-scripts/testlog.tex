@@ -1,0 +1,125 @@
+\documentclass{article}
+
+\def\pqExt{pointsofq@\romannumeral}
+
+\newcounter{question}
+\newcounter{pointsof@thisquestion}
+
+\typeout{}
+
+% exam.sty:
+% We insert a `0' in case there are no digits present:
+% We avoid using \setcounter, because calc.sty redefines
+% \setcounter in a way that conflicts with the \half trick
+% we're using:
+%    \setcounter{#1}{0#2}\relax
+%\global\csname c@#1\endcsname 0#2\relax
+
+% \global\csname c@question\endcsname 0\thequestion\relax
+\def\c@question{0\thequestion\relax}
+
+\addtocounter{question}{2}
+\addtocounter{pointsof@thisquestion}{5}
+
+\def\B{some}
+
+\typeout{\c@question}
+
+% 2748; second arg is points
+\typeout{\string\gdef\csname\pqExt%
+              \csname c@question\endcsname\endcsname%
+              {\arabic{pointsof@thisquestion}}}%
+% RESULT:
+% \gdef\pointsofq@ii {5}    NOT \gdef\pointsofq@ii{5}
+
+
+\typeout{\string\gdef\csname pqExt\endcsname%
+              \csname c@question\endcsname%
+              {\arabic{pointsof@thisquestion}}}%
+% RESULT:
+% \gdefpointsofq@ii{5}      NOT \gdef\pointsofq@ii{5}
+
+
+\typeout{\string\gdef\\csname pqExt\endcsname%
+              \csname c@question\endcsname%
+              {\arabic{pointsof@thisquestion}}}%
+% RESULT:
+% \gdef\\csname pqExt\endcsname \c@question {5}
+
+
+\typeout{\string\gdef\\\csname pqExt\endcsname%
+              \csname c@question\endcsname%
+              {\arabic{pointsof@thisquestion}}}%
+% RESULT:
+% \gdef\\pointsofq@ii{5}    NOT \gdef\pointsofq@ii{5}
+
+
+% \typeout{\string{\gdef\\}\csname pqExt\endcsname%
+%               \csname c@question\endcsname%
+%               {\arabic{pointsof@thisquestion}}}%
+% RESULT:
+% unbalanced write command
+
+\typeout{\string\gdef\gdef\string\\A\\B\\C\B\\B\escapechar}
+\typeout{\string\string\gdef\gdef\string\\A\\B\\C\B\\B\escapechar}
+\typeout{\the\escapechar}
+
+\def\foo{\bar}
+\typeout{\show\foo}
+
+\edef\geea{\string\bar}
+\typeout{\show\geea}
+
+\edef\gee{\string\bar}\escapechar=-1
+\escapechar=92
+\typeout{\the\escapechar}
+\typeout{\show\gee}
+
+% NO:
+% \edef\bks{\csname\endcsname}
+% \typeout{==\bks==}
+
+% YES: http://tex.stackexchange.com/questions/7359
+% catcode 11 is letter: http://en.wikibooks.org/wiki/TeX/catcode
+% \catcode`\@=11
+% \long\def\@gobble#1{}
+% \edef\@backslashchar{\expandafter\@gobble\string\\}
+
+% \makeatletter
+% \long\def\@gobble#1{}
+% \edef\@backslashchar{\expandafter\@gobble\string\\}
+% \edef\pback{\@backslashchar}
+% \edef\pbackp{\expandafter\@gobble\string\\}
+% \typeout{==\@backslashchar==}
+% \makeatother
+
+\typeout{==\@backslashchar==}
+\typeout{==\@@==}
+% \typeout{==\pback==}
+% \typeout{==\pbackp==}
+\typeout{==\textbackslash==}
+
+% \typeout{\string\gdef\pbackp\csname pqExt\endcsname%
+%               \csname c@question\endcsname%
+%               {\arabic{pointsof@thisquestion}}}%
+% RESULT:
+% \gdef\pointsofq@ii{5}    YES \gdef\pointsofq@ii{5}
+
+\makeatletter
+\show\@backslashchar
+\show\@@
+\makeatother
+
+\show\\
+
+
+\typeout{}
+
+\begin{document}
+
+AA \\
+BB
+
+\show\\
+
+\end{document}

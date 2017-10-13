@@ -1,0 +1,58 @@
+NAME
+
+    wiki2html - convert wiki source to HTML
+
+SYNOPSIS
+
+    wiki2html [OPTIONS] [FILE]
+
+DESCRIPTION
+
+    wiki2html reads in a subset of the Wikipedia wikicode syntax
+    and converts it to HTML. If FILE is unspecified, input is from stdin.
+    and output goes to stdout; this can be changed with the -o flag.
+
+    Supported features:
+    
+     * headers
+     * horizontal rules
+     * bold
+     * italic
+     * wikilinks: normal or with alt text
+     * [[image:]] links with optional alt text
+     * indenting
+     * lists: ordered, unordered, nested
+     * preformatted text
+
+OPTIONS
+
+    -b base_href
+
+        Used for regular wikilinks. Sets the <base href="..."> tag.
+        Default is http://localhost/
+
+    -i image_location
+
+        Used for [[image:...]] links. Default is http://localhost/images/
+
+    -o output_file
+
+        Where to output to. Default is stdout.
+
+    -s stylesheet
+
+        Sets the text for <link rel="stylesheet" type="text/css" href="...">
+        Default is wiki.css
+
+    -t title
+
+        Sets the text in the <title> tag. Default is wiki2html
+
+BUGS
+
+    * The program may not handle non-ascii characters correctly.
+    * There is a slight discrepancy with Wikipedia's handling of nested lists.
+
+SEE ALSO
+
+    http://www.wikipedia.org/

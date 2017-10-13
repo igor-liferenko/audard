@@ -1,0 +1,235 @@
+This is a brief readme related to the contents of this `fix` directory.
+
+This directory contains a fix for the modified `dummy-2.6.32-patest.c` (or here, "dummy-mod") Linux ALSA driver, given in the parent directory `alsa-patest-duplex`. The problem with this driver was that it triggers a "full-duplex" "drop" of the input (capture) stream in PortAudio, if the application utilizing the PortAudio library (such as Audacity) attempts to use the driver in full-duplex mode. This problem has been outlined in the e-mail thread:
+
+    Questions about virtual ALSA driver (dummy), PortAudio and full-duplex
+    http://thread.gmane.org/gmane.linux.alsa.devel/110686
+
+... and can otherwise be seen on the screenshot (in this directory):
+
+    dummy-mod-fddrop.png
+
+The screenshot shows an Audacity-generated chirp as CD-quality (16b, 44100Hz, stereo) track one, functioning as a playback track. Recording is activated, and the recording is saved as track two, also in CD-quality; due to the existence of the playback track during recording, Audacity/PortAudio automatically utilize the driver in full-duplex mode. It is noticeable that mere 3 seconds after the start of the full-duplex recording operation, two full-duplex "drop input"s have been detected by PortAudio. One of them is visible as an inserted (or removed) period a little before the 3 sec mark, given that: `dummy-mod` attempts to write a "large" pulse at the start of the buffer, and a short pulse at start of the period; and it is visible that there should be two periods per buffer (and the problematic piece contains what looks like three periods).
+
+Note, however, that typically the "full-duplex drop input" will also set the dropped period to zero - which is not visible with `dummy-mod`, since `dummy-mod` also keeps all of the period frames (but the buffer/period start pulses) on zero. Also, while this screenshots also shows a "PaAlsaStream_HandleXrun: restarting Alsa to recover from XRUN" message - it is also possible to get a "Drop input ..." message _without_ a "restarting ..." message. Because of this, the PortAudio library should be rebuilt with debug logging enabled, as explained in the Readme in the parent directory; then Audacity can be started from the command line with:
+
+    LD_PRELOAD=$PATH_TO/portaudio-v19/lib/.libs/libportaudio.so.2.0.0 audacity 2>&1 | grep '[Xx]run'
+
+... for detection of the "full-duplex drop input" on the command line. Note on the screenshot, the debug portaudio library is the one distributed in audacity-1.3.13/lib-src (from the Ubuntu 11.04 source package of `audacity`) - however, you should manually add the "... Drop input - a period's worth ..." debug message as per the OP of the email thread (as it doesn't otherwise doesn't exist in the `libportaudio` source).
+
+
+Using the fixed driver, given as `dummy-2.6.32-patest-fix.c` in this directory (or here, "dummy-fix"), the full-duplex drop input problem seems not to occur anymore - which be seen on the screenshot (in this directory):
+
+    dummy-fix-ok.png
+
+Here a track one is visible, which is a result of running a record operation through the `dummy-fix` driver (in capture-only mode) for more than 10 minutes. This track one becomes the playback track in the full-duplex recording, which is saved as track two - the screenshot shows that the full-duplex recording has been going on for more than 10 minutes - and there haven't been any full duplex drops (or XRUNs) reported by PortAudio since the Audacity program was started. Note that both screenshots have been obtained with `pulseaudio` in Ubuntu turned off.
+
+The `dummy-fix` driver achieves this by, essentially, replicating the timing and return value behavior of the IRQ and .pointer function of a `hda-intel` onboard compatible card. The rest of the files in this directory are related to debug log acquisitions and visualizations of `hda-intel`, `dummy-mod` and `dummy-fix` ALSA drivers (driven by different user-space programs) used in the discussion below.
+
+
+## DISCUSSION
+
+
+### CAPTURE STREAM CONTENTS OF `dummy-fix`
+
+Even if `dummy-fix` is a virtual ALSA driver, and thus not connected to actual hardware - note that it writes the following pulses (or "buffer marks") in the capture stream:
+
+* A small negative and positive value, close to zero, are used to fill most of the capture samples as a "background" value; they are toggled each time buffer_size amount of frames has been handled
+* A large negative pulse marks the start (first frame) of a buffer
+* A medium negative pulse marks the last frame of a period_size
+* A medium positive pulse marks the .pointer position during the timer function/"period interrupt"
+* (if the .pointer position is "ahead" of the of the last frame of that period, then the frames between the two will be set to zero; if it is "behind" the last frame of that period, then the "background" samples between the two will be kept as is.)
+
+This allows for a quick visual detection if a "full-duplex drop input" happens in Audacity - and as a confirmation that the drop indeed doesn't happen in the current iteration of the driver. It was also used to check whether the .pointer position is ahead, behind or exactly at the last frame of the "current" period. The current iteration of the driver shouldn't show the .pointer position ahead - only behind, or at the last frame of a period - for capture-only recording; while for full-duplex recording, the .pointer position is typically 2 frames ahead of the last frame of "current" period (or 1 frame ahead of the first frame of the "next" period).
+
+This also makes it easy to see, that PortAudio under Audacity with default settings (for CD quality), seems to choose 4 periods per buffer for capture-only recording; and 2 periods per buffer for full-duplex recording. In fact, the actual default choices of period_size / buffer_size (period_per_buffer) for `hda-intel` and `dummy-fix` in Audacity (on the development platform) are:
+
+
+    | audacity |   capture-only  |   full-duplex   |
+    |----------------------------------------------|
+    |dummy-fix | 1102 / 4408 (4) | 2048 / 4096 (2) |
+    |hda-intel | 1088 / 4352 (4) | 2048 / 4096 (2) |
+    ------------------------------------------------
+
+So, even if `dummy-fix` aims to replicate the `hda-intel` behaviour - Audacity/PortAudio will still choose a different default period_size and buffer_size for the two in capture_only mode.
+
+
+### THE FULL-DUPLEX DROP IN PORTAUDIO
+
+One difficulty with understanding the full-duplex drop, is that PortAudio polls file descriptors, and additionally utilizes the `hda-intel` and `dummy` drivers in MMAP mode (which makes it difficult to see when and how exactly data is exchanged between kernel and user-space).
+
+The full-duplex "drop input" is triggered in the function PaAlsaStream_WaitForFrames in `portaudio-v19/src/hostapi/alsa/pa_linux_alsa.c`. This function initiates polling of the file descriptors related to the audio streams. Usually, when things run fine, this function will call PaAlsaStreamComponent_BeginPolling; then possibly ContinuePoll may be called once; then finally PaAlsaStreamComponent_EndPolling is called.
+
+When the full-duplex drop occurs, ContinuePoll is called continually, until the margin condition becomes 0 (and towards negative); in which case the playback polling is stopped, then the full-duplex drop input is declared, and after that the capture polling is stopped; a PortAudio debug log snippet would look like this:
+
+...
+ContinuePoll: Trying to poll again for playback frames, pollTimeout: 1 dly:262 mrg:6 avail:516 othav:762
+ContinuePoll: Trying to poll again for playback frames, pollTimeout: 1 dly:260 mrg:4 avail:516 othav:764
+ContinuePoll: Trying to poll again for playback frames, pollTimeout: 0 dly:256 mrg:0 avail:516 othav:768
+mrg<0 ContinuePoll: Stopping poll for playback
+PaAlsaStream_WaitForFrames: full-duplex (not xrun): Drop input, a period's worth - fra:770
+ContinuePoll: Stopping poll for capture
+...
+
+Note that the margin falls to 0, just as the pollTimeout falls to 0 as well. The margin is calculated as:
+
+    snd_pcm_delay( otherComponent->pcm, &delay ))
+    margin = delay - otherComponent->framesPerBuffer / 2;
+
+... and in this case, "otherComponent" is the capture stream, and "thisComponent" is the playback stream. So the margin variable in the poll for playback can be resolved as:
+
+    playback_margin = snd_pcm_delay(capture) - capture->framesPerBuffer/2;
+      = snd_pcm_capture_avail(runtime) + runtime->delay - capture->framesPerBuffer/2
+      = capture->hw_ptr - capture->appl_ptr (+= runtime->boundary) + runtime->delay - capture->framesPerBuffer/2
+
+Since this margin decreases to zero, that may mean hw_ptr remains constant, while appl_ptr increases - which, however, is difficult to accept, since ALSA makes appl_ptr follow hw_ptr in case of capture.
+
+However, the problematic ContinuePoll loop is itself specifically triggered by the PaAlsaStream_WaitForFrames command:
+
+    pollResults = poll( self->pfds, totalFds, pollTimeout );
+
+... returning 1 (succesful polls in full-duplex usually return 2); and after the first ContinuePoll after this condition occurs, pollCapture is set to zero (meaning it's the playback being polled - thus "thisComponent" is the playback stream). Thus, it looks like the original cause for this condition is the failure of the polling of the playback stream file descriptor. Like ioctl's, poll commands are also defined on the driver/kernel level - but in case of ALSA, there are definitions in `alsa-driver/sound/core/pcm_native.c`. Among them is the function `snd_pcm_playback_poll`, which has the following condition for succesful poll return:
+
+    avail = snd_pcm_playback_avail(runtime);
+    if (avail >= runtime->control->avail_min) { ...
+
+Conversely, that means that if avail is smaller than avail_min, the poll would return a failure. More specifically, snd_pcm_playback_avail can be resolved as:
+
+    playback->hw_ptr + playback->buffer_size - playback->appl_ptr (+- runtime->boundary) >  runtime->control->avail_min ...
+
+... which (since smaller is the problem) may mean that appl_ptr increased while hw_ptr remained constant (which is possible, since for the playback direction, ALSA makes hw_ptr follow appl_ptr, which is set by userspace).
+
+
+### THE FIX APPROACH
+
+With a `hda-intel` driver and card, the card sets the .pointer position "silently" over DMA (the CPUs are not utilized); and the card informs the CPU when the .pointer position has crossed a period_size by raising a hardware interrupt request - which ultimately calls ALSA's `snd_pcm_period_elapsed`, which in turn calls the .pointer function. Note that the .pointer function can be called from other contexts, however. With a virtual `dummy` driver, there are no hardware IRQs - instead, timer functions are used to simulate a periodic response (that the IRQs are forming in the hardware case); which are called from a "softirq" context.
+
+Here are some of the fixes, needed to make the `dummy-fix` behave like the `hda-intel` (here a frame is a frame of CD quality [16b, 44100 Hz, stereo] audio):
+
+* For period sizes larger than 64 frames, the playback IRQ/timer should be delayed some 48 frames (48/44100 = 1.088 ms) earlier than the capture IRQ/timer - however, it should return the proper expected .pointer position. The proper .pointer position, when called in context of a periodic IRQ/timer, is typically at N*period_size+1, where N=0,1(,2,...). This means, that the base_time for the playback stream, in respect to which the expected .pointer position is calculcated, should be delayed 48 frames earlier than the timestamp it captured at start.
+
+* The original `dummy` driver recalculates the .pointer position in the .pointer function each time it is called, and allows that the .pointer position may increase by 1, which in turn can cause increased CPU load through multiple calls to `snd_pcm_update_hw_ptr0`. The `dummy-mod` driver moved this calculation to the IRQ/timer, leaving the .pointer function to return the last calculated value - and this is likely one reason for the drop; as for larger period sizes, it means that more time will pass without a .pointer position being updated - which is something that is implied by the polling failure noted above. The `dummy-fix` calculates the .pointer value in the .pointer function, but only if it is not called from a IRQ/timer function context - if called from a IRQ/timer context, then the last calculated value is returned. In an IRQ/timer context, the "current" timestamp is taken in the hrtimer_callback function and saved, and the .pointer position is calculated later in the tasklet, however using this (now earlier) "current" timestamp; this value is also used for capture buffer writing (if it is the capture stream being handled), and finally `snd_pcm_period_elapsed` is called - whose call to .pointer function will now cause the same .pointer position, based on (now earlier) "current" timestamp, to be returned.
+
+* The `hda-intel` driver typically returns .pointer poisitions quantized by 8 from the .pointer function (when called outside of the IRQ/timer), e.g. 1, 9, 17... The `dummy-fix` simulates this as well (to avoid increased CPU load).
+
+* The `hda-intel` driver typically starts by raising one (or two) interrupt(s) some 16 frames (16/44100 = 362.812 us) after the stream(s) start (due to use of `snd_pcm_link` to set ALSA's full-duplex mode, the streams start quickly one after another), which however do not call `snd_pcm_period_elapsed`. This is also simulated by `dummy-fix`, by scheduling a "first" IRQ/timer for each stream, which however doesn't schedule a tasklet after it is executed. This is mostly done for cosmetic reasons (so plots of IRQ/timers from `hda-intel` vs. `dummy-fix` are more similar, to assist visual comparison).
+
+For period size of 64 frames (and less), `hda-intel` behaves differently - there is one "first" IRQ/timer after 16 frames, another 16 frames after that - and the playback IRQ/timers are otherwise delayed 16 frames later than the capture IRQ/timers. However, trying to replicate this behavior in `dummy-fix` results with a rather poor performance (full-duplex tests cause XRUNs more often then not), which is why that approach can only be optionally enabled, by defining SIMULATE_PERIOD64F in the `dummy-fix` code (although, a mistake in the arithmetic in that code is not out of the question). Otherwise, an approach where capture and playback IRQ/timers run close to each other is used, which seems a bit more robust. Note that `hda-intel` often itself fails for period_size 64, especially with `latency.c` (see `collectmirq.sh` below).
+
+
+
+### FILES, SCRIPTS AND IMAGES
+
+Some of the programs/scripts for analysis are provided in:
+
+    http://sdaaubckp.sourceforge.net/post/alsa-capttest/
+
+... specifically:
+
+* `run-alsa-lattest.sh` - can run a test with ftrace logging, using either ALSA-only `latency-mod.c`, or PortAudio-based `patest_duplex_wire.c` as user-space programs - and then parses the traces using `traceFGLatLogfile2Csv.py`
+* `traceFGLatLogfile2Csv.py` - parses the debug trace logfiles collected by `run-alsa-lattest.sh`, and creates a .csv file with a kernel log
+* `latency-mod.c` - modification of ALSA's `latency.c` (some more command line switches and output).
+
+Some are in this (`fix`) directory:
+
+* `Makefile` - builds `hda-intel`, `dummy-fix` and `dummy-mod` all in one go (if all sources are present)
+* `hda.patch` - shows the few changes that need to be done to `hda-intel` so it outputs messages for these tests
+* `patest_duplex_wire.c` - modification of PortAudio's `patest_wire.c` (or `paex_wire.c`); also found in the parent directory as older version
+* `collectmirq.sh` - can run `run-alsa-lattest.sh` or `run-audacity-test.sh` multiple times; and collect the pointer IRQ/timers in a single .csv file
+* `collectmirq.gp` - Gnuplot script, can plot pointers/positions based on output of `collectmirq.sh`
+* `run-audacity-test.sh` - uses `xdotool` for an automatized GUI test of Audacity; unlike `run-alsa-lattest.sh`, this script collects only the .pointer printouts from the drivers, not the entire kernel log
+
+See the Readmes in `alsa-capttest` and the parent `alsa-patest-duplex` for proper compilation of the user-space .c programs - and change all the hardcoded paths in the .sh scripts respectively. Then, you can simply open a new folder, and have all the scripts symlinked there.
+
+Then, to obtain captures and plots based on `latency-mod.c` and `patest_duplex_wire.c`, cd in a directory, and having symlinked collectmirq.gp, collectmirq.sh, run-alsa-lattest.sh, traceFGLatLogfile2Csv.py in that folder, call:
+
+    CARDNUM=0 bash collectmirq.sh run
+    bash collectmirq.sh exm3
+    # will output number of columns, eg. 34 - use that below for mcol:
+    gnuplot -p -e 'fname="collectmirq.csv";mcol=34;pltt=3;' collectmirq.gp
+
+In this case, `collectmirq.sh run` will - for a single choice of a card - obtain kernel debug traces of multiple runs of `patest_duplex_wire.c` and `latency-mod.c` (via  `run-alsa-lattest.sh`) for different buffer sizes, stored as *.csv files in respective directories; a limited control of the ammount of runs is possible by changing the respective section of the `collectmirq.sh` script. Then, `collectmirq.sh exm3` iterates through these *.csv kernel traces, and collects only the time positions of the "mIRQs" ("marker IRQs") which indicate a start of either `hda-intel`'s `azx_interrupt()` or `dummy`'s `dummy_hrtimer_callback()`, and the .pointer position and the stream direction (if a .pointer occured in the context of those functions) - and outputs a single file, `collectmirq.csv`, which contains these positions as a single row per run.
+
+Note that one can set conditions in `run-alsa-lattest.sh` for success or failure of a test run; kernel debug trace logs are only kept if a test run succeeds (thus, all of the plots are actually). When called from `collectmirq.sh`, these conditions are different in `run-alsa-lattest.sh` from the default ones, and include the existence of `snd_pcm_pre_start` in the kernel trace - since, again specifically for a `collectmirq.sh` call, the `traceFGLatLogfile2Csv.py` script will attempt to "cut" the kernel traces so they start from (close to) the first occurence of `snd_pcm_pre_start`.
+
+The Gnuplot `collectmirq.gp` then visualizes "first"/"start" IRQs (where IRQ/timer is detected, but pointers are not) with violet color, capture IRQ/timers in blue, and playback IRQ/timers in red. `pltt=3` renders the .pointer values as labels, in addition to what `pltt=2` does, which is visualize time position of the mIRQs, along with a length based on the .pointer position at that time.
+* Note that there may be a Gnuplot bug visible in this script, where occasionally, upon a refresh after resize of the interactive `wxt` window, the labels of pltt=3; may lose their intended color; sometimes scrolling instead of refresh after resizing may avoid this.
+
+
+It is also possible to use `collectmirq.sh`, to obtain captures and plots based on Audacity - cd in a directory, and having symlinked collectmirq.gp, collectmirq.sh, run-audacity-test.sh in that folder, call:
+
+    TEST="dup" bash collectmirq.sh acityrun
+    bash collectmirq.sh exm3
+    # will output number of columns, eg. 34 - use that below for mcol:
+    gnuplot -p -e 'fname="collectmirq.csv";mcol=34;pltt=3;' collectmirq.gp
+
+Note that in this case, `run-audacity-test.sh` simply uses `xdotool` to do a GUI test; and no actual kernel function debug traces are obtained - apart from printouts from the .pointer function. As such, the Gnuplot script doesn't visualise the "marker IRQ"s, as they are not available - it visualizes based on the timestamp of the printout of the .pointer functions (which happens somewhat later then the corresponding IRQ entry). The printouts from the .pointer function must thus include the caller function, so the algorithm can specifically find those .pointers called from `snd_pcm_period_elapsed`, which can be used as an approximation of the timer/IRQ occurence. Note that for `snd_pcm_period_elapsed` is at a different location in the caller stack for `hda-intel` vs. `dummy-fix`. Unlike the previous test, for "collectmirq.sh acityrun" you can choose TEST="dup" for full-duplex, or TEST="cap" for capture-only - and the script will otherwise iterate through both soundcard 0 and 1 in either case.
+
+
+The archive file `collect_logs.tar.gz` has some run logs and .csv files as result of operations like these; the .csv files are:
+
+* collectmirq_hda.csv - `latency-mod` and `patest-duplex-wire` for `hda-intel` (100 entries)
+* collectmirq_duF.csv - `latency-mod` and `patest-duplex-wire` for `dummy-fix` (`dummy-2.6.32-patest-fix.c`; 100 entried)
+* collectmirq_duM.csv - `latency-mod` and `patest-duplex-wire` for `dummy-mod` (`dummy-2.6.32-patest.c`; 100 entries)
+* collectmirq_acity_cap.csv - `hda-intel` and `dummy-fix` for Audacity capture (20 entries)
+* collectmirq_acity_dup.csv - `hda-intel` and `dummy-fix` for Audacity full-duplex (20 entries)
+
+
+Again, note that in terms of problems, `dummy-mod` is simply more likely to XRUN with `latency-mod` and `patest-duplex-wire`, while it definitely shows a "full duplex drop input" with Audacity; however, all these represent only _succesful_ runs in any combination (see the corresponding .log files to see when XRUNs have occured for particular tests). You can recreate some of the images using these files directly:
+
+* `collectmirq_hda.png` - overview of complete test
+
+    awk -F, '{print NF;}' collectmirq_hda.csv | sort -n -r | head -n 1     # returns 37
+    gnuplot -p -e 'fname="collectmirq_hda.csv";mcol=37;pltt=2;' collectmirq.gp
+
+* `collectmirq_duF.png` - overview of complete test
+
+    awk -F, '{print NF;}' collectmirq_duF.csv | sort -n -r | head -n 1     # returns 40
+    gnuplot -p -e 'fname="collectmirq_duF.csv";mcol=40;pltt=2;' collectmirq.gp
+
+* `collectmirq_duM.png` - overview of complete test
+
+    awk -F, '{print NF;}' collectmirq_duM.csv | sort -n -r | head -n 1     # returns 37
+    gnuplot -p -e 'fname="collectmirq_duM.csv";mcol=37;pltt=2;' collectmirq.gp
+
+* `collectmirq_acity_dup.png` - overview of complete test
+
+    awk -F, '{print NF;}' collectmirq_acity_dup.csv | sort -n -r | head -n 1     # returns 34
+    gnuplot -p -e 'fname="collectmirq_acity_dup.csv";mcol=34;pltt=3;' collectmirq.gp
+
+* `collectmirq_acity_cap.png` - overview of complete test
+
+    awk -F, '{print NF;}' collectmirq_acity_cap.csv | sort -n -r | head -n 1     # returns 34
+    gnuplot -p -e 'fname="collectmirq_acity_cap.csv";mcol=34;pltt=3;' collectmirq.gp
+
+
+You can also "cut" line ranges for comparison into a new .csv file from these, and after using `awk` to find number of columns in the new .csv file, plot the new file. Here are the commands for some of the .png files included:
+
+* `cmirq_hda_duF_128_64.png` - comparison between `hda-intel` and `dummy-fix` for buffer_size 128, period_size 64 (only latency-mod; first 10 lines of log files)
+
+    (grep ',128,64' collectmirq_hda.csv ; grep ',128,64' collectmirq_duF.csv) > cmirq_hda_duF_128_64.csv
+    awk -F, '{print NF;}' cmirq_hda_duF_128_64.csv | sort -n -r | head -n 1     # returns 40
+    gnuplot -p -e 'fname="cmirq_hda_duF_128_64.csv";mcol=40;pltt=3;' collectmirq.gp
+
+* `cmirq_hda_duM_128_64.png` - comparison between `hda-intel` and `dummy-mod` for buffer_size 128, period_size 64 (only latency-mod; first 10 lines of log files)
+
+    (grep ',128,64' collectmirq_hda.csv ; grep ',128,64' collectmirq_duM.csv) > cmirq_hda_duM_128_64.csv
+    awk -F, '{print NF;}' cmirq_hda_duM_128_64.csv | sort -n -r | head -n 1     # returns 37
+    gnuplot -p -e 'fname="cmirq_hda_duM_128_64.csv";mcol=37;pltt=3;' collectmirq.gp
+
+* `cmirq_hda_duF_512_256.png` - comparison between `hda-intel` and `dummy-fix` for buffer_size 512, period_size 256 (latency-mod and patest-duplex-wire; lines 41-60 of log files)
+
+    (sed -n '41,60p' collectmirq_hda.csv ; sed -n '41,60p' collectmirq_duF.csv) > cmirq_hda_duF_512_256.csv
+    awk -F, '{print NF;}' cmirq_hda_duF_512_256.csv | sort -n -r | head -n 1     # returns 37
+    gnuplot -p -e 'fname="cmirq_hda_duF_512_256.csv";mcol=37;pltt=3;' collectmirq.gp
+
+* `cmirq_hda_duM_512_256.png` - comparison between `hda-intel` and `dummy-mod` for buffer_size 512, period_size 256 (latency-mod and patest-duplex-wire; lines 41-60 of log files)
+
+    (sed -n '41,60p' collectmirq_hda.csv ; sed -n '41,60p' collectmirq_duM.csv) > cmirq_hda_duM_512_256.csv
+    awk -F, '{print NF;}' cmirq_hda_duM_512_256.csv | sort -n -r | head -n 1     # returns 37
+    gnuplot -p -e 'fname="cmirq_hda_duM_512_256.csv";mcol=37;pltt=3;' collectmirq.gp
+
+
+There is also an image for which data is not supplied:
+
+* `cmirq_hda_duF_128_PERIOD64F.png` - shows a comparison between `hda-intel` and `dummy-fix` for buffer_size 128, period_size 64 (only latency-mod), when SIMULATE_PERIOD64F is enabled in `dummy-fix`. Data from that run is not provided, however it required a lot of time to capture, as the driver XRUNs a lot in that case - even if, as the image shows, the .pointer behavior is relatively similar (although, note that also `hda-intel` itself tends to XRUN in this mode as well)

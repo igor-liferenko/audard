@@ -1,0 +1,16 @@
+Tue Jul 15 2014
+
+Previous dependencies on these externals do not work anymore:
+
+svn: warning: Error handling externals definition for 'sdaaubckp/ccal-0.6.1/vobject':
+svn: warning: OPTIONS of 'http://svn.osafoundation.org/vobject/trunk/vobject': Could not read status line: Connection reset by peer (http://svn.osafoundation.org)
+svn: warning: Error handling externals definition for 'sdaaubckp/ccal-0.6.1/icalendar':
+svn: warning: Server sent unexpected return value (405 Not Allowed) in response to OPTIONS request for 'http://codespeak.net/svn/iCalendar/trunk/src/icalendar'
+
+$ svn propget -R svn:externals .
+. - http://svn.osafoundation.org/vobject/trunk/vobject/@219 vobject
+http://codespeak.net/svn/iCalendar/trunk/src/icalendar/@71509 icalendar
+
+$ svn propedit svn:externals . # from editor; # comments seem enough to suppress..
+
+... copied those dirs from old svn

@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="/path/to/XS3A-FT245-an8m-B/XS3A_FT245_an8m_rdwr_tbw_isim_par.wdb" id="1" type="auto">
+         <top_modules>
+            <top_module name="math_real" />
+            <top_module name="numeric_std" />
+            <top_module name="std_logic_1164" />
+            <top_module name="std_logic_arith" />
+            <top_module name="std_logic_signed" />
+            <top_module name="std_logic_textio" />
+            <top_module name="std_logic_unsigned" />
+            <top_module name="textio" />
+            <top_module name="vcomponents" />
+            <top_module name="vital_primitives" />
+            <top_module name="vital_timing" />
+            <top_module name="vpackage" />
+            <top_module name="xs3a_ft245_an8m_rdwr_tbw" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <WVObjectSize size="32" />
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/wtclk" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wtclk</obj_property>
+      <obj_property name="ObjectShortName">wtclk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/wtnrxf" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wtnrxf</obj_property>
+      <obj_property name="ObjectShortName">wtnrxf</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/wtnrd" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wtnrd</obj_property>
+      <obj_property name="ObjectShortName">wtnrd</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/wtntxe" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wtntxe</obj_property>
+      <obj_property name="ObjectShortName">wtntxe</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/wtwr" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wtwr</obj_property>
+      <obj_property name="ObjectShortName">wtwr</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/bdwo" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">bdwo[7:0]</obj_property>
+      <obj_property name="ObjectShortName">bdwo[7:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/wtd" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">wtd[7:0]</obj_property>
+      <obj_property name="ObjectShortName">wtd[7:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/bdri" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">bdri[7:0]</obj_property>
+      <obj_property name="ObjectShortName">bdri[7:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/papwm_out" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">papwm_out</obj_property>
+      <obj_property name="ObjectShortName">papwm_out</obj_property>
+   </wvobject>
+   <wvobject fp_name="divider16" type="divider">
+      <obj_property name="label"> </obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="BkColor">128 128 255</obj_property>
+      <obj_property name="TextColor">230 230 230</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/proc_if245/cnt_wr" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">cnt_wr[2:0]</obj_property>
+      <obj_property name="ObjectShortName">cnt_wr[2:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/proc_if245/cnt_rd" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">cnt_rd[1:0]</obj_property>
+      <obj_property name="ObjectShortName">cnt_rd[1:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="divider13" type="divider">
+      <obj_property name="label"> </obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="BkColor">128 128 255</obj_property>
+      <obj_property name="TextColor">230 230 230</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/wdinr" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wdinr</obj_property>
+      <obj_property name="ObjectShortName">wdinr</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/wcd_rate_tick" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wcd_rate_tick</obj_property>
+      <obj_property name="ObjectShortName">wcd_rate_tick</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/wdoutr" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">wdoutr</obj_property>
+      <obj_property name="ObjectShortName">wdoutr</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/membuf/dat_o" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">dat_o[7:0]</obj_property>
+      <obj_property name="ObjectShortName">dat_o[7:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/buss_if245/is_d_io_tristate" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">is_d_io_tristate</obj_property>
+      <obj_property name="ObjectShortName">is_d_io_tristate</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/ffull" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">ffull</obj_property>
+      <obj_property name="ObjectShortName">ffull</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/fempty" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">fempty</obj_property>
+      <obj_property name="ObjectShortName">fempty</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/membuf/wadr1" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">wadr1[8:0]</obj_property>
+      <obj_property name="ObjectShortName">wadr1[8:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/membuf/radr1" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">radr1[8:0]</obj_property>
+      <obj_property name="ObjectShortName">radr1[8:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/membuf/dpram/adr_b" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">adr_b[8:0]</obj_property>
+      <obj_property name="ObjectShortName">adr_b[8:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="divider545" type="divider">
+      <obj_property name="label"> </obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="BkColor">128 128 255</obj_property>
+      <obj_property name="TextColor">230 230 230</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/membuf/we_i" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">we_i</obj_property>
+      <obj_property name="ObjectShortName">we_i</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/membuf/fifo_aempty" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">fifo_aempty</obj_property>
+      <obj_property name="ObjectShortName">fifo_aempty</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/membuf/dpram/re_b" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">re_b</obj_property>
+      <obj_property name="ObjectShortName">re_b</obj_property>
+   </wvobject>
+   <wvobject fp_name="divider546" type="divider">
+      <obj_property name="label"> </obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="BkColor">128 128 255</obj_property>
+      <obj_property name="TextColor">230 230 230</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/membuf/wptr1_cnt/q_bin" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">q_bin[9:1]</obj_property>
+      <obj_property name="ObjectShortName">q_bin[9:1]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/membuf/wptr1_cnt/cke" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">cke</obj_property>
+      <obj_property name="ObjectShortName">cke</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/membuf/wptr1_cnt/clk" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">clk</obj_property>
+      <obj_property name="ObjectShortName">clk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/xs3a_ft245_an8m_rdwr_tbw/UUT/membuf/wptr1_cnt/q" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">q[9:1]</obj_property>
+      <obj_property name="ObjectShortName">q[9:1]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+</wave_config>

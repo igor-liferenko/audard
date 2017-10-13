@@ -1,0 +1,130 @@
+#~ postscript note:
+
+#~ [http://partners.adobe.com/public/developer/en/ps/sdk/5144.EPSInForms.pdf Using EPS in PostScript language forms]
+
+#~ 20 dict begin
+#~ /m /moveto load def
+#~ /l /lineto load def
+#~ /L /lineto load def
+#~ /S /stroke load def
+#~ /s /stroke load def
+#~ /g /setgray load def
+#~ /f /fill load def
+#~ /F /fill load def
+#~ /w /setlinewidth load def
+#~ currentdict end /my_dict exch def
+
+#~ in .ps from inkscape (apparently, origin in top left):
+
+#~ %%BeginProlog
+#~ /languagelevel where
+#~ { pop languagelevel } { 1 } ifelse
+#~ ...
+#~ /q { gsave } bind def
+#~ ...
+#~ /m { moveto } bind def
+#~ /l { lineto } bind def
+#~ /c { curveto } bind def
+#~ ...
+#~ /S { stroke } bind def
+#~ /f { fill } bind def
+#~ ...
+#~ /g { setgray } bind def
+#~ /rg { setrgbcolor } bind def
+#~ ...
+#~ %%EndProlog
+#~ ...
+#~ %%EndPageSetup
+#~ q 0 0 173 65 rectclip q
+#~ 0 g
+#~ 171.113 46.807 m 171.113 37.155 l 271.113 137.155 l 71.113 37.155 l f
+#~ Q Q
+#~ showpage
+#~ %%Trailer
+#~ %%EOF
+
+#~ ....
+
+
+#~ PDF from inkscape:
+
+#~ pdftk test.pdf output test.unc.pdf uncompress
+
+#~ .....
+#~ stream
+#~ q
+#~ 0 0 0 rg /a0 gs
+#~ 21.148 3.436 m 21.148 55.932 l 2.398 55.932 l 2.398 66.623 l 52.613
+#~ 66.623 l 52.613 55.932 l 33.906 55.932 l 33.906 3.436 l 21.148 3.436 l f
+#~ ....
+
+#~ inkscape - plain SVG
+
+    #~ <path
+       #~ d="m 249.50464,135.58339 0,11.86247 -10.16783,0 0,22.66578 c -2e-5,4.58966 0.0882,7.27284 0.26479,8.04953 0.2118,0.74142 0.65311,1.35925 1.32393,1.85351 0.70608,0.49428 1.55339,0.74142 2.54196,0.7414 1.37686,2e-5 3.37159,-0.4766 5.98419,-1.42985 l 1.27098,11.54472 c -3.45992,1.48281 -7.37877,2.22422 -11.75655,2.22422 -2.6832,0 -5.10159,-0.44132 -7.25517,-1.32394 -2.15362,-0.91793 -3.74234,-2.08299 -4.76617,-3.49519 -0.98855,-1.4475 -1.677,-3.38927 -2.06534,-5.82532 -0.31775,-1.72993 -0.47663,-5.22512 -0.47662,-10.48557 l 0,-24.51929 -6.83151,0 0,-11.86247 6.83151,0 0,-11.17402 14.934,-8.68501 0,19.85903 10.16783,0"
+       #~ id="path2996"
+       #~ style="font-size:108.45682526px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold" />
+
+
+#~ http://homepage.mac.com/andykopra/pdm/tutorials/an_introduction_to_postscript.html
+#~ - simple PS text; however, inkscape makes it more complicated ("This print job requires a PostScript Language Level 2 printer."):
+
+#~ /FontMatrix [ 1 0 0 1 0 0 ] def
+#~ /FontBBox [ 0 0 0 0 ] def
+#~ /Encoding 256 array def
+#~ 0 1 255 { Encoding exch /.notdef put } for
+#~ Encoding 1 /uni0074 put
+#~ Encoding 2 /uni0065 put
+#~ Encoding 3 /uni0073 put
+#~ /CharStrings 4 dict dup begin
+#~ /.notdef 0 def
+#~ /uni0074 1 def
+#~ /uni0065 2 def
+#~ /uni0073 3 def
+#~ end readonly def
+#~ /sfnts [
+#~ <00010000000a008000030020636d6170001af086000007380000004663767420eed894cc0000
+#~ ...
+#~ 752b2b2b2b2b732b2b2b2b7374752b2b7373732b2b2b00>
+#~ ] def
+#~ /f-0-0 currentdict end definefont pop
+#~ ....
+#~ %%EndPageSetup
+#~ q 0 0 101 42 rectclip q
+#~ 0 g
+#~ BT
+#~ 57.6 0 0 57.6 -0.871875 0.675001 Tm
+#~ /f-0-0 1 Tf
+#~ [<01>-1<0203>-1<01>]TJ % the text?
+#~ ET
+#~ Q Q
+
+
+#~ [<01>-1<0203>-1<01>]TJ % the text? yes, "test"
+#~ [<03><01>-1<0203>-1<01>]TJ % the text? yes, "stest"
+
+
+
+
+#~ kicad drawings - http://en.wikibooks.org/wiki/Kicad/file_formats:
+#~ "
+#~ All physical units are in mils (1/1000th inch) unless otherwise noted. The default layer number for graphic segments is 21, which corresponds to SilkS_Front.
+
+#~ DS x1 y1 x2 y2 width layer      Draws a line segment from (x1, y1) to (x2, y2) with width width on the layer number specified.
+
+#~ DC x1 y1 x2 y2 width layer      Draws a circle whose center is (x1, y1), and whose radius is specified by the segment (x1, y1) - (x2, y2) with line width width on the layer number specified.
+
+#~ DA x1 y1 x2 y2 angle width layer  Draws a circular arc. Center is at (x1, y1).
+#~ "
+
+
+Note: postscript parser for python:
+
+https://github.com/Sitwon/py-ps-parser
+
+git clone https://github.com/Sitwon/py-ps-parser.git
+cd py-ps-parser/src
+cat vectest/test.ps | python main.py # outputs all entries to stdout
+
+
+

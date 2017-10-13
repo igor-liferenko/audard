@@ -1,0 +1,98 @@
+# Clock at 50MHz
+NET "pgCLK" LOC = P126;
+NET "pgCLK" TNM_NET = "pgCLK";
+TIMESPEC TS_Clk = PERIOD "pgCLK" 20 ns HIGH 50 %;
+
+# data pins of FT245; was: LVCMOS33
+NET "pD_ft245[0]" IOSTANDARD = LVTTL;
+NET "pD_ft245[0]" SLEW = FAST;
+NET "pD_ft245[0]" LOC = P41;
+NET "pD_ft245[4]" IOSTANDARD = LVTTL;
+NET "pD_ft245[4]" SLEW = FAST;
+NET "pD_ft245[4]" LOC = P42;
+NET "pD_ft245[2]" IOSTANDARD = LVTTL;
+NET "pD_ft245[2]" SLEW = FAST;
+NET "pD_ft245[2]" LOC = P43;
+NET "pD_ft245[1]" IOSTANDARD = LVTTL;
+NET "pD_ft245[1]" SLEW = FAST;
+NET "pD_ft245[1]" LOC = P44;
+NET "pD_ft245[7]" IOSTANDARD = LVTTL;
+NET "pD_ft245[7]" SLEW = FAST;
+NET "pD_ft245[7]" LOC = P45;
+NET "pD_ft245[5]" IOSTANDARD = LVTTL;
+NET "pD_ft245[5]" SLEW = FAST;
+NET "pD_ft245[5]" LOC = P46;
+NET "pD_ft245[6]" IOSTANDARD = LVTTL;
+NET "pD_ft245[6]" SLEW = FAST;
+NET "pD_ft245[6]" LOC = P47;
+NET "pD_ft245[3]" IOSTANDARD = LVTTL;
+NET "pD_ft245[3]" SLEW = FAST;
+NET "pD_ft245[3]" LOC = P48;
+###
+
+# signal pins of FT245, txe P50
+NET "pRXFn_ft245" IOSTANDARD = LVTTL;
+NET "pRXFn_ft245" SLEW = FAST;
+NET "pRXFn_ft245" LOC = P49;
+NET "pTXEn_ft245" IOSTANDARD = LVTTL;
+NET "pTXEn_ft245" SLEW = FAST;
+NET "pTXEn_ft245" LOC = P50;
+
+# NET "pRDn_ft245" FAST ; # WR was P83, P92 (for debug); also RD,WR,PWREN-P24, P21, P20; also RD-P25
+# NET "pRDn_ft245" LOC = P25 | IOSTANDARD = "LVCMOS33" | FAST;
+# NET "pWR_ft245" LOC = P24 | IOSTANDARD = "LVCMOS33" | FAST;
+# NET "pPWREN_ft245" LOC = P21 | IOSTANDARD = "LVCMOS33";
+
+NET "pRDn_ft245" IOSTANDARD = LVTTL;
+NET "pRDn_ft245" SLEW = FAST;
+NET "pRDn_ft245" LOC = P82;
+NET "pWR_ft245" IOSTANDARD = LVTTL;
+NET "pWR_ft245" SLEW = FAST;
+NET "pWR_ft245" LOC = P83;
+NET "pPWREN_ft245" IOSTANDARD = LVTTL;
+NET "pPWREN_ft245" LOC = P84;
+NET "pPWREN_ft245" PULLUP;
+
+# LEDs - were P88, P90 - w was p87
+NET "pLED_R" IOSTANDARD = LVTTL;
+NET "pLED_R" LOC = P85;
+NET "pLED_W" IOSTANDARD = LVTTL;
+NET "pLED_W" LOC = P88;
+NET "pLED_nTXE" IOSTANDARD = LVTTL;
+NET "pLED_nTXE" LOC = P90;
+
+# debug (bottom row, left):
+#~ NET "pDBG<3>" LOC = P32 | IOSTANDARD = "LVCMOS33";
+#~ NET "pDBG<2>" LOC = P31 | IOSTANDARD = "LVCMOS33";
+#~ NET "pDBG<1>" LOC = P30 | IOSTANDARD = "LVCMOS33";
+#~ NET "pDBG<0>" LOC = P29 | IOSTANDARD = "LVCMOS33";
+
+# pwm out - pin 92, which is 1 (top right) on the connector
+# this to LVTTL too..
+NET "pAPWM_Out" IOSTANDARD = LVTTL;
+NET "pAPWM_Out" LOC = P93;
+
+# fpgabrd conn		fpga pins
+# p39				P41 DUAL
+# p37				P42 DUAL
+# p35				P43 DUAL
+# p33				P44 DUAL
+# p31				P45 DUAL
+# p29				P46 I/O
+# p27				P47 I/O
+# p25				P48 DUAL
+# p23				P49 DUAL
+# p21				P50 DUAL
+# p19				P82 I/O
+# p17				P83 RHCLK
+# p15				p84 I/O
+# p13				P85 RHCLK
+# p11				P87 RHCLK <= bad solder...
+# p9				P88 RHCLK
+# p7				P90 RHCLK
+
+
+# PlanAhead Generated physical constraints
+## no need for these - turns out a cable was broken; fixed now
+#INST "dMEM_4" BEL = FFY;
+#INST "dMEM_4" LOC = SLICE_X9Y0;

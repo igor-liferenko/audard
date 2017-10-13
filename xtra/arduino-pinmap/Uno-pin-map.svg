@@ -1,0 +1,468 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="1890.9255"
+   height="1237.978"
+   id="svg3498"
+   version="1.1"
+   inkscape:version="0.48.1 r9760"
+   sodipodi:docname="Uno-pin-map.svg"
+   inkscape:export-filename="./Uno-pin-map.png"
+   inkscape:export-xdpi="44.470001"
+   inkscape:export-ydpi="44.470001">
+  <defs
+     id="defs3500" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="1"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.3535534"
+     inkscape:cx="1392.529"
+     inkscape:cy="620.16553"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer2"
+     showgrid="false"
+     inkscape:window-width="800"
+     inkscape:window-height="576"
+     inkscape:window-x="1024"
+     inkscape:window-y="31"
+     inkscape:window-maximized="1"
+     fit-margin-top="5"
+     fit-margin-left="5"
+     fit-margin-right="5"
+     fit-margin-bottom="5" />
+  <metadata
+     id="metadata3503">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="img"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(712.70489,190.95988)"
+     sodipodi:insensitive="true">
+    <image
+       sodipodi:absref="./ArduinoUnoFront.jpg"
+       xlink:href="./ArduinoUnoFront.jpg"
+       transform="matrix(0,1,-1,0,0,0)"
+       width="1227.978"
+       height="916.91437"
+       id="image3587"
+       x="-185.95988"
+       y="-667.28571" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="text"
+     transform="translate(374.9906,-52.1065)">
+    <text
+       sodipodi:linespacing="125%"
+       id="text3092"
+       y="718.0376"
+       x="4.1363525"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="718.0376"
+         x="4.1363525"
+         id="tspan3094"
+         sodipodi:role="line">RESET</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="54.546509"
+       y="756.0376"
+       id="text3096"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3098"
+         x="54.546509"
+         y="756.0376">3.3V</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3100"
+       y="792.0376"
+       x="87.905884"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="792.0376"
+         x="87.905884"
+         id="tspan3102"
+         sodipodi:role="line">5V</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="49.917603"
+       y="832.0376"
+       id="text3104"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3106"
+         x="49.917603"
+         y="832.0376">GND</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3108"
+       y="872.0376"
+       x="49.917603"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="872.0376"
+         x="49.917603"
+         id="tspan3110"
+         sodipodi:role="line">GND</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="77.964478"
+       y="912.0376"
+       id="text3112"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3114"
+         x="77.964478"
+         y="912.0376">Vin</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="945.97406"
+       y="576.82172"
+       id="text3070"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3072"
+         x="945.97406"
+         y="576.82172">AREF</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text2986"
+       y="614.82172"
+       x="945.97406"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="614.82172"
+         x="945.97406"
+         id="tspan2988"
+         sodipodi:role="line">GND</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="945.97406"
+       y="654.82172"
+       id="text2990"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan2992"
+         x="945.97406"
+         y="654.82172">D13 : <tspan
+   style="fill:#ff0000"
+   id="tspan2998">PB 5 | </tspan><tspan
+   id="tspan3359"
+   style="fill:#000080">SCK</tspan></tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3116"
+       y="692.82172"
+       x="945.97406"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="692.82172"
+         x="945.97406"
+         id="tspan3118"
+         sodipodi:role="line">D12 : <tspan
+   id="tspan3120"
+   style="fill:#ff0000">PB 4 | </tspan><tspan
+   id="tspan3363"
+   style="fill:#000080">MISO</tspan></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="945.97406"
+       y="730.82172"
+       id="text3122"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3124"
+         x="945.97406"
+         y="730.82172">D11 : <tspan
+   style="fill:#ff0000"
+   id="tspan3126">PB 3 | </tspan><tspan
+   id="tspan3367"
+   style="fill:#000080">PWM T2A, MOSI</tspan></tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3128"
+       y="768.82172"
+       x="945.97406"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="768.82172"
+         x="945.97406"
+         id="tspan3130"
+         sodipodi:role="line">D10 : <tspan
+   id="tspan3132"
+   style="fill:#ff0000">PB 2 | </tspan><tspan
+   id="tspan3371"
+   style="fill:#000080">PWM T1B, SS</tspan></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="945.97406"
+       y="808.82172"
+       id="text3134"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3136"
+         x="945.97406"
+         y="808.82172">D9 : <tspan
+   style="fill:#ff0000"
+   id="tspan3138">PB 1 | </tspan><tspan
+   id="tspan3375"
+   style="fill:#000080">PWM T1A</tspan></tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3140"
+       y="848.82172"
+       x="945.97406"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="848.82172"
+         x="945.97406"
+         id="tspan3142"
+         sodipodi:role="line">D8 : <tspan
+   id="tspan3144"
+   style="fill:#ff0000">PB 0 | </tspan><tspan
+   id="tspan3379"
+   style="fill:#000080">Input Capture</tspan></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="945.97406"
+       y="904.82172"
+       id="text3146"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3148"
+         x="945.97406"
+         y="904.82172">D7 : <tspan
+   style="fill:#ff0000"
+   id="tspan3150">PD 7 | </tspan><tspan
+   id="tspan3383"
+   style="fill:#000080" /></tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3152"
+       y="944.82172"
+       x="945.97406"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="944.82172"
+         x="945.97406"
+         id="tspan3154"
+         sodipodi:role="line">D6 : <tspan
+   id="tspan3156"
+   style="fill:#ff0000">PD 6 | </tspan><tspan
+   id="tspan3387"
+   style="fill:#000080">PWM T0A</tspan></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="945.97406"
+       y="982.82172"
+       id="text3158"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3160"
+         x="945.97406"
+         y="982.82172">D5 : <tspan
+   style="fill:#ff0000"
+   id="tspan3162">PD 5 | </tspan><tspan
+   id="tspan3391"
+   style="fill:#000080">PWM T0B</tspan></tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3164"
+       y="1022.8218"
+       x="945.97406"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="1022.8218"
+         x="945.97406"
+         id="tspan3166"
+         sodipodi:role="line">D4 : <tspan
+   id="tspan3168"
+   style="fill:#ff0000">PD 4 | </tspan><tspan
+   id="tspan3395"
+   style="fill:#000080" /></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="945.97406"
+       y="1058.8218"
+       id="text3170"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3172"
+         x="945.97406"
+         y="1058.8218">D3 : <tspan
+   style="fill:#ff0000"
+   id="tspan3174">PD 3 | </tspan><tspan
+   id="tspan3399"
+   style="fill:#000080">PWM T2B, Ext Int 1</tspan></tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3176"
+       y="1096.8217"
+       x="945.97406"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="1096.8217"
+         x="945.97406"
+         id="tspan3178"
+         sodipodi:role="line">D2 : <tspan
+   id="tspan3180"
+   style="fill:#ff0000">PD 2 | </tspan><tspan
+   id="tspan3403"
+   style="fill:#000080">Ext Int 0</tspan></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="945.97406"
+       y="1134.8217"
+       id="text3182"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3184"
+         x="945.97406"
+         y="1134.8217">D1 : <tspan
+   style="fill:#ff0000"
+   id="tspan3186">PD 1 | </tspan><tspan
+   id="tspan3407"
+   style="fill:#000080">USART TX</tspan></tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3188"
+       y="1170.8217"
+       x="945.97406"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="1170.8217"
+         x="945.97406"
+         id="tspan3190"
+         sodipodi:role="line">D0 : <tspan
+   id="tspan3192"
+   style="fill:#ff0000">PD 0 | </tspan><tspan
+   id="tspan3411"
+   style="fill:#000080">USART RX</tspan></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:end;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="139.05237"
+       y="981.4361"
+       id="text3004"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3006"
+         x="139.05237"
+         y="981.4361"><tspan
+   style="fill:#ff0000"
+   id="tspan3225"><tspan
+   style="fill:#000080"
+   id="tspan3445">(D14)</tspan> PC 0</tspan> : AIN0</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3008"
+       y="1019.436"
+       x="143.58362"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:end;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="1019.436"
+         x="143.58362"
+         id="tspan3010"
+         sodipodi:role="line"><tspan
+   style="fill:#ff0000"
+   id="tspan3227"><tspan
+   style="fill:#000080"
+   id="tspan3443">(D15)</tspan> PC 1 </tspan>: AIN1</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:end;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="139.09143"
+       y="1059.436"
+       id="text3012"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3014"
+         x="139.09143"
+         y="1059.436"><tspan
+   style="fill:#ff0000"
+   id="tspan3229"><tspan
+   style="fill:#000080"
+   id="tspan3447">(D16)</tspan> PC 2 </tspan>: AIN2</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3016"
+       y="1097.436"
+       x="138.79846"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:end;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="1097.436"
+         x="138.79846"
+         id="tspan3018"
+         sodipodi:role="line"><tspan
+   style="fill:#ff0000"
+   id="tspan3231"><tspan
+   style="fill:#000080"
+   id="tspan3449">(D17)</tspan> PC 3</tspan> : AIN3</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:end;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       x="137.99768"
+       y="1135.436"
+       id="text3020"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3022"
+         x="137.99768"
+         y="1135.436"><tspan
+   style="fill:#ff0000"
+   id="tspan3233"><tspan
+   style="fill:#000080"
+   id="tspan3451">(I2C SDA)(D18)</tspan> PC 4</tspan> : AIN4</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3024"
+       y="1173.436"
+       x="138.29065"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:end;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;font-family:Arial;-inkscape-font-specification:Arial Bold"
+       xml:space="preserve"><tspan
+         y="1173.436"
+         x="138.29065"
+         id="tspan3026"
+         sodipodi:role="line"><tspan
+   style="fill:#ff0000"
+   id="tspan3235"><tspan
+   style="fill:#000080"
+   id="tspan3453">(I2C SCL)(D19)</tspan> PC 5</tspan> : AIN5</tspan></text>
+  </g>
+</svg>

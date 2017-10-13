@@ -1,0 +1,165 @@
+diff -Naur cpipe-3.0.1-orig/cmdline.c cpipe-3.0.1B/cmdline.c
+--- cpipe-3.0.1-orig/cmdline.c	2011-03-18 10:50:36.000000000 +0100
++++ cpipe-3.0.1B/cmdline.c	2011-03-18 14:11:00.000000000 +0100
+@@ -39,6 +39,10 @@
+   /* speedP = */ 0,
+   /* speed = */ (double)0,
+   /* speedC = */ 0,
++  /***** out write speed limit in B/s (off by default) */
++  /* speedBP */ 0,
++  /* speedB */ 1,
++  /* speedBC */ 1,
+   /***** uninterpreted rest of command line */
+   /* argc = */ 0,
+   /* argv = */ (char**)0
+@@ -724,7 +728,9 @@
+   fprintf(stderr,"%s","          on read before starting to write\n");
+   fprintf(stderr,"%s","      -s: throughput speed limit in kB/s\n");
+   fprintf(stderr,"%s","          1 double value between 1 and oo\n");
+-  fprintf(stderr,"%s","  version: 3.0.1\n");
++  fprintf(stderr,"%s","     -bs: out write speed limit in B/s\n");
++  fprintf(stderr,"%s","          int value > 1 (sequences byte per byte) \n");
++  fprintf(stderr,"%s","  version: 3.0.1.1\n");
+   fprintf(stderr,"%s","  ");
+   exit(EXIT_FAILURE);
+ }
+@@ -774,6 +780,15 @@
+       continue;
+     }
+ 
++    if( 0==strcmp("-bs", argv[i]) ) {
++      int keep = i;
++      cmd.speedBP = 1;
++      i = getIntOpt(argc, argv, i, &cmd.speedB, 1);
++      cmd.bsizeC = i-keep;
++      checkIntHigher("-bs", &cmd.speedB, cmd.speedBC, 1);
++      continue;
++    }
++
+     if( argv[i][0]=='-' ) {
+       fprintf(stderr, "\n%s: unknown option `%s'\n\n",
+               Program, argv[i]);
+diff -Naur cpipe-3.0.1-orig/cmdline.h cpipe-3.0.1B/cmdline.h
+--- cpipe-3.0.1-orig/cmdline.h	2003-07-22 10:12:48.000000000 +0200
++++ cpipe-3.0.1B/cmdline.h	2011-03-18 14:11:00.000000000 +0100
+@@ -26,6 +26,10 @@
+   char speedP;
+   double speed;
+   int speedC;
++  /***** out write speed limit in B/s */
++  char speedBP;
++  int speedB;
++  int speedBC;
+   /***** uninterpreted command line parameters */
+   int argc;
+   /*@null*/char **argv;
+diff -Naur cpipe-3.0.1-orig/cpipe.c cpipe-3.0.1B/cpipe.c
+--- cpipe-3.0.1-orig/cpipe.c	2011-03-18 10:50:36.000000000 +0100
++++ cpipe-3.0.1B/cpipe.c	2011-03-18 14:49:42.000000000 +0100
+@@ -44,6 +44,11 @@
+ double TotalBytes;
+ double totalTin, totalTout;
+ 
++/* 'global' */
++Cmdline *cmd;
++double BpsPeriodSec;
++double BpsPeriodNsRem;
++
+ /**********************************************************************/
+ char *
+ scale(double v, char *buf)
+@@ -156,15 +161,60 @@
+ 
+   gettimeofday(&tin, NULL);
+   for(totalBytes=0; totalBytes<length; totalBytes+=bytes, buf+=bytes) {
+-    bytes = write(STDOUT_FILENO, buf, length-totalBytes);
+-    if( -1==bytes ) {
+-      if( errno!=EINTR && errno!=EAGAIN ) {
+-	fprintf(stderr, "%s: error writing stdout because `%s'\n",
+-		Program, strerror(errno));
+-	exit(EXIT_FAILURE);
+-      } else {
+-	bytes = 0;
++    if ( ! cmd->speedBP ) {
++      bytes = write(STDOUT_FILENO, buf, length-totalBytes);
++      if( -1==bytes ) {
++        if( errno!=EINTR && errno!=EAGAIN ) {
++    fprintf(stderr, "%s: error writing stdout because `%s'\n",
++      Program, strerror(errno));
++    exit(EXIT_FAILURE);
++        } else {
++    bytes = 0;
++        }
++      }
++    } else {
++      /*
++      struct timespec sleeptime;      http://cc.byexamples.com/2007/05/25/nanosleep-is-better-than-sleep-and-usleep/ */
++      struct timespec timeout0;
++      struct timespec timeout1;
++      struct timespec* tmp;
++      struct timespec* t0 = &timeout0;
++      struct timespec* t1 = &timeout1;
++      /* limiting bytes per sec, sleep */
++      bytes = write(STDOUT_FILENO, buf, (length-totalBytes > 0) ? 1 : 0 );
++      if( -1==bytes ) {
++        if( errno!=EINTR && errno!=EAGAIN ) {
++    fprintf(stderr, "%s: error writing stdout because `%s'\n",
++      Program, strerror(errno));
++    exit(EXIT_FAILURE);
++        } else {
++    bytes = 0;
++        }
++      }
++      t0->tv_sec = (int)BpsPeriodSec;
++      t0->tv_nsec = (int)BpsPeriodNsRem;
++      while ((nanosleep(t0, t1) == (-1)) && (errno == EINTR))
++      {
++        tmp = t0;
++        t0 = t1;
++        t1 = tmp;
+       }
++      /*if( 0==nanosleep(&sleeptime, NULL) ) {
++        */
++        gettimeofday(&tout, NULL);
++        if( show ) {
++          dt =  deltaT(&tin, &tout);
++          totalTout += dt;
++          fprintf(stderr,
++            " out: %7.3fms at %7sB/s (%7sB/s avg) %7sB\n",
++            1e3*dt,
++            scale((double)totalBytes/dt, txt1),
++            scale(TotalBytes/totalTout, txt2),
++            scale(TotalBytes, txt3) ); /*,
++            (int)(t0->tv_sec),
++            (int)(t0->tv_nsec) ); */
++        }
++      /* } */
+     }
+   }
+   gettimeofday(&tout, NULL);
+@@ -183,7 +233,7 @@
+ int
+ main(int argc, char **argv)
+ {
+-  Cmdline *cmd;
++  /*Cmdline *cmd; // make it 'global' */
+   char *buf;
+   int count;
+   int eof;
+@@ -194,9 +244,15 @@
+   /***** BEGIN */
+   cmd = parseCmdline(argc, argv);
+ 
+-  cmd->bsize *= ONEk;
++  /*cmd->bsize *= ONEk; / * parse in bytes directly */
+   if( cmd->speedP ) cmd->speed *= ONEk;
+ 
++  if( cmd->speedBP ) {
++    BpsPeriodSec = 1.0f / cmd->speedB ;
++    BpsPeriodNsRem = 1e9*(BpsPeriodSec - floor(BpsPeriodSec));
++    fprintf(stderr, "%s: period %d sec, %f ms, %d ns, %f nsrem \n", Program, (int)BpsPeriodSec, BpsPeriodSec*1000, (int)(BpsPeriodSec*1e9), BpsPeriodNsRem);
++  }
++
+   if( cmd->ngrP ) {
+     /***** switch input into non-blocking */
+     fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);

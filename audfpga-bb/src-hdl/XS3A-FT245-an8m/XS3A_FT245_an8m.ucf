@@ -1,0 +1,73 @@
+# Clock at 50MHz
+NET "pgCLK" LOC = P126;
+NET "pgCLK" TNM_NET = "pgCLK";
+TIMESPEC "TS_Clk" = PERIOD "pgCLK" 20 ns HIGH 50 %;
+
+# data pins of FT245
+NET "pD_ft245<0>" LOC = P41 | IOSTANDARD = "LVCMOS33";
+NET "pD_ft245<4>" LOC = P42 | IOSTANDARD = "LVCMOS33";
+NET "pD_ft245<2>" LOC = P43 | IOSTANDARD = "LVCMOS33";
+NET "pD_ft245<1>" LOC = P44 | IOSTANDARD = "LVCMOS33";
+NET "pD_ft245<7>" LOC = P45 | IOSTANDARD = "LVCMOS33";
+NET "pD_ft245<5>" LOC = P46 | IOSTANDARD = "LVCMOS33";
+NET "pD_ft245<6>" LOC = P47 | IOSTANDARD = "LVCMOS33";
+NET "pD_ft245<3>" LOC = P48 | IOSTANDARD = "LVCMOS33";
+
+# signal pins of FT245, txe P50
+NET "pRXFn_ft245" LOC = P49 | IOSTANDARD = "LVCMOS33";
+NET "pTXEn_ft245" LOC = P50 | IOSTANDARD = "LVCMOS33";
+
+# NET "pRDn_ft245" FAST ; # WR was P83, P92 (for debug); also RD,WR,PWREN-P24, P21, P20; also RD-P25
+# NET "pRDn_ft245" LOC = P25 | IOSTANDARD = "LVCMOS33" | FAST;
+# NET "pWR_ft245" LOC = P24 | IOSTANDARD = "LVCMOS33" | FAST;
+# NET "pPWREN_ft245" LOC = P21 | IOSTANDARD = "LVCMOS33";
+
+NET "pRDn_ft245" LOC = P82 | IOSTANDARD = "LVCMOS33" | FAST;
+NET "pWR_ft245" LOC = P83 | IOSTANDARD = "LVCMOS33" | FAST;
+NET "pPWREN_ft245" LOC = P84 | IOSTANDARD = "LVCMOS33";
+
+# LEDs - were P88, P90 - w was p87
+NET "pLED_R" LOC = P85 | IOSTANDARD = "LVCMOS33";
+NET "pLED_W" LOC = P88 | IOSTANDARD = "LVCMOS33";
+NET "pLED_nTXE" LOC = P90 | IOSTANDARD = "LVCMOS33";
+
+# debug (bottom row, left):
+#NET "pDBG<3>" LOC = P32 | IOSTANDARD = "LVCMOS33";
+#NET "pDBG<2>" LOC = P31 | IOSTANDARD = "LVCMOS33";
+#NET "pDBG<1>" LOC = P30 | IOSTANDARD = "LVCMOS33";
+#NET "pDBG<0>" LOC = P29 | IOSTANDARD = "LVCMOS33";
+
+# pwm out - pin 92, which is 1 (top right) on the connector
+NET "pAPWM_Out" LOC = P93 | IOSTANDARD = "LVCMOS33";
+
+# fpgabrd conn		fpga pins
+# p39				P41 DUAL
+# p37				P42 DUAL
+# p35				P43 DUAL
+# p33				P44 DUAL
+# p31				P45 DUAL
+# p29				P46 I/O
+# p27				P47 I/O
+# p25				P48 DUAL
+# p23				P49 DUAL
+# p21				P50 DUAL
+# p19				P82 I/O
+# p17				P83 RHCLK
+# p15				p84 I/O
+# p13				P85 RHCLK
+# p11				P87 RHCLK <= bad solder...
+# p9				P88 RHCLK
+# p7				P90 RHCLK
+
+
+# Timing constraints - attributes - slew rate - cannot with these, up there
+# NET "vf1_usbToPC_rd_clk" FAST;
+# NET "outfeedback/rd_clk_buf_out" FAST;
+# attempt to init this FF - no good for synthesis though. -
+# Invalid parameter: 'S'.   Expecting a value for the constraint's 'Type' value that satisfies the   following condition:   The value must be text that matches the regular expression:   *i:reg_mem|parity_mem
+# Invalid parameter: 'S'.   Expecting a value for the constraint's 'Value' value that satisfies the   following condition:   The value must be text that matches the regular expression: *i:[a-f0-9]+
+INST istate_FFd2 INIT='1';
+
+# buffers reset
+# NET "vf0_rst" LOC = P85 | IOSTANDARD = "LVCMOS33";
+# NET "vf1_rst" LOC = P87 | IOSTANDARD = "LVCMOS33";

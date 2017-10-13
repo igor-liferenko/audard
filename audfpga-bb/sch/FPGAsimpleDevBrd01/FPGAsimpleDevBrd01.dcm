@@ -1,0 +1,43 @@
+EESchema-DOCLIB  Version 2.0  Date: Thu 27 Aug 2009 01:15:56 AM CEST
+#
+$CMP CC
+D Condensateur non polarise
+$ENDCMP
+#
+$CMP FAN1112SX-1.2
+D Linear Regulator +1.2V
+K POWER REGUL
+F regulator/lm78*.*
+$ENDCMP
+#
+$CMP LM2940IMP-5.0
+D Linear Regulator +5V
+K POWER REGUL
+F regulator/lm78*.*
+$ENDCMP
+#
+$CMP LM3940IMP-3.3
+D Linear Regulator +3.3V
+K POWER REGUL
+F regulator/lm78*.*
+$ENDCMP
+#
+$CMP SN_74CB3T
+D Clock oscillator
+K Quartz
+F http://www.4timing.com
+$ENDCMP
+#
+$CMP XO-14S
+D Sinewave output clock oscillator
+K Quartz
+F http://www.4timing.com
+$ENDCMP
+#
+$CMP XO-8S
+D Clock oscillator
+K Quartz
+F http://www.4timing.com
+$ENDCMP
+#
+#End Doc Library

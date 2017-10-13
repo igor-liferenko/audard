@@ -1,0 +1,19 @@
+# cmd:   291  bash unpack-tshark.sh /media/disk/work/AudioFPGA_git/driver_pc/snd_ftdi_audard-an16s/captures03/outshark_arecplay_48_audacok.pcap |er > outshark_48_audacok.csv
+frame.number,rtime,dtime,frame.epoch-time,src,dst,usb.urb-type,usbtyp,reqid,respid,usb.data-flag,usbdflg,usb.transfer-type,usbttyp,usb.bus-id,usb.device-address,usb.endpoint-number,frame.len,frame.cap-len,usb.urb-len,usb.data-len,urbset.dir,urbdir,usb.urb-status,urbstat,urbset.recpnt,urbrec,urb.data
+1789,0.000000,8.886638,1370031918.729606,2.1,host,C,URB\_COMPLETE,1786,,0,present,0x03,URB\_BULK out,2,2,0x81,576,576,512,512,,,0,Success,,,01 00 12 b4 ed 4b 12 b5 ed 4b 12 b6 ed 49
+1790,0.000057,8.886695,1370031918.729663,host,2.1,S,URB\_SUBMIT,,1792,<,not present,0x03,URB\_BULK out,2,2,0x81,64,64,512,0,,,-115,Operation now in progress (-EINPROGRESS),,,
+1791,0.001663,8.888301,1370031918.731269,host,2.2,S,URB\_SUBMIT,,1794,0,present,0x03,URB\_BULK out,2,2,0x02,768,768,704,704,,,-115,Operation now in progress (-EINPROGRESS),,,af ee 50 11 b0 ee 50 11 b1 ee 4e 11 b1 ee
+1792,0.002007,8.888645,1370031918.731613,2.1,host,C,URB\_COMPLETE,1790,,0,present,0x03,URB\_BULK out,2,2,0x81,447,447,383,383,,,0,Success,,,01 00 11 30 ee cf 11 31 ee ce 11 32 ee cd
+1793,0.002027,8.888665,1370031918.731633,host,2.1,S,URB\_SUBMIT,,1795,<,not present,0x03,URB\_BULK out,2,2,0x81,64,64,512,0,,,-115,Operation now in progress (-EINPROGRESS),,,
+1794,0.002040,8.888678,1370031918.731646,2.2,host,C,URB\_COMPLETE,1791,,>,not present,0x03,URB\_BULK out,2,2,0x02,64,64,708,0,,,0,Success,,,
+1795,0.003997,8.890635,1370031918.733603,2.1,host,C,URB\_COMPLETE,1793,,0,present,0x03,URB\_BULK out,2,2,0x81,436,436,372,372,,,0,Success,,,01 00 73 11 8d ee 72 11 8e ee 71 11 8f ee
+1796,0.004037,8.890675,1370031918.733643,host,2.1,S,URB\_SUBMIT,,1798,<,not present,0x03,URB\_BULK out,2,2,0x81,64,64,512,0,,,-115,Operation now in progress (-EINPROGRESS),,,
+1797,0.005669,8.892307,1370031918.735275,host,2.2,S,URB\_SUBMIT,,1800,0,present,0x03,URB\_BULK out,2,2,0x02,768,768,704,704,,,-115,Operation now in progress (-EINPROGRESS),,,5f ef a0 10 60 ef 9f 10 61 ef 9e 10 62 ef
+1798,0.005994,8.892632,1370031918.735600,2.1,host,C,URB\_COMPLETE,1796,,0,present,0x03,URB\_BULK out,2,2,0x81,439,439,375,375,,,0,Success,,,01 00 19 11 e7 ee 18 11 e8 ee 17 11 e9 ee
+1799,0.006019,8.892657,1370031918.735625,host,2.1,S,URB\_SUBMIT,,1801,<,not present,0x03,URB\_BULK out,2,2,0x81,64,64,512,0,,,-115,Operation now in progress (-EINPROGRESS),,,
+1800,0.006029,8.892667,1370031918.735635,2.2,host,C,URB\_COMPLETE,1797,,>,not present,0x03,URB\_BULK out,2,2,0x02,64,64,704,0,,,0,Success,,,
+1801,0.007998,8.894636,1370031918.737604,2.1,host,C,URB\_COMPLETE,1799,,0,present,0x03,URB\_BULK out,2,2,0x81,417,417,353,353,,,0,Success,,,01 00 ef be 10 42 ef bd 10 43 ef bc 10 44
+1802,0.008023,8.894661,1370031918.737629,host,2.1,S,URB\_SUBMIT,,1804,<,not present,0x03,URB\_BULK out,2,2,0x81,64,64,512,0,,,-115,Operation now in progress (-EINPROGRESS),,,
+1803,0.009641,8.896279,1370031918.739247,host,2.2,S,URB\_SUBMIT,,1806,0,present,0x03,URB\_BULK out,2,2,0x02,768,768,704,704,,,-115,Operation now in progress (-EINPROGRESS),,,0f f0 f1 0f 0f f0 ef 0f 11 f0 ee 0f 12 f0
+1804,0.009995,8.896633,1370031918.739601,2.1,host,C,URB\_COMPLETE,1802,,0,present,0x03,URB\_BULK out,2,2,0x81,440,440,376,376,,,0,Success,,,01 00 6a 10 97 ef 68 10 97 ef 67 10 99 ef
+1805,0.010008,8.896646,1370031918.739614,host,2.1,S,URB\_SUBMIT,,1807,<,not present,0x03,URB\_BULK out,2,2,0x81,64,64,512,0,,,-115,Operation now in progress (-EINPROGRESS),,,

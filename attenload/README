@@ -1,0 +1,602 @@
+attenload - fetch data from Atten oscilloscopes
+===============================================
+
+http://sdaaubckp.sourceforge.net/attenload/  
+(discussion at [thread in libusb-devel mailing list][4])
+
+
+Copyleft 2012-2013, sdaau  
+This package is free software, released 
+under the GNU General Public License.  
+NO WARRANTY; for license information see 
+the file LICENSE
+
+
+CONTENTS
+--------
+
+* [NAME](#name)
+* [SYNOPSIS](#synopsis)
+* [DESCRIPTION](#description)
+* [DOWNLOAD](#download)
+* [USAGE](#usage)
+* [BUGS](#bugs)
+* [DETAILS](#details)
+    * [Oscilloscopes](#oscilloscopes)
+        * [Firmware bug](#firmbug)
+        * [Bad USB cable](#badcable)
+        * [Refresh speed/delay bug](#delaybug)
+        * [Sampling and captures](#samplecapt)
+    * [attenload](#attenload)
+    * [attengrab.pl](#attengrab)
+    * [attengrab-repair.pl](#attenrepair)
+    * [adsparse-wave.pl](#adswave)
+    * [adsparse-bitmap.pl](#adsbitmap)
+    * [adsparse-dvstngs.pl](#adsdvstngs)
+    * [devscripts/adscompare.pl and related](#adscompare)
+* [DEVNOTES](#devnotes)
+* [AUTHOR](#author)
+
+&nbsp;
+
+## <a id="name"></a>NAME ##
+
+attenload, attengrab.pl - fetch data and screenshots from Atten oscilloscopes
+
+## <a id="synopsis"></a>SYNOPSIS ##
+
+    sudo perl ./attengrab.pl
+
+## <a id="description"></a>DESCRIPTION ##
+
+`attenload` is a downloading tool for data and screenshots from Atten (and possibly similar) oscilloscopes. It uses the off-the-shelf USB connection of the scope. It is very similar to - and inspired by - the  [agiload](http://www.ant.uni-bremen.de/whomes/rinas/agiload/) software, open-source downloading tool for Agilent oscilloscopes via RS-232 connection. 
+
+`attenload` is not sponsored or approved by Atten in any way whatsoever - so don't annoy them with any questions you might have regarding this software.
+
+[<img src="http://sdaaubckp.sourceforge.net/attenload/attenload.png" width="500"/>](http://sdaaubckp.sourceforge.net/attenload/attenload.png)
+
+`attenload` is a collection of an eponymous C-language executable, and several Perl scripts, all of which are ran in the terminal:
+
+* `attenload` - C language executable, that utilizes [libusb-1.0](http://www.libusb.org/wiki/libusb-1.0) to interface with the oscilloscope via USB - and capture raw data from it as binary files
+* `adsparse-wave.pl` - parses the relevant binary capture from the scope, into a comma-separated ASCII list of values
+* `adsparse-bitmap.pl` - parses the relevant binary capture from the scope, into a .BMP screenshot 
+* `adsparse-dvstngs.pl` - parses the relevant binary capture from the scope, into a binary oscilloscope settings file 
+* `attengrab.pl` - a "master" capturing command-line script, that utilizes all above components - and allows the user to capture data and perform processing (involving [gnuplot](http://www.gnuplot.info/) and [ImageMagick command-line tools](http://www.imagemagick.org/script/command-line-tools.php)) in one take with a single keypress
+
+The file VERSION both sets the current version of the application (in the very first line), and serves as a NEWS/ChangeLog file. 
+
+## <a id="download"></a>DOWNLOAD ##
+
+You can [browse the source code online](http://sdaaubckp.svn.sourceforge.net/viewvc/sdaaubckp/attenload/), or check it out from `svn` through:
+
+    svn co https://sdaaubckp.svn.sourceforge.net/svnroot/sdaaubckp/attenload
+
+See the sections of individual components in [DETAILS](#details) for further installation instructions; note that only `attenload.c` needs to be built - as the rest are Perl scripts (which require that `perl` is installed on your system). 
+
+## <a id="usage"></a>USAGE ##
+
+With a proper installation in place, the user should be able to: 
+
+* navigate to a desired directory where captures are to be stored; 
+* run the `attengrab.pl` script (by direct path or via symlink); 
+* press <kbd>SPACE</kbd> to obtain a single, timestamped capture as many times as desired; 
+* ... and finally exit the script with <kbd>CTRL</kbd>+<kbd>C</kbd>. 
+
+... or, as it looks in a terminal: 
+
+    $ cd /whatever/path/i/want
+    $ mkdir captures_for_today
+    $ cd captures_for_today
+    $ ln -s /path/to/attengrab.pl . 
+    $ sudo perl ./attengrab.pl
+    [sudo] password for username:
+
+    ./attengrab.pl; attenload version 20XX.XX.XX
+    Called from path /whatever/path/i/want/captures_for_today/; saving files there.
+
+    Enter filename suffix for this session (or just [ENTER] for no suffix): test
+    Using '_test' as filename suffix.
+    Starting eog...
+
+    ## Starting session, Tue Nov  6 13:10:34 2012 ##
+       (exit with Ctrl-C)
+
+    ... waiting - press [SPACE] to start capture ....
+
+See [attengrab\_run_2.log](http://sdaaubckp.sourceforge.net/attenload/attengrab_run_2.log) for a full terminal log of a complete single capture, which is logged to have taken about 35 sec to complete. A single capture results with five files (`.csv`, `.gnuplot`, `.note`, `.png`, `.ssf` - with the same timestamp in the filename) being saved in the current working directory. An example of a final, montaged `.png` output, which contains a screenshot of the oscilloscope screen, as well as a `gnuplot` rendering of the `.csv` data can be seen below:
+
+[<img src="http://sdaaubckp.sourceforge.net/attenload/20121006-224943.png" width="500"/>](http://sdaaubckp.sourceforge.net/attenload/20121006-224943.png)
+
+
+Note that the `attengrab.pl` script: 
+
+* must be ran as super-user - since that will allow the `libusb`-relevant portions of the software to access the oscilloscope device on the USB bus;
+* will attempt to start `eog` ([Eye of GNOME](http://projects.gnome.org/eog/screenshots.html)) as an image viewer in the current working directory (as a primitive form of a GUI, where the final, montaged `.png`s can be inspected)
+
+## <a id="bugs"></a>BUGS ##
+
+Please see [DETAILS](#details) for particular quirks of the (development) oscilloscope and its current firmware, in particular those in respect to Single-triggered captures. 
+
+In addition to that, it is possible that sometimes, even in case of a technically successful capture transfer to PC, for a Single-triggered capture (with stopped run state) - that the downloaded screenshot bitmap on the montage is not the one currently displayed on the scope screen (_but instead is the same as the screenshot bitmap downloaded previously_); while the wave data does indeed reflect the current oscilloscope capture. It is currently unclear why this happens, so do monitor the montaged outputs for discrepancies as soon as a capture transfer is complete - if the screenshot bitmap is important, then the whole capture needs to be re-taken (_noting the quirk, that if a capture transfer is initiated with the old capture on scope, the scope may return corrupt wave data_). That is why `attengrab.pl` now allows re-taking of the bitmap screenshot within a capture. 
+
+&nbsp;
+
+## <a id="details"></a>DETAILS ##
+
+`attenload` was initially developed on Ubuntu 11.04 Natty, Linux 2.6.38-16-generic, and corresponding build and development libraries (including `libusb-1.0`), as well as corresponding Perl (v5.10.1), Gnuplot 4.4, and ImageMagick 6.5 - while the target oscilloscope was Atten ADS 1202CL+ (2 channel, 8-bit, 200 MHz), which is shipped with a Windows application called EasyScope. The ADS 1202CL+ has both an RS-232 serial output, and a USB output. 
+
+The [ATTEN ADS 1102CAL photos (EEVblog Electronics Community Forum)][1] post reports that it is possible to run EasyScope under `wine` in Linux. `wine` cannot handle USB traffic and drivers; however it can address a serial port. Equipped with a RS232-to-USB dongle, one could utilize the RS232 connection on the scope - while typically the dongle, at the other end, will appear as a USB/serial port in Linux (e.g. a file `/dev/ttyUSB0`). It is then possible to symlink this file specifically so it appears as a COM port under `wine` (see e.g. [ZiLOG ZDS II on Linux](http://www.frihost.com/forums/vt-100722.html)) - and this would, in principle, allow EasyScope running under `wine` in Linux, to interact with the scope natively via RS232. Note that `attenload` doesn't deal with any type of oscilloscope connection other than USB. 
+
+### <a id="oscilloscopes"></a>Oscilloscopes ###
+
+The first thing necessary is to see how does the oscilloscope appear under the given Linux OS system. For this, the `lsusb` command can be used (`apt-get install usbutils` to install it on Ubuntu). The target Atten ADS 1202CL+ was listed on the dev system as: 
+
+    $ lsusb
+    Bus 005 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+    Bus 004 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+    Bus 003 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+    Bus 002 Device 002: ID f4ec:ee38                      <= THIS!
+    Bus 002 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+    ...
+
+... that is, the _only_ thing listed initially, is the vendor ID & product ID (vid & pid) of the device - `f4ec:ee38`. It is this combination that is used from `attenload` (via `libusb`) to connect to the scope - therefore, it is worth mentioning that the same vid&pid combo is reported for a different model in [ATTEN ADS 1102CAL photos][1].
+
+Thus, it is entirely possible - though untested - that `attenload` will work with a model _other_ than the dev target ADS 1202CL+. Furthermore, note that in [EasyScope - List of Digital Oscilloscopes that use it (EEVblog Electronics Community Forum)](http://www.eevblog.com/forum/product-reviews-photos-and-discussion/easyscope-list-of-digital-oscilloscopes-that-use-it/) several other models and (re-)brands of oscilloscopes that ship with EasyScope are listed; it is thus entirely possible - though untested - that `attenload` could work with some of these as well. Though, in that situation it would be expected that the vid&pid combo would change, and correspondingly, it would have to be changed in `attenload` as well (where it is hardcoded in `attenload.c`) - unless the given device doesn't use the same message protocol over USB as ADS 1202CL+ does. In that case `attenload` as provided would not work, and one would have to inspect and reverse-engineer the message protocol anew; still, the `attenload` source could be an obvious starting point for such an investigation. 
+
+It has been reported that also Atten ADS 1102CAL is compatible. Check also the [attenload - please report here if your Atten (or related) scope works (EEVblog)][5] thread (_if considering reporting, note that the forum also accepts OpenID logins_).
+
+#### <a id="firmbug"></a>Firmware bug ####
+
+The firmware version of the development scope was obtained via Utility/System Status:
+
+    Software version: 3.01.01.31R16 
+    Hardware version: 10-61-2.4
+    Product type:     ADS1202CL+
+
+The "Software version" refers to the firmware version. Note that Atten doesn't seem to have firmware for download anywhere on its sites (atten.com.cn, attenelectronics.com, atten.eu) - however, Siglent does (but those firmwares are not compatible with Atten); see also [Atten oscilloscope firmware????](http://www.eevblog.com/forum/beginners/atten-oscilloscope-firmware/); [Atten ADS 1102CML Digital Oscilloscope review](http://www.cube.co.za/~tva/workbench/atten-ads1102cml/atten-ads-1102cml-review.xhtml) and [Review: Atten ADS1102CML 100MHz oscilloscope](http://www.eevblog.com/forum/product-reviews-photos-and-discussion/review-atten-ads1102cml-100mhz-oscilloscope/) (for possible bugs prior to 3.01.01.31R16).
+
+One can use `lsusb` (as a super-user) to also obtain a verbose (`-v`) listing of the USB  properties of a specific device (`-d`). Note that the development target scope, Atten ADS 1202CL+, got fully listed by `lsusb` built against the old version of `libusb-0.1`; however, the full listing failed with an `lsusb` built against the new `libusb-1.0` (which is also used by `attenload`):
+
+    $ sudo ./usbutils-git/lsusb -v -d f4ec:ee38
+    ./usbutils-git/lsusb: cannot open "/usr/share/usb.ids", No such file or directory
+    
+    Bus 002 Device 012: ID f4ec:ee38
+    Device Descriptor:
+      bLength                18
+      bDescriptorType         1
+      bcdUSB               1.10
+      bDeviceClass            0
+      bDeviceSubClass         0
+      bDeviceProtocol         0
+      bMaxPacketSize0        64
+      idVendor           0xf4ec
+      idProduct          0xee38
+      bcdDevice            1.00
+      iManufacturer           1 Siglent TechCo., Ltd.
+      iProduct                2 USB Digital Oscilloscope
+      iSerial                 0
+      bNumConfigurations      1
+    Couldn't get configuration descriptor 0, some information will be missing
+    Couldn't get configuration descriptor 0, some information will be missing
+    Device Status:     0x0001
+      Self Powered
+
+This problem was discussed on the [libusb-devel Mailing List](http://www.libusb.org/wiki/MailingList), in the thread:
+[libusb-devel: Config descriptor read ok by libusb 0.1, but fails with short read on libusb-1.0 (incl. lsusb)][2] (refer to the thread for `lsusb` outputs in both cases). The problem was identified as a firmware bug related to USB configuration descriptors of the device (also visible in `syslog`, see below), which is not currently handled as a quirk by `libusb-1.0`. It is possible that other devices of the same model or series may expose the same bug; however, that bug seems to present no obstacle to using `attenload` for fetching data - since `attenload` doesn't deal with these descriptors at all.
+
+#### <a id="badcable"></a>Bad USB cable ####
+
+Note that when hot-plugging the dev scope via USB to the PC (using a regular USB cable) the system log - when observed via `tail -f /var/log/syslog` - provided but two lines: 
+
+    Nov 13 19:00:52 MYPC kernel: [  564.768120] usb 2-2: new full speed USB device using uhci_hcd and address 27
+    Nov 13 19:00:52 MYPC kernel: [  564.941142] usb 2-2: config 1 has an invalid descriptor of length 24, skipping remainder of the config
+    
+However, if connecting the scope via the USB cable which ships with the scope (possibly about a meter long, and thinner than typical USB cables), it is possible one could observe messages like these:
+
+    ... hub 2-0:1.0: port 1 disabled by hub (EMI?), re-enabling...
+    Nov 13 18:59:22 MYPC kernel: [  474.592179] usb 2-1: USB disconnect, address 23
+    Nov 13 18:59:22 MYPC kernel: [  474.832110] usb 2-1: new full speed USB device using uhci_hcd and address 24
+    Nov 13 18:59:22 MYPC kernel: [  475.000138] usb 2-1: config 1 has an invalid descriptor of length 24, skipping remainder of the config
+    Nov 13 18:59:23 MYPC kernel: [  475.584167] hub 2-0:1.0: port 1 disabled by hub (EMI?), re-enabling...
+    Nov 13 18:59:23 MYPC kernel: [  475.584186] usb 2-1: USB disconnect, address 24
+    Nov 13 18:59:23 MYPC kernel: [  475.824140] usb 2-1: new full speed USB device using uhci_hcd and address 25
+    Nov 13 18:59:23 MYPC kernel: [  476.001141] usb 2-1: config 1 has an invalid descriptor of length 24, skipping remainder of the config
+    Nov 13 18:59:28 MYPC kernel: [  480.296127] hub 2-0:1.0: port 1 disabled by hub (EMI?), re-enabling...
+    
+Essentially, that cable seems to be of quality poor enough, to cause the kernel to detect multiple connect/disconnect actions; in case of difficulties with `attenload` which generate the above kernel messages, do try a different USB cable.  
+
+
+#### <a id="delaybug"></a>Refresh speed/delay bug ####
+
+This bug is likely due to the firmware or hardware design of the oscilloscope, and can be demonstrated with the ADS 1202CL+, even with EasyScope v3.00 which ships with it: after connecting to the device from EasyScope, 
+
+* capture a trace on the ADS 1202CL+ with "Single" trigger mode, 
+* and when the Run/Stop button turns to Stop (red), capture data under "Wave Graph" with "Refresh" in EasyScope - 
+* and as soon as that capture is complete, click "Refresh" _again_; the progress bar should stall, and the transfer should lock. 
+
+This seems specific to single triggering mode, which ends with the oscilloscope state being "stopped"; it is sometimes possible to release the lock and complete the transfer by pressing Run/Stop on the scope again, so it ends in "run" state; if additionally the triggering mode is on "auto" (so the scope is continuously "Trig'd"), then the scope will be very keen on completing the locked transfer. Even the manual which ships with EasyScope 3, "EasyScope3.0-Atten User Menu.pdf", notes:
+
+> 3\. In the course of using the software, if you use 
+> “Auto” refresh mode, please disconnect “Auto” refresh 
+> first when you need to reinstall refresh time interval 
+> and select “Auto” refresh mode after setting the new 
+> refresh time interval, or else, the new setup will be ignored.
+
+One may think the FORCE button on the ADS 1202CL+ is for this purpose, however it is not; it is strictly related to the trigger condition, and not related to PC transfer at all - its manual, "ADS1000 User Manual\_1.5\_.pdf", states:
+
+> “FORCE” Button: Use the FORCE button to complete the current
+> waveform acquisition whether the oscilloscope detects a trigger
+> or not. This is useful for SINGLE acquisitions and Normal 
+> trigger mode.
+
+However, one can get a proper capture transfer, also simply by waiting a certain amount of time - the following sequence seemed to work on the target scope:
+
+* state is "running" (Run/Stop green), 
+* click SINGLE on scope - starts single trigger capture, scope screen is cleared
+* wait 5 sec
+* trigger with signal - scope screen shows capture, state is "stopped" (Run/Stop red)
+* wait 5 sec
+* "Refresh" in EasyScope - transfer should complete in one pass
+* wait 5 sec
+* click Run/Stop to go into "running" state (+ repeat)
+
+The same is likely to occur with long transfers, both "Wave Data" and "DSO Bitmap" (which retrieves the screenshot of the scope screen). Needless to say, the same behaviour could be seen with `attenload`, if it is forced through similar capturing conditions. 
+
+Note also: 
+
+* Use SINGLE trigger if you want to capture the very first edge of a sequence
+    * Single ON + Run Stop ON (clear screen, 5 sec) / trigger via probe / capture to PC once / and from start again ...
+    * possibly artifacts can occur here during connection moment
+* Use Normal trigger if you want to capture edges further on in a sequence
+    * Single OFF + Run Stop ON / trigger via probe repeatedly / remove probe, the display 'freezes' / capture to PC once / and from start again ...
+
+There is apparently one way to get an "automatically" triggered capture to complete via USB - and that is to set the trigger holdoff time to the maximum (1.5s - via Trig Menu/Set Up/Holdoff and the rotary knob; then Return) - and then:
+
+* Set trigger to Edge, positive slope, on CH1
+* While scope is running (Run/Stop green), click Single
+* Hopefully you observe about a second of delay, and then the scope makes a capture and stops (Run/Stop red)
+* Now you should be able to retrieve the capture via USB, but it could fail too:
+* The delay from the moment you press Run/Stop, to the moment scope goes back into stop mode, is random - the longer the observed delay, the more likely the USB transfer will complete
+* To repeat, press the Run/Stop button (to go into run mode) while the Single button is active (which will cause run mode to go back into stop mode, and capture to be made, after at most holdoff time)
+
+Since switching the trigger holdoff time from minimum to maximum using the rotary knob is tedious, now `attengrab` includes keyboard shortcuts <kbd>x</kbd> and <kbd>n</kbd> (during capture wait), so set the holdoff time to max 1.5s or min 100 ns, respectively. This is done by retrieving the device settings .ssf file, changing the holdoff parameter in there, and setting it back on the device. Since the .ssf file seems to involve some checksum algorithm which is as of yet unknown, and the scope refuses to effectuate .ssf files with incorrect checksum - `attengrab` "fakes" two of the checksum bytes, which makes these command work about half of the time. 
+
+#### <a id="samplecapt"></a>Sampling and captures ####
+
+Provided one can obtain a single capture without the [refresh speed/delay bug](#delaybug), there are three different formats in which the data can be obtained for the same capture:
+
+* `.csv` - the data obtained via USB transfer to PC; the same data as in EasyScope is retrieved as `.csv` file by `attengrab`
+* `.CSV` - file that can be saved on USB thumbdrive via "Save/Recall" / "Type" (Menu1): "CSV" on the scope
+* `.DAV` - file that can be saved on USB thumbdrive via "Save/Recall" / "Type" (Menu1): "Waveforms" on the scope
+
+For the same T/DIV setting, each of these can have a different length (number of samples) for the same capture:
+
+* `.csv`, as retrieved by `attenload`, is like EasyScope retrieving set to "Wave Data: GetAllData"
+* `.CSV` - can be "Data Depth": "Displayed" or "Maximum"; and "ParaSave": On/Off
+* `.DAV` - always seems to retrieve 0x4000 = 16384 bytes per channel
+
+For instance, for a capture T/DIV setting of 50ns/DIV, `.csv` may will have 900, `.CSV` will have 225, and `.DAV` 16384 samples per channel (as described above). As the T/DIV setting changes, so do these captures' lengths change, in a non-linear manner. In addition, there is oversampling - and three ranges can be defined in respect to this behaviour vs. T/DIV setting:
+
+* 2.5ns/DIV <= T/DIV <= 1us/DIV: `.csv` is (mostly) an oversampled version of `.CSV`, `.DAV` (which aren't collinear); `.CSV` may have wrong real timestamps
+* 2.5us/DIV <= T/DIV <= 50ms/DIV: `.csv` returns 16000 samples, there is no oversampling; (original oversample factor is &gt;=1 and fractional)
+* 100ms/DIV <= T/DIV <= 2.5s/DIV: `.csv` returns 16000 samples, there is no oversampling; (original oversample factor is &lt;=1 and fractional)
+
+There are two specific sources of information about what is the sampling rate/period (interval), besides the implicit (range shown on scope/number of samples): 
+
+* scope Acquire menu / RealTime Sample Rate:
+* "Sampling interval" entry in the `.CSV` file header.
+
+Note that RealTime Sample Rate, besides changing for respective T/DIV - also changes depending on whether one or two channels are active (single channel uses faster RealTime rates). Also, the realtime timestamps in the `.CSV` file are often wrong. 
+
+_Note that so far, `attengrab.pl` and related scripts (repair, compare) have been tested **only** with two-channel scope captures. As the RealTime Sample Rate changes for single-channel captures, it is likely for that case `attengrab.pl` (and related) will interpret the time-domain wrongly._
+
+For an example comparison of between respective lengths of captures for 28 T/DIV settings, see [adscompare\_run\_table.html](http://sdaaubckp.sourceforge.net/attenload/adscompare_run_table.html) or the images in [devscripts/adscompare.pl and related](#adscompare).
+
+
+### <a id="attenload"></a>attenload ###
+
+`attenload` here refers to the C-language binary executable, built from the source file `attenload.c`. To build `attenload` on Ubuntu, you should at least have installed the `build-essential`, `pkg-config` and `libusb-1.0-0-dev` packages; to run the program, you should also have the `libusb-1.0-0` package installed (all of these are available in the main Debian/Ubuntu repositories). 
+
+Then, `attenload.c` can be compiled, simply by changing to the `attenload` directory, and running the following command line: 
+
+    gcc -o attenload -g attenload.c `pkg-config --libs --cflags libusb-1.0`
+
+If you'd like to build `attenload` against the latest `libusb-1.0`, it can be done either "in-tree" (with installation) or "out-of-tree" (without installation). For an example of building an "in-tree" install of `libusb-1.0`, please see the [the libusb-devel notification thread][4].
+
+For an "out-of-tree" build, check out `libusb-1.0` from `git` in a subdirectory and build it (_see [the libusb-devel bug thread][2] for an example_); afterwards go back to the parent directory, edit `attenload.c` so it uses `#include "libusb-1.0/libusb/libusb.h"` (instead of `#include <libusb.h>`) - and to compile, run:
+
+    gcc -g attenload.c libusb-1.0/libusb/.libs/libusb-1.0.a -I./libusb-1.0/libusb -lpthread -lrt -o attenload
+
+Once the executable is built, it should be ran as super-user, to allow interfacing to the USB bus: 
+
+    sudo ./attenload
+
+The executable should also remain in the same directory as `attenload.c` and `attengrab.pl` - because that is the only location (other than the system `$PATH`) where `attengrab.pl` is going to look for it. 
+
+Without any command line options, the application will: connect to the scope; then retrieve the wave data, the screenshot bitmap data, and the device settings data (with a brief pause between each step); and finally disconnect from the scope. Note that `attenload` will output its logging messages to `stderr` (file descriptor 2), while it doesn't utilize `stdout` (fd 1) at all. The `stderr` logging messages consist mostly of:
+
+    ...
+    bulk transfer (out): r:0, act:64
+    bulk transfer (in ): r:0, act:512
+    bulk transfer (out): r:0, act:64
+    bulk transfer (in ): r:0, act:512
+    cmd complete
+    * WAVEFORM/DATA REFRESH
+    bulk transfer (out): r:0, act:64
+    bulk transfer (out): r:0, act:64
+    bulk transfer (out): r:0, act:64
+    bulk transfer (in ): r:0, act:512
+    bulk transfer (out): r:0, act:64
+    bulk transfer (in ): r:0, act:512
+    ...
+    
+... where a full log of one such run can be seen in [attenload_run.log](http://sdaaubckp.sourceforge.net/attenload/attenload_run.log). `attenload` does, however, utilize other file descriptors to output captured data:
+
+    fd3: raw 'bulk in' data - all of it
+    fd4: raw 'bulk in' data - only relevant packets for wavegraph data
+    fd5: raw 'bulk in' data - only relevant packets for bitmap data
+    fd6: raw 'bulk in' data - only relevant packets for device settings
+
+Note that in order to save this captured data, one must do I/O redirection from the shell; to force redirection in super-user mode, call the program as an argument to a `sudo`ed `bash` shell:
+
+    sudo bash -c "./attenload 3>all.dat 4>wave.dat 5>bitmap.dat 6>devsettings.dat"
+
+The saved `.dat` files will be binary, and will contain all headers sent by the oscilloscope - therefore the Perl parser scripts need to be used, to extract the relevant data into usable formats. 
+
+Furthermore, note that `attenload` can also use command line switches, which basically allow for each action to be atomized: 
+
+    -c    * CONNECT
+    -d    * DISCONNECT
+    -w    * WAVEGRAPH/DATA REFRESH
+    -b    * BITMAP REFRESH
+    -s    * GET DEVICE SETTINGS
+    -k    * MB_1 CLICK
+
+Calling `attenload` without arguments, should be equivalent\* to calling it multiple times with the sequence `-c`, `-w`, `-b`, `-s`, `-d` <sup>(_\* apart from the fact that each call of the program, re-claims and re-releases the USB interface on the PC side_)</sup>. The `-k` option is a test of a "virtual click" of the MB_1 (first/top option) button; note that it will not be effectuated, if the oscilloscope is currently "sleeping" (has the screen-saver turned on). <s>Also, there is no "put device settings" to match the "get device settings";</s> the binary `.ssf` file which is obtained by this process would, <s>therefore, only</s> be usable in EasyScope - now the command line switch `-ss file.ssf` can be used to send settings and set them on the scope.
+
+Finally, note that a "connect" is needed before any fetching of data occurs; otherwise corrupt data may be returned, which eventually breaks the parsing scripts. That is why `attengrab.pl` uses  `attenload` without any command line switches; but instead, relies on fetching all relevant data in a single connect/disconnect pass. Note also that `attenload` will always retrieve the wave `.csv` data for two channels of the scope (even if only one channel is turned ON at the time - the screenshot bitmap would otherwise show a single channel for that case). 
+
+NOTE: It seems that it is very difficult for the dev scope, to deliver a wave data capture for Single and Normal modes - if `attengrab` is called without arguments (with "merged" operations). The problem is likely that a "frozen"/still capture seems to be lost/corrupted when "connect" occurs; that is why one should always "connect" from PC first, then capture on scope, and then transfer the capture to PC - but even with this arrangement, it is likely that only the first PC transfer (and not subsequent, repeated ones) will succeed; after this first PC transfer completes, a still capture must be obtained anew. That is why `attengrab.pl` now calls `attenload` with atomic operations. 
+
+### <a id="attengrab"></a>attengrab.pl ###
+
+_uses [Term::ReadKey](http://search.cpan.org/dist/TermReadKey/ReadKey.pm)_
+
+`attengrab.pl` is the main script the user interfaces with (_and the one shown in Terminal on the [screenshot](http://sdaaubckp.sourceforge.net/attenload/attenload.png)_). Besides starting up `eog` as image viewer, at first it asks the user for a short string, used as suffix to the filenames of the captured files (these filenames are otherwise timestamps of the format `YYYYMMDD-HHmmSS` - which should assist with automatic sorting in a file manager window). 
+
+It then enters an endless loop, where it waits for the user to press <kbd>SPACE</kbd>. This action executes a single capture run; and once it is done, `attengrab.pl` goes back to waiting for the next <kbd>SPACE</kbd> keypress. The user exits this loop - and the application - by pressing <kbd>CTRL</kbd>+<kbd>C</kbd>. 
+
+Since `attengrab.pl` calls `attenload`, it should be ran with super-user privileges:
+
+    sudo perl ./attengrab.pl
+
+In a single capture run, `attengrab.pl`:
+
+* Arranges for temporary files
+* Calls the equivalent of  
+   `./attenload 4>wave.tmp 5>bitmap.tmp 6>devsettings.tmp`  
+   (however, through atomic operations, right before respective parsing scripts)
+* Calls `adsparse-wave.pl` to parse `wave.tmp` - which results with a `.csv` file, and a `.gnuplot` script which can plot this data 
+* Calls `adsparse-bitmap.pl` to parse `bitmap.tmp` - which results with a `.bmp` file
+* Calls `adsparse-dvstngs.pl` to parse `devsettings.tmp` - which results with a `.ssf` file
+* Calls `gnuplot` to process the `.gnuplot` script, which results with two files: `_r.png` and `_i.png`
+* Calls ImageMagick's `montage` to create a montage of the `.bmp` with the `_r.png` and `_i.png` images as a single `.png` image
+* Asks for a single line text as a note, and saves the `.note` file as plain text
+* Deletes temporary files
+
+Note that `attengrab.pl` also redirects the `stderr` output of `attenload` and the scripts to `stdout`, to assist with easier logging to file (by using for instance `| tee -i`) - and attempts to pipe this output to the terminal in realtime; additionally, it replaces the standard "bulk transfer (out)..." and "... (in)..." messages from the `attenload` log with angle brackets: `>` and `<`, respectively, to reduce visual clutter. 
+
+The final `.png` image has the oscilloscope screenshot `.bmp` in the top left; the `_i.png` on the top right (to allow easier comparison with the `.bmp`, which it should match); and the `_r.png` image at bottom right. Note that `attengrab.pl` treats the individual `.bmp`, `_i.png` and `_r.png` files as temporary, and so deletes them at the end of a single capture run. Note that now the final image also includes an overlay of captured data of ch1 and the bitmap for comparison, and requires a newer `gnuplot` version (>4.2). This overlay can sometimes appear offset by random amount - especially for T/DIV of 500ns/DIV.
+
+Now there are also keyboard shortcuts (during the capture waiting phase), <kbd>x</kbd> and <kbd>n</kbd>, which allow the trigger holdoff time to be set to maximum 1.5s or minimum 100ns, respectively - for more, see [refresh speed/delay bug](#delaybug). 
+
+
+### <a id="attenrepair"></a>attengrab-repair.pl ###
+
+Since a single capture can easily fail due to [refresh speed/delay bug](#delaybug), `attengrab-repair.pl` allows that failed captures from `attengrab.pl` now have data appended from respective `.CSV` or `.DAV` captures. A use case is:
+
+* Make a single capture on scope
+* Try to retrieve it via `attengrab.pl`, and the waveform data retrieval fails; leave `attengrab.pl` waiting
+* On the scope, with the capture still shown, save a `.CSV` or `.DAV` file on USB thumbdrive (see [sampling and captures](#samplecapt))
+* Complete the capture process via `attengrab.pl`, and make sure the automatic label (first word) in the `.note` corresponds to the base of the file name of the saved `.CSV` or `.DAV` file (at end, the `.csv` will not have any data, and likely the `.bmp` transfer will succeed)
+* Exit `attengrab.pl`
+* Copy the saved `.CSV` or `.DAV` file from USB thumbdrive to the same directory as the failed `.csv`
+* Symlink `attengrab-repair.pl` to the same directory as the failed `.csv`
+* Run `attengrab-repair.pl` in the same directory 
+* `attengrab-repair.pl` re-creates a `.csv` and `.gnuplot` file, and re-runs `gnuplot` to obtain a `.png` file (while saving old files in a new subdirectory `_repair`) 
+
+See inside the `attengrab-repair.pl` script for example command line call. Note that due to oversampling (see [sampling and captures](#samplecapt)), in the lower T/DIV ranges, there will be an obvious difference from that a `.csv` would display (see [repair\_comp\_02.png](http://sdaaubckp.sourceforge.net/attenload/repair_comp_02.png)). When T/DIV is in a range where there is no oversampling, the displayed waveform is the same - except note that `.CSV` is always truncated to what is displayed on the scope screen, unlike `.csv` and `.DAV` (see [repair\_comp\_15.png](http://sdaaubckp.sourceforge.net/attenload/repair_comp_15.png)). One is, thus, probably better off using `.DAV` for repair (the script automatically prefers it if finds both `.DAV` and `.CSV` files in the folder). 
+
+
+### <a id="adswave"></a>adsparse-wave.pl ###
+
+_uses [Number::FormatEng](http://search.cpan.org/~gsullivan/Number-FormatEng-0.01/lib/Number/FormatEng.pm)_
+
+`adsparse-wave.pl` parses the 3 * 37 * 512 = 56832 bytes long binary message of the oscilloscope, generated in response to a request for numeric data (samples) of the oscilloscope capture ("Wave Data Refresh"). From this binary message, settings of both channels are retrieved, as well as all samples representing the data sequence. The script is called from `attenload` in the following manner:
+
+    perl adsparse-wave.pl wave.tmp outfilename.csv 
+
+Since the ADS 1202CL+ has a sampling resolution of 8-bit, all of the channel samples have values in the range [0,255]. Using the retrieved channel settings, `adsparse-wave.pl` converts these to values to Volts, and calculates the sampling indexes as positions in time in seconds. This data is finally ASCII-encoded (plain text), and saved as a comma-separated values list with six columns in the `.csv` file, looking like this:
+
+    # 20121006-224943.csv [generated by /path/to/adsparse-wave.pl]
+    # scope data:
+    # Ch1 V/DIV  : 5e-3 V ( 5mV )
+    # Ch1 Voffset: 600e-6 V ( 600uV ) [3]
+    # Ch2 V/DIV  : 10e-3 V ( 10mV )
+    # Ch2 Voffset: -800e-6 V ( -800uV ) [-2]
+    # Timebase   : 100e-6 s ( 100us )
+    # Time offset: 124e-6 s ( 124us )
+    # Single Btn: 0 (Off); Run/Stop Btn: 1 (Run[G])
+    # Trigger: status= 3 (Trig'd); mode change= 0 (TrigModeSettled)
+    # Real ranges: ch1 (-10.9375e-3,11.40625e-3) ; ch2 (-4.0625e-3,3.75e-3)
+    # Number of samples in data: ch1: 16000 ; ch2: 16000
+    # ------------------------
+    # (sample index), (ch1 raw uint), (ch2 raw uint), (time [s]), (ch1 [V]), (ch2 [V])
+    # ------------------------
+    0,134,126,0,468.75e-6,0
+    1,134,128,1.125e-07,468.75e-6,625e-6
+    2,135,128,2.25e-07,625e-6,625e-6
+    ....
+    
+All of the numeric ASCII values are formatted in engineering scientific notation. Note that columns 1-3, as integer values vs. index - are replicated in columns 4-6, as real voltage values vs. seconds. Also, note that: 
+
+* The number of samples in the data depends on the given time/div setting; for small time/div, less samples (as few as 450) will be returned 
+* the "mode change" currently has unclear meaning - it turns to 1 for a couple of seconds each time "trigger mode" is changed on the scope, and then it settles to 0; possibly, it gives a signal that the scope is not ready to respond with a whole capture at a given time. 
+* <s>The only parameter from the scope which isn't retrieved is the trigger level.</s> (_note that EasyScope 3.0 itself doesn't the trigger level as a numeric parameter; the 'Wave Graph' section merely displays: 'Trig level' as "Trig'd", "Auto", "Ready", etc.._)
+ * Now retrieved by parsing the device settings .ssf file
+
+It should be mentioned here that EasyScope can export this same data as two different formats; one has extension `.wdf` and is a binary format. The other one is ASCII encoded, and has a `.csv` extension - however, it represents a list of numeric ASCII values, separated by CRLF (\r\n):
+
+    2250
+    320
+    1
+    2
+    153
+    151
+    149
+    148
+    146
+    ...
+
+ ... essentially, what appears as a single column file; and as it doesn't contain commas, it cannot be considered a "comma-separated value" file. However, there is a script in `attenload` called `adsparse-waveo.pl`, which produces this kind of format as output. 
+
+Since `adsparse-wave.pl` has access to parsed channel settings, it also produces the `.gnuplot` script, which depends on having some parameters (such as ranges) set explicitly. The `gnuplot` script produces two graph renderings: 
+
+* `_i.png` is the "integer" graph, where the integer values of channels are plotted against sample position index
+    * This rendering also displays the voltage and time offsets, and should match closely the oscilloscope screen rendering
+* `_r.png` is the "real" graph, where the real voltage values of channels are plotted against position in time
+    * This rendering shows both channels on the same scale, with their respective V/div settings calculated in - and as such, voltage offsets are ignored here; however one can more accurately compare magnitudes of signals
+
+Both graphs feature a dual x-axis: one shows position in respect to origin at the bottom left corner of the graph; the other shows position in respect to origin at bottom center of the graph. Both of these `.png` graphs are then used in the final montaged `.png` image - and are otherwise deleted by `attengrab.pl` as temporary files. 
+
+### <a id="adsbitmap"></a>adsparse-bitmap.pl ###
+
+`adsparse-bitmap.pl` parses the 85 * 8 * 512 = 348160 bytes long binary message of the oscilloscope, generated in response to a request for screenshot of the oscilloscope capture ("DSO Bitmap Refresh"). From this binary message, a .bmp format of the image is retrieved. The script is called from `attenload` in the following manner:
+
+    perl adsparse-bitmap.pl bitmap.tmp outfilename.bmp
+
+
+This `.bmp` screenshot is then used in the final montaged `.png` image - and is otherwise deleted by `attengrab.pl` as a temporary file.
+
+
+### <a id="adsdvstngs"></a>adsparse-dvstngs.pl ###
+
+`adsparse-bitmap.pl` parses the 37 * 512 = 18944 bytes long binary message of the oscilloscope, generated in response to a request for device settings of the oscilloscope ("Device Setting Oper Upload"). From this binary message, a 2500 bytes binary `.ssf` file is retrieved. The script is called from `attenload` in the following manner:
+
+    perl adsparse-dvstngs.pl devsettings.tmp outfilename.ssf
+
+There is no parsing as such in this script; the binary blob is simply extracted from the response. As such, the layout and meaning of this file is currently unknown, and thus it would only be usable in EasyScope for setting the oscilloscope (_via "Device Setting Oper Download" - in EasyScope 3.0 the meanings of these buttons seem to have been inverted_) - given that there is no "put device settings" function to match the "get device settings" one, in the current `attenload.c`.
+
+
+### <a id="adscompare"></a>devscripts/adscompare.pl and related ###
+
+See inside the scripts for example command line calls.
+
+`adscompare.pl` expects successful `.csv` captures via `attengrab.pl`, and both `.DAV` and `.CSV` captures (referred to via the `.note`) - and produces a png image comparing channel 1 of the `.csv`, `.DAV` and `.CSV` files. It is used to double-check that the algorithms used in the scripts are correct (see [adscompare.gif](http://sdaaubckp.sourceforge.net/attenload/adscompare.gif); note 5MB).
+
+`allnotes_adscompare.sh` - Bash script, batch caller for `adscompare.pl`.
+
+`adscompare_run_table.pl` expects successful `.csv` captures, and both `.DAV` and `.CSV` captures (referred to via the `.note`) - and produces a html table comparing their parameters (see [adscompare\_run\_table.html](http://sdaaubckp.sourceforge.net/attenload/adscompare_run_table.html)). 
+
+`adscompare_multifile.pl` needs manual changes inside, but allows for generating a series of images comparing the alignment between `.csv`, `.DAV` and `.CSV` data (see [adscomp_mf.gif](http://sdaaubckp.sourceforge.net/attenload/adscomp_mf.gif)).
+
+`adsalign_multifile.pl` needs manual changes inside, but allows for generating a series of images comparing the alignment on a bitmap overlay (see [adsalign_mf.gif](http://sdaaubckp.sourceforge.net/attenload/adsalign_mf.gif)).
+
+
+&nbsp;
+
+## <a id="devnotes"></a>DEVNOTES ##
+
+A great starting point in developing this software was the page [A GNU/Linux driver for the Hauppauge WinTV-PVR-usb2 (pvrusb2)][3], which describes the general approach: 
+
+> What I have done & what you can download here: 
+> I have managed to make the USB device function while connected 
+> to a Linux machine, by sending it the same commands as the 
+> Windows driver sends to it, as determined by the use of the
+> excellent program 
+> "[usbsnoop](http://benoit.papillault.free.fr/usbsnoop/)" by Benoit 
+> Papillault. The effect is the capability to capture MPEG2 from the 
+> Hauppauge device and write it to standard output, which means it 
+> can be saved to a file or to a named pipe
+
+The [pvrusb2][3] page provides a set of code and scripts, which while targetting the older `libusb-0.1`, have still found use in this development - primarily because the sniffing tool used, [SniffUSB 2.0 for Windows XP](http://www.pcausa.com/Utilities/UsbSnoop/), is a newer version of `usbsnoop` which produces the same log format. Furthermore, the users of `pvrusb2` could choose to perform their own USB sniffing, and extract e.g. the firmware themselves using the scripts provided. Modified versions of these and similar scripts can be found in the `devscripts/` subfolder of `attenload`. 
+
+The original `usbreplayprep.pl` script (from `pvrusb2`) parses a `usbsnoop` log, and matches only the USB bulk IN (read <sup>by PC</sup>) and OUT (write <sup>by PC</sup>) transfers; and outputs size, output and direction for each transfer - as well as data for the write transfer - in plain text format. The `attenload` version adds command line options: `-i` for inverse operation (where only read data is displayed); and `-b` (for both) where both read and write data is displayed.
+
+The approach in `pvrusb2` is to use `usbreplayprep.pl` to extract the write data from a `usbsnoop` log into a command sequence text file, which is then played back by a `libusb-0.1` program, `usbreplay.c`. This approach is not applicable here, because in addition to the requirement of exchanging specific message sequences, the ADS 1202CL+ scope also expects them at specific times - and while the `usbsnoop` log has timestamps, the output of `usbreplayprep.pl` loses them. Thus, here `usbreplayprep.pl` is used simply as a log analysis tool - while the specific write commands, and their timing, are hard-coded into `attenload.c`. 
+
+Thus, comparing the USB traffic from a `usbsnoop` log, to traffic caused by `attenload`, becomes necessary. Under Ubuntu 11.04, one can use the built-in `usbmon` functionality. That means, that if our device is listed as `lsusb` as "Bus 002 ...", then we can do the following:
+
+    $ sudo cat /sys/kernel/debug/usb/usbmon/2u
+    f255b000 1974992381 S Co:2:001:0 s 23 03 0004 0002 0000 0
+    f255b000 1974992569 C Co:2:001:0 0 0
+    f05e8980 1975045338 S Ci:2:001:0 s a3 00 0000 0002 0004 4 <
+    f05e8980 1975045383 C Ci:2:001:0 0 4 = 03010000
+    f05e8980 1975101314 S Co:2:001:0 s 23 01 0014 0002 0000 0
+    ....
+
+The format of this output is given in [usbmon.txt](http://www.kernel.org/doc/Documentation/usb/usbmon.txt), and the second column represents timestamps. Thus, we can use the `usbsnoop` and `usbmon` logs as sources of timestamped traffic information - which can then be routed to `gnuplot` for visualisation. Since `usbsnoop` and `usbmon` logs are formatted differently, we will need two separate scripts to extract data from them respectively - and the extracted output from both should be in a single format, suitable as input to `gnuplot`, such as `.csv`. Those scripts can be found in the `devscripts/` subfolder as `usbsnoop2csv.pl` and `usbmon2csv.pl`. Also included there are a `prep_csv_gvis.sh`, and `gvis_csv.gnuplot` script. An example session of the kind is shown below: 
+
+    # obtain usbsnoop logs ...
+    
+    # analyze usbsnoop logs:
+    
+    cat UsbSnoop.log | perl usbreplayprep.pl > outdata.txt
+    cat UsbSnoop.log | perl usbreplayprep.pl -i > indata.txt
+    
+    less indata.txt outdata.txt # ...
+    
+    
+    # ... hardcode results into attenload.c ; 
+    # build attenload ... 
+    
+    # run attenload - while capturing its traffic 
+    # in another terminal with: 
+    
+    sudo cat /sys/kernel/debug/usb/usbmon/2u > usbmon-traffic.log
+    
+    
+    # stop running and capturing ... 
+    
+    
+    # generate .csv data suitable for gnuplot from UsbSnoop.log
+    
+    cat UsbSnoop.log | perl usbsnoop2csv.pl > vis_usbsnoop.csv
+    
+    
+    # generate .csv data suitable for gnuplot from usbmon-traffic.log
+    
+    cat usbmon-traffic.log | perl usbmon2csv.pl > vis_usbmon.csv 
+    
+    
+    # get timestamps, indexes from first line of each csv datafile;
+    # modify gvis_csv.gnuplot script acccordingly
+    bash prep_csv_gvis.sh vis_usbsnoop.csv vis_usbmon.csv gvis_csv.gnuplot
+    
+    # finally, visualise with gnuplot (generates a PDF)
+    gnuplot gvis_csv.gnuplot
+
+A vector graphics format should be chosen for the output of the `gnuplot` script, because it will allow for zooming in and observing details. An output graph by `gnuplot`, for a "connect" message exchange with the scope, could look like this: 
+
+[<img src="http://sdaaubckp.sourceforge.net/attenload/gvis_connect.png" width="500"/>](http://sdaaubckp.sourceforge.net/attenload/gvis_connect.png)
+
+This was obtained after several iterations of the process (where different delays were inserted in the "connect" sequence in `attenload.c`), and represents a state where `usbmon` traffic approaches the `usbsnoop` traffic "closely enough". The red lines represent the `usbsnoop` traffic capture (_writes end at y=2, reads at y=3_) - the green lines the `usbmon` one (_writes end at y=4, reads at y=5_). The plot for data carrying commands, like "bitmap refresh", can be more complicated - and the scope may return corrupt data until the timing is satisfied. However, given that this is bulk transport, there is also some leeway with the timing - since the OS will schedule the packets at its own convenience (depending on what else happens in the OS), and not follow the delay commands from `attenload.c` exactly.
+
+As a final note - don't forget [lfhex](http://freecode.com/projects/lfhex) (Large File HexEditor), [dhex](http://www.dettus.net/dhex/), and [hexdump](http://code.google.com/p/hexdump/) for your everyday hacking :) 
+
+## <a id="author"></a>AUTHOR ##
+
+Originally written by sdaau, oct/nov 2012
+
+
+
+
+
+
+  [1]: http://www.eevblog.com/forum/product-reviews-photos-and-discussion/atten-ads-1102cal-photos/15/ 
+  [2]: http://sourceforge.net/mailarchive/forum.php?thread_name=508FFC03.7040704%40probo.com&forum_name=libusb-devel 
+  [3]: http://pvrusb2.dax.nu/ 
+  [4]: http://libusb.6.n5.nabble.com/attenload-a-libusb-1-0-application-for-fetching-data-from-Atten-oscilloscopes-td5710851.html
+  [5]: http://www.eevblog.com/forum/projects-designs-and-technical-stuff/attenload-please-report-here-if-your-atten-%28or-related%29-scope-works/
+  
+

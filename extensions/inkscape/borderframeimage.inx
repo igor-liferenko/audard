@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+    <_name>Draw Image Border Frame</_name>
+    <id>org.ekips.filter.borderframeimage</id>
+	<dependency type="executable" location="extensions">borderframeimage.py</dependency>
+	<dependency type="executable" location="extensions">inkex.py</dependency>
+	<param name="selectedonly" type="boolean" _gui-text="Draw border only around selected images">true</param>
+    <effect needs-live-preview="false">
+		<object-type>all</object-type>
+                <effects-menu>
+                    <submenu _name="Images"/>
+                </effects-menu>
+    </effect>
+    <script>
+        <command reldir="extensions" interpreter="python">borderframeimage.py</command>
+    </script>
+</inkscape-extension>

@@ -1,0 +1,9 @@
+2013.05.27
+
+* Added improved tools/naiveConvolveWav2.py
+* Added batch script, makeCsvMovie.py, with improved av sync
+* Bugfix for matplotlib 0.99 UTF-8 text
+
+2013.05.26
+
+* Initial release of numStepCsvLogVis

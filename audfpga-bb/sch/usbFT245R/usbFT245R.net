@@ -1,0 +1,199 @@
+# EESchema Netlist Version 1.1 created  2011-03-17T07:18:28 CET
+(
+ ( /4AEC4924 $noname  CONN2 USBCONN2 {Lib=USBCONN2}
+  (    1 N-000015 )
+  (    2 N-000026 )
+  (    3 N-000013 )
+  (    4 GND )
+  (    5 ? )
+ )
+ ( /4AEC22C7 $noname  P1 CONN_15 {Lib=CONN_15}
+  (    1 /ft_p1_D0 )
+  (    2 /ft_p2_D4 )
+  (    3 /ft_p3_D2 )
+  (    4 /ft_p5_D1 )
+  (    5 /ft_p6_D7 )
+  (    6 /ft_p9_D5 )
+  (    7 /ft_p10_D6 )
+  (    8 /ft_p11_D3 )
+  (    9 /ft_p23_RXF# )
+  (   10 /ft_p22_TXE# )
+  (   11 /ft_p13_RD# )
+  (   12 /ft_p14_WR )
+  (   13 /ft_p12_PWREN# )
+  (   14 GND )
+  (   15 VCC )
+ )
+ ( /4AEC203D $noname  R3 10K {Lib=R_MINI}
+  (    1 /ft_p12_PWREN# )
+  (    2 VCC )
+ )
+ ( /4AEC1FDF $noname  C4 100nF {Lib=C}
+  (    1 N-000005 )
+  (    2 GND )
+ )
+ ( /4AEC1F69 $noname  C3 4.7uF {Lib=CP1}
+  (    1 VCC )
+  (    2 GND )
+ )
+ ( /4AEC1F55 $noname  C2 100nF {Lib=C}
+  (    1 VCC )
+  (    2 GND )
+ )
+ ( /4AEC1F37 $noname  C1 100nF {Lib=C}
+  (    1 VCC )
+  (    2 GND )
+ )
+ ( /4AEC1E51 $noname  R2 10K {Lib=R_MINI}
+  (    1 GND )
+  (    2 N-000014 )
+ )
+ ( /4AEC1E21 $noname  R1 4K7 {Lib=R_MINI}
+  (    1 N-000014 )
+  (    2 N-000015 )
+ )
+ ( /4AEC1BFA $noname  CONN1 USBCONN2 {Lib=USBCONN2}
+  (    1 N-000015 )
+  (    2 N-000026 )
+  (    3 N-000013 )
+  (    4 GND )
+  (    5 ? )
+ )
+ ( /4AEB9160 $noname  U1 FT245RL {Lib=FT245RL}
+  (    1 /ft_p1_D0 )
+  (    2 /ft_p2_D4 )
+  (    3 /ft_p3_D2 )
+  (    4 VCC )
+  (    5 /ft_p5_D1 )
+  (    6 /ft_p6_D7 )
+  (    7 GND )
+  (    8 ? )
+  (    9 /ft_p9_D5 )
+  (   10 /ft_p10_D6 )
+  (   11 /ft_p11_D3 )
+  (   12 /ft_p12_PWREN# )
+  (   13 /ft_p13_RD# )
+  (   14 /ft_p14_WR )
+  (   15 N-000013 )
+  (   16 N-000026 )
+  (   17 N-000005 )
+  (   18 GND )
+  (   19 N-000014 )
+  (   20 VCC )
+  (   21 GND )
+  (   22 /ft_p22_TXE# )
+  (   23 /ft_p23_RXF# )
+  (   24 ? )
+  (   25 GND )
+  (   26 GND )
+  (   27 ? )
+  (   28 ? )
+ )
+)
+*
+{ Allowed footprints by component:
+$component C4
+ SM*
+ C?
+ C1-1
+$endlist
+$component C3
+ CP*
+ SM*
+$endlist
+$component C2
+ SM*
+ C?
+ C1-1
+$endlist
+$component C1
+ SM*
+ C?
+ C1-1
+$endlist
+$endfootprintlist
+}
+{ Pin List by Nets
+Net 1 "/ft_p2_D4" "ft_p2_D4"
+ P1 2
+ U1 2
+Net 2 "/ft_p5_D1" "ft_p5_D1"
+ U1 5
+ P1 4
+Net 3 "/ft_p12_PWREN#" "ft_p12_PWREN#"
+ R3 1
+ U1 12
+ P1 13
+Net 4 "VCC" "VCC"
+ U1 20
+ U1 4
+ C3 1
+ C2 1
+ C1 1
+ P1 15
+ R3 2
+Net 5 "" ""
+ C4 1
+ U1 17
+Net 12 "GND" "GND"
+ R2 1
+ CONN1 4
+ P1 14
+ C4 2
+ CONN2 4
+ U1 7
+ C1 2
+ C2 2
+ C3 2
+ U1 21
+ U1 25
+ U1 18
+ U1 26
+Net 13 "" ""
+ CONN2 3
+ U1 15
+ CONN1 3
+Net 14 "" ""
+ R1 1
+ R2 2
+ U1 19
+Net 15 "" ""
+ CONN1 1
+ R1 2
+ CONN2 1
+Net 16 "/ft_p14_WR" "ft_p14_WR"
+ U1 14
+ P1 12
+Net 17 "/ft_p13_RD#" "ft_p13_RD#"
+ U1 13
+ P1 11
+Net 18 "/ft_p22_TXE#" "ft_p22_TXE#"
+ P1 10
+ U1 22
+Net 19 "/ft_p23_RXF#" "ft_p23_RXF#"
+ P1 9
+ U1 23
+Net 20 "/ft_p6_D7" "ft_p6_D7"
+ U1 6
+ P1 5
+Net 21 "/ft_p10_D6" "ft_p10_D6"
+ P1 7
+ U1 10
+Net 22 "/ft_p9_D5" "ft_p9_D5"
+ P1 6
+ U1 9
+Net 23 "/ft_p11_D3" "ft_p11_D3"
+ P1 8
+ U1 11
+Net 24 "/ft_p3_D2" "ft_p3_D2"
+ P1 3
+ U1 3
+Net 25 "/ft_p1_D0" "ft_p1_D0"
+ P1 1
+ U1 1
+Net 26 "" ""
+ CONN1 2
+ U1 16
+ CONN2 2
+}
+#End

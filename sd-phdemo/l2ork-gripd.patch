@@ -1,0 +1,2442 @@
+diff --git a/extensions/gripd/gripdControls.py b/extensions/gripd/gripdControls.py
+index 10ebc1e..684c8e1 100644
+--- a/extensions/gripd/gripdControls.py
++++ b/extensions/gripd/gripdControls.py
+@@ -22,6 +22,10 @@ from string import *
+ from gripdFunctions import *
+ import os
+ import math
++# adding ... => now in gripd_SdControls.py
++#~ import wx
++#~ import wx.lib.agw.knobctrl as KC
++import time
+ 
+ MBUTTONTYPE       = 0
+ MTOGGLETYPE       = 1
+@@ -50,7 +54,7 @@ DEFVSLIDERSIZE    = (30, 80)
+ DEFHSLIDERSIZE    = (80, 30)
+ DEFRECTSIZE       = (200, 200)
+ DEFVGAUGESIZE     = (30, 80)
+-DEFHGAUGESIZE     = (80, 30)
++DEFHGAUGESIZE     = (80, 10) #(80, 30) # make it thinner; if height here is set to 30, then cannot make height smaller than 30!
+ DEFGAUGEMIN       = 0
+ DEFGAUGEMAX       = 100
+ DEFTAGSIZE        = 9
+@@ -143,7 +147,8 @@ class mControl(wxControl):
+         try:
+             self.connection.send(self.sendSymbol + SYMMSGSEP + \
+                                  message + PAIRSEPCHAR)
+-        except:
++        except: # catch *all* exceptions
++            print("Exception: %s"%(sys.exc_info()[0]))
+             pass
+     def PDAction(self, value):
+         self.SetLabel(value)
+@@ -334,6 +339,9 @@ class mControl(wxControl):
+     def eRepaintControlTags(self, event):
+         self.refreshTags()
+ 
++# added - must be included after mControl has been defined:
++from gripd_SdControls import *
++
+ # Class for little box user grabs to move/edit control
+ class controlEditTag(wxPanel):
+     def __init__(self, parentControl, position, color, pointerStyle):
+@@ -476,6 +484,7 @@ class mSlider(mControl, wxSlider):
+         if (style & wxSL_HORIZONTAL):
+             sSize = DEFHSLIDERSIZE
+         if (style & wxSL_VERTICAL):
++            style = style | wx.SL_INVERSE
+             sSize = DEFVSLIDERSIZE
+         if (isinstance(label, list)):
+             try:
+@@ -656,11 +665,16 @@ class mRectangle(mControl, wxStaticBox):
+ # Class for `decorative' text
+ class mText(mControl, wxStaticText):
+     def __init__(self, parentApp, type, id, text, pos, sSym, rSym, conn):
++        # if I do the replacement here, everything \r\n gets annihilated by the time the text is drawn! Only doing the replace below in the __init__ sort of saves it!
++        #~ text = str(text.replace(r'\n',"\n")) # replace encoded \n with actual linefeed
++        # apparently, both \r and \n AND sizing the correct width of the static text is needed for the multiline to work;
++        # strapping in str() is not really needed; wrapping in repr() messes things up!
+         wxStaticText.__init__(self, parentApp.mainFrame.mainPanel,
+-                              id, text, pos, wxDefaultSize,
+-                              wxALIGN_CENTRE | wxST_NO_AUTORESIZE)
++                              id, (text.replace(r'\r\n',"\r\n")), pos, wxDefaultSize,
++                              wxALIGN_CENTRE | wxST_NO_AUTORESIZE | wxTE_MULTILINE)
+         mControl.__init__(self, parentApp, type, sSym, rSym, conn)
+         self.resetBackground = True
++        #print(text, ':'.join(hex(ord(x))[2:] for x in text)) # for some reason, this runs thrice, and each time, there is a level of \n missing - even if it is rendered?
+     def SetValue(self, value):
+         self.SetLabel(value)
+         self.Refresh()
+@@ -838,6 +852,11 @@ class mSpinButton(wxSpinButton, mSlider):
+                               id, pos, wxDefaultSize,
+                               wxSP_VERTICAL)
+         mControl.__init__(self, parentApp, type, sSym, rSym, conn)
++        # must propagate label from main.readControls() as a list which contains additional extra settings;
++        # then must effectuate those settings here in the ctors, else they get lost in 2nd and 3d initialization call during startup!
++        # and with this change, also saving of the min/max works!
++        #print("spin label is {0}".format(label))
++        self.SetRange(int(label[1]), int(label[2]))
+         try:
+             self.SetValue(atoi(label))
+         except:
+@@ -889,6 +908,9 @@ class mSpinButton(wxSpinButton, mSlider):
+             dlg.Destroy()
+         self.setSendSymbol(editValues[4])
+         self.setReceiveSymbol(editValues[5])
++        # well, it turns out 6,7 are colors, and 14,15 are min/max in gpd file?!
++        #print("spin edit: {0}".format(editValues)) # but ok here:
++        # spin edit: [u'263', u'25', u'15', u'26', u'sSpinPat0', u'rSpinPat0', u'4', u'6', wx.Colour(76, 76, 76, 255), wx.Colour(234, 234, 234, 255)]
+         try:
+             self.SetRange(atoi(editValues[6]),
+                           atoi(editValues[7]))
+@@ -1020,6 +1042,7 @@ class mMouseArea(wxPanel, mControl):
+                                1)
+             event.Skip()
+             self.eStartCapture(event)
++        #event.Skip() # must skip now for all, because of mousewatcher
+     def eRightDown(self, event):
+         if (self.editMode):
+             self.parentApp.deselectOthers(self.GetId())
+@@ -1030,12 +1053,14 @@ class mMouseArea(wxPanel, mControl):
+                                event.GetPosition()[1],
+                                2,
+                                1)
++            event.Skip() # must skip now for all, because of mousewatcher
+     def eRightUp(self, event):
+         if (not self.editMode):
+             self.sendMouseInfo(event.GetPosition()[0],
+                                event.GetPosition()[1],
+                                2,
+                                0)           
++            event.Skip() # must skip now for all, because of mousewatcher
+     def eMiddleDown(self, event):
+         if (not self.editMode):
+             self.sendMouseInfo(event.GetPosition()[0],
+@@ -1064,6 +1089,7 @@ class mMouseArea(wxPanel, mControl):
+                                0)
+         self.Disconnect(-1, wxEVT_MOTION)
+         self.Disconnect(-1, wxEVT_LEFT_UP)
++        event.Skip() # must skip now for all, because of mousewatcher
+     def eCaptureMouse(self, event):
+         if (event.LeftIsDown() and self.mouseCaptured):
+             self.sendMouseInfo(event.GetPosition()[0],
+@@ -1104,6 +1130,8 @@ class mGraph(wxPanel, mSlider):
+         return self.min
+     def GetMax(self):
+         return self.max
++    def GetLabel(self): # hack_sd: added
++        return repr(self.getDirection())
+     def getDirection(self):
+         return [self.arrayLength] + self.arrayRawData
+     def PDAction(self, value):
+@@ -1326,18 +1354,42 @@ class mImage(mMouseArea, wxStaticBitmap):
+         EVT_MIDDLE_DOWN(self, self.eMiddleDown)
+         EVT_MIDDLE_UP(self, self.eMiddleUp)
+         EVT_RIGHT_UP(self, self.eRightUp)
++        self.fitbitmap = 0 # whether to fit bitmap to image size or not
++        # monkeypatch - else the superclass function triggers on mouse drag
++        #mMouseArea.sendMouseInfo = self.sendMouseInfo
++        self.buttonNumStr = "-1"
++        self.buttonStatusStr = "-1"
++        self.lastTime=0
++        self.lastXrel=0
+     def sendMouseInfo(self, xPos, yPos, buttonNum, buttonStatus):
++        tnow = time.time() ; tdelta = tnow - self.lastTime ; self.lastTime = tnow
+         xPosStr = repr(xPos)
+         yPosStr = repr(yPos)
++        # hack: get relative position also
++        w, h = self.GetSize()
++        xrel = 1.0*xPos/w ; yrel = 1.0*yPos/h ;
++        dxrel = xrel - self.lastXrel ; self.lastXrel = xrel ; dxtrel = dxrel/tdelta
++        xrelStr = "%.8f"%(xrel) ; yrelStr = "%.8f"%(yrel) ; dxtrelStr = "%.8f"%(dxtrel) # avoid e-129 with repr
++        # unfortunately, the original wants to set buttons only on update, and they are 3rd and 4th;
++        # and if I put bangs during the drag, PD complains: bad type; otherwise in
++        # the `if`, values only update on click
++        # so best - add a message to retrieve width/height? but cannot - since this sends raw data always
++        # so then: remember old valid button status, then send them repeatedly, then filter with change in PD
++        #print((xrelStr, yrelStr))
+         if (buttonNum > -1):
+-            buttonNumStr = repr(buttonNum)
+-            buttonStatusStr = repr(buttonStatus)
++            self.buttonNumStr = repr(buttonNum)
++            self.buttonStatusStr = repr(buttonStatus)
++            # self.sendMessage out of `if` now:
+             self.sendMessage(xPosStr + " " + \
+                              yPosStr + " " + \
+-                             buttonNumStr + " " + \
+-                             buttonStatusStr)
+-        else:
+-            self.sendMessage(xPosStr + " " + yPosStr)
++                         self.buttonNumStr + " " + \
++                         self.buttonStatusStr + " " + \
++                         xrelStr + " " + \
++                         yrelStr + " " + \
++                         dxtrelStr)
++        #else:
++        #    self.sendMessage(xPosStr + " " + yPosStr)
++        #    #~ self.sendMessage(xPosStr + " " + yPosStr + " bang bang " + xrelStr + " " + yrelStr)
+     def resize(self, deltaPos):
+         if (self.editMode):
+             xSize = self.GetSize()[0] + deltaPos[0]
+@@ -1397,6 +1449,8 @@ class mImage(mMouseArea, wxStaticBitmap):
+         self.filename = label
+         self.image = wxImage(self.filename,
+                              wxBITMAP_TYPE_ANY)
++        if self.fitbitmap == 1:
++          self.image.Rescale(self.GetSize()[0], self.GetSize()[1]) # hack
+         tempBitmap = self.image.ConvertToBitmap()
+         self.SetBitmap(tempBitmap)
+         self.setSize((self.image.GetWidth(), self.image.GetHeight()))
+@@ -1411,6 +1465,17 @@ class mImage(mMouseArea, wxStaticBitmap):
+         elif (value[0:4] == "show"):
+             self.Show(True)
+             # self.parentApp.mainFrame.mainPanel.Refresh()
++        elif (value[0:4] == "fitb"):
++            self.fitbitmap = int(value[5])
++        elif (value[0:4] == "rwav"):
++            # a bit dumb, this, but [shell] object in my PD freezes;
++            # so must delegate rendering of wav PNG directly to this
++            wavfn = value[5:]
++            #~ renderedpng = os.popen("gnuplot -e \"fn='{0}'\" /DISKPATHTO/THISDIR/drawwav.gp".format(wavfn)).read()
++            renderedpng = os.popen("/DISKPATHTO/wav2png_git/bin/Linux/wav2png -nl -w 600 -h 400 -f a0c0a0ff -b 000000ff {0} 2>/dev/null".format(wavfn)).read()
++            renderedpng = renderedpng.strip() # must remove trailing \n, else it fails
++            #print("renderedpng is " + renderedpng)
++            self.SetLabel(renderedpng)
+         elif (value[0:6] == "rotate"):
+             theta = atof(value[6:len(value)]) * math.pi / 180
+             tempImage = wxImage(self.filename,wxBITMAP_TYPE_ANY)
+@@ -1476,6 +1541,7 @@ class mImage(mMouseArea, wxStaticBitmap):
+         editor.edit()
+     def eStartCapture(self, event):
+         if (not self.mouseCaptured):
++            self.lastTime = time.time()
+             self.mouseCaptured = True
+             EVT_LEFT_UP(self, self.eEndCapture)
+             EVT_MOTION(self, self.eCaptureMouse)
+@@ -1488,6 +1554,7 @@ class mImage(mMouseArea, wxStaticBitmap):
+                                0)
+         self.Disconnect(-1, wxEVT_MOTION)
+         self.Disconnect(-1, wxEVT_LEFT_UP)
++        event.Skip() # must skip now for all, because of mousewatcher
+ 
+ class editItem:
+     def __init__(self, title, dataType, value):
+diff --git a/extensions/gripd/gripdMain.py b/extensions/gripd/gripdMain.py
+index 1e20cb5..5694e84 100644
+--- a/extensions/gripd/gripdMain.py
++++ b/extensions/gripd/gripdMain.py
+@@ -22,6 +22,12 @@ from gripdControls import *
+ from gripdFunctions import *
+ from socket import *
+ from string import *
++import traceback # hack_sd
++# hack_sd: seemingly needed for Py2.7 (http://stackoverflow.com/questions/21732123/convert-true-false-value-read-from-file-to-boolean)
++def str_to_bool(s):
++  if s == 'True': return True
++  elif s == 'False': return False
++  else: raise ValueError("Cannot covert {} to a bool".format(s))
+ 
+ midi               = 0
+ joystick           = 0
+@@ -70,6 +76,7 @@ ID_SHOWGRID        = 220
+ ID_SNAPTOGRID      = 221
+ ID_ENABLEMIDI      = 222
+ ID_GRAPH           = 223
++#~ ID_ROTKNOBCTRL     = 224
+ COMMANDCHAR        = '!'
+ DEFHOST            = 'localhost'
+ DEFPORT            = 3490
+@@ -116,8 +123,11 @@ else:
+     DEFJOYDEVICE1 = "1"
+     DEFJOYDEVICE2 = "2"    
+     
++#~ import wx.lib.mixins.inspection as wit
++
+ # Main application class
+ class mainApp(wxPySimpleApp):
++#~ class mainApp(wxPySimpleApp, wit.InspectionMixin):
+     def __init__(self, args):
+         self.args = args
+         wxApp.__init__(self, False)
+@@ -128,6 +138,7 @@ class mainApp(wxPySimpleApp):
+     def OnInit(self):
+         global midi
+         global joystick
++        #~ self.Init()  # initialize the inspection tool
+         openAuto = False
+         newPort = 0
+         filename = ""
+@@ -378,6 +389,11 @@ class mainApp(wxPySimpleApp):
+             self.graphIndex = self.graphIndex + 1
+             tControl = mGraph(self, type, -1, label, pos, sSym, 
+                               rSym, self.connection) 
++        #~ if (type == MROTKNOBCTRLTYPE):
++            #~ self.rotKnobCtrlIndex = self.rotKnobCtrlIndex + 1
++            #~ # label here is def'd in ctor, but not used
++            #~ tControl = mRotKnobCtrl(self, type, -1, label, pos, sSym,
++                              #~ rSym, self.connection)
+         if (tControl != NULL):
+             self.controlList.append(tControl)
+         return (tControl)
+@@ -542,11 +558,13 @@ class mainApp(wxPySimpleApp):
+             bColor = params[8]
+             fColor = params[9]
+             try:
++                #print(params[10:16]) # hack_sd; [14] should be 0, but can be False on my system
++                #print(atoi(params[14]) if unicode(params[14]).isnumeric() else 0) # this works
+                 fontSize = atoi(params[10])
+                 fontFam = atoi(params[11])
+                 fontStyle = atoi(params[12])
+                 fontWeight = atoi(params[13])
+-                fontULine = atoi(params[14])
++                fontULine = atoi(params[14]) if unicode(params[14]).isnumeric() else 0
+                 fontFace = params[15]
+             except:
+                 print "Font Error!!!"
+@@ -563,6 +581,11 @@ class mainApp(wxPySimpleApp):
+                 max = atof(params[17])
+                 dir = eval(params[18])
+                 label = [label, min, max, dir]
++            if (type == MSPINBUTTONTYPE): # sd_hack: added, seems to have been missed
++                #print("mspin params {0}".format(params))
++                min = atoi(params[16])
++                max = atoi(params[17])
++                label = [label, min, max]
+             control = self.addControl(type, label, pos, sSym, rSym)
+             control.setSize(size)
+             control.SetBackgroundColour(bColor)
+@@ -682,7 +705,8 @@ class mainApp(wxPySimpleApp):
+                 else:
+                     joyPollTime = DEFJOYPOLLTIME
+                 if (len(otherArgs) > 5 and self.joystickAvailable):
+-                    self.joystickEnabled = atoi(otherArgs[5])
++                    # hack_sd: damn str to bool to int
++                    self.joystickEnabled = atoi(otherArgs[5]) if unicode(otherArgs[5]).isnumeric() else atoi(str(int(str_to_bool(otherArgs[5]))))
+                     if (self.joystickEnabled):
+                         self.startJoystick()
+                     else:
+@@ -691,18 +715,22 @@ class mainApp(wxPySimpleApp):
+                         self.mainFrame.optionsMenu.Check(ID_ENABLEJOY,
+                                                          self.joystickEnabled)
+                 if (len(otherArgs) > 6):
+-                    self.sendKeys = atoi(otherArgs[6])
++                    # hack_sd: damn str to bool to int
++                    self.sendKeys = atoi(otherArgs[6]) if unicode(otherArgs[6]).isnumeric() else atoi(str(int(str_to_bool(otherArgs[6]))))
+                     if (not self.locked):
+                         self.mainFrame.optionsMenu.Check(ID_ENABLEKEY,
+                                                          self.sendKeys)
+                 if (len(otherArgs) > 7):
+                     self.setFrameTitle(otherArgs[7])
+                 if (len(otherArgs) > 8):
+-                    self.alwaysOnTop = atoi(otherArgs[8])
++                    # hack_sd: damn str to bool to int
++                    self.alwaysOnTop = atoi(otherArgs[8]) if unicode(otherArgs[8]).isnumeric() else atoi(str(int(str_to_bool(otherArgs[8]))))
+                 if (len(otherArgs) > 9):
+-                    self.showGrid = atoi(otherArgs[9])
++                    # hack_sd: damn str to bool to int
++                    self.showGrid = atoi(otherArgs[9]) if unicode(otherArgs[9]).isnumeric() else atoi(str(int(str_to_bool(otherArgs[9]))))
+                 if (len(otherArgs) > 10):
+-                    self.snapToGrid = atoi(otherArgs[10])
++                    # hack_sd: damn str to bool to int
++                    self.snapToGrid = atoi(otherArgs[10]) if unicode(otherArgs[10]).isnumeric() else atoi(str(int(str_to_bool(otherArgs[10]))))
+                 if (len(otherArgs) > 11):
+                     self.midiDevice1 = atoi(otherArgs[11])
+                 if (len(otherArgs) > 12):
+@@ -710,7 +738,9 @@ class mainApp(wxPySimpleApp):
+                 if (len(otherArgs) > 13):
+                     self.midiPollTime = atoi(otherArgs[13])
+                 if (len(otherArgs) > 14 and self.midiAvailable):
+-                    self.midiEnabled = atoi(otherArgs[14])
++                    # hack_sd: damn str to bool to int
++                    tstr = otherArgs[14].strip() # may be \r\n here?
++                    self.midiEnabled = atoi(tstr) if unicode(tstr).isnumeric() else atoi(str(int(str_to_bool(tstr))))
+                     if (self.midiEnabled):
+                         self.startMidi()
+                     else:
+@@ -735,7 +765,8 @@ class mainApp(wxPySimpleApp):
+             except Exception:
+                 strerror = "File is invalid"
+                 #FIXME
+-                strerror =  str(sys.exc_info()[1])
++                #~ strerror =  str(sys.exc_info()[1])
++                strerror = str(traceback.format_exc()) # hack_sd
+                 dlg = wxMessageDialog(self.mainFrame, "Unable to open file " + \
+                                       filename + ":\n\n" + strerror,
+                                       "File Error", wxOK)
+@@ -764,6 +795,7 @@ class mainApp(wxPySimpleApp):
+         self.radioButtonIndex = 0
+         self.imageIndex = 0
+         self.graphIndex = 0
++        #~ self.rotKnobCtrlIndex = 0
+     def startJoystick(self):
+         self.joystickEnabled = True
+         self.joyID1 = joystick.openDevice(self.joyDevice1)
+@@ -1244,6 +1276,8 @@ class mainApp(wxPySimpleApp):
+             dlg.Destroy()
+     def eAddGraph(self, event):
+         self.createControl(MGRAPHTYPE, self.graphIndex, "graph")
++    #~ def eAddRotKnobCtrl(self, event):
++        #~ self.createControl(MROTKNOBCTRLTYPE, self.rotKnobCtrlIndex, "rotknobctrl")
+     def eEditMode(self, event):
+         if (not self.locked):
+             newEditMode = self.mainFrame.editMenu.IsChecked(ID_EDITMODE)
+@@ -1521,39 +1555,7 @@ class gripdFrame(wxFrame):
+             self.SetIcon(self.mParent.icon)
+         if (not self.locked):
+             # Menu accelerator stuff
+-            aclList = []
+-            aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL,
+-                                              WXK_DELETE,
+-                                              ID_DELETE))
+-            aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F1,
+-                                              ID_BUTTON))
+-            aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F2,
+-                                              ID_TOGGLE))
+-            aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F3,
+-                                              ID_SPINBUTTON))
+-            aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F4,
+-                                              ID_RADIOBUTTON))        
+-            aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F5,
+-                                              ID_VSLIDER))
+-            aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F6,
+-                                              ID_HSLIDER))
+-            aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F7,
+-                                              ID_VGAUGE))
+-            aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F8,
+-                                              ID_HGAUGE))
+-            aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F9,
+-                                              ID_CHECKBOX))
+-            aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F10,
+-                                              ID_TEXTBOX))
+-            aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F11,
+-                                              ID_MOUSEAREA))
+-            aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F12,
+-                                              ID_RECT))
+-            aclList.append(wxAcceleratorEntry(wxACCEL_ALT, ord("1"),
+-                                              ID_TEXT))
+-            aclList.append(wxAcceleratorEntry(wxACCEL_ALT, ord("2"),
+-                                              ID_IMAGE))
+-            self.SetAcceleratorTable(wxAcceleratorTable(aclList))           
++            self.setAccelerators() # hack - isolated as separate function
+             self.menuBar = wxMenuBar()
+             self.SetMenuBar(self.menuBar)
+             self.createMenu()
+@@ -1623,6 +1625,44 @@ class gripdFrame(wxFrame):
+             self.lock()
+         else:
+             self.unlock()
++    # hack: setAccelerators is now isolated, so can monkeypatch it externally
++    def setAccelerators(self):
++        # Menu accelerator stuff
++        self.aclList = []
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL,
++                                          WXK_DELETE,
++                                          ID_DELETE))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F1,
++                                          ID_BUTTON))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F2,
++                                          ID_TOGGLE))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F3,
++                                          ID_SPINBUTTON))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F4,
++                                          ID_RADIOBUTTON))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F5,
++                                          ID_VSLIDER))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F6,
++                                          ID_HSLIDER))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F7,
++                                          ID_VGAUGE))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F8,
++                                          ID_HGAUGE))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F9,
++                                          ID_CHECKBOX))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F10,
++                                          ID_TEXTBOX))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F11,
++                                          ID_MOUSEAREA))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_NORMAL, WXK_F12,
++                                          ID_RECT))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_ALT, ord("1"),
++                                          ID_TEXT))
++        self.aclList.append(wxAcceleratorEntry(wxACCEL_ALT, ord("2"),
++                                          ID_IMAGE))
++        #~ self.aclList.append(wxAcceleratorEntry(wxACCEL_ALT, ord("4"),
++                                          #~ ID_ROTKNOBCTRL))
++        self.SetAcceleratorTable(wxAcceleratorTable(self.aclList))
+     def createMenu(self):
+         self.fileMenu = wxMenu()
+         self.fileMenu.Append(ID_NEW, "&New\tCtrl-N", "Clear current GUI")
+@@ -1673,6 +1713,7 @@ class gripdFrame(wxFrame):
+         self.addMenu.Append(ID_TEXT, "&Text\tAlt-1", "Add text")
+         self.addMenu.Append(ID_IMAGE, "&Image\tAlt-2", "Add an image")
+         self.addMenu.Append(ID_GRAPH, "&Graph\tAlt-3", "Add a graph")
++        #~ self.addMenu.Append(ID_ROTKNOBCTRL, "&RotKnobCtrl\tAlt-4", "Add a RotKnobCtrl")
+         self.editMenu.AppendMenu(ID_ADD, "&Add", self.addMenu)
+         self.editMenu.Append(ID_EDIT, "&Edit", "Edit selected controls")
+         self.editMenu.Append(ID_DELETE, "&Delete", "Delete selected controls")
+@@ -1761,6 +1802,7 @@ class gripdFrame(wxFrame):
+         EVT_MENU(self, ID_IMAGE, self.mParent.eAddImage)        
+         EVT_MENU(self, ID_MOUSEAREA, self.mParent.eAddMouseArea)
+         EVT_MENU(self, ID_GRAPH, self.mParent.eAddGraph)
++        #~ EVT_MENU(self, ID_ROTKNOBCTRL, self.mParent.eAddRotKnobCtrl)
+         EVT_MENU(self, ID_EDITMODE, self.mParent.eEditMode)
+         EVT_MENU(self, ID_EDIT, self.mParent.eEditControl)
+         EVT_MENU(self, ID_DELETE, self.mParent.eDeleteControl)
+@@ -1925,6 +1967,10 @@ class gripdFrame(wxFrame):
+         wxFrame.Destroy(self)
+ 
+            
++
++# added: patch here mainApp and gripdFrame, to add sdcontrols
++from gripd_SdMainPatch import *
++
+ # Classes used by mainFrame
+ # Class to poll for connection to server
+ class connectionTimer(wxTimer):
+diff --git a/extensions/gripd/gripd_SdControls.py b/extensions/gripd/gripd_SdControls.py
+new file mode 100644
+index 0000000..adf5d63
+--- /dev/null
++++ b/extensions/gripd/gripd_SdControls.py
+@@ -0,0 +1,1259 @@
++
++import wx
++import wx.lib.agw.knobctrl as KC
++import wx.gizmos as gizmos
++import math
++# this file must be imported _after_ mControl has been defined!?:
++# not just that: have to refer via import _and_ import after mControl has been defined in gripdControls.py:
++from gripdControls import mControl as mControl
++
++MROTKNOBCTRLTYPE   = 16
++MSEQINTERFACETYPE  = 17
++MKNOBCTRLPLNTYPE   = 18
++MLEDNUMCTRLTYPE    = 19
++MCOMBOBOXTYPE      = 20
++MMOUSEWATCHTYPE    = 21
++MCHOICETYPE        = 22
++
++# adding
++TWOPI = 2*math.pi
++THREEPI = 3*math.pi
++THREEPIHALF = 3*math.pi/2
++sign = lambda x: math.copysign(1, x)
++#~ import pprint # debug
++class RotKnobCtrl(KC.KnobCtrl):
++  def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition,
++               size=wx.DefaultSize,
++               agwStyle=KC.KC_BUFFERED_DC):
++    super(RotKnobCtrl, self).__init__(parent, id, pos, size, agwStyle)
++    self.timer = wx.Timer(self)
++    self.Bind(wx.EVT_TIMER, self.timerUpdate, self.timer)
++    self._fps = 25
++    self._rpmspeed = 33
++    # [round = 2pi[360]] round/min = rounds/60sec = rounds/60000msec
++    # 33/60 = 0.55 rounds/sec; 33/60000 = 0.00055 rounds/msec
++    # radians per frame = rounds per frame * 2PI:
++    self._rapf = self._rpmspeed/(60.0*self._fps)*TWOPI # (self._rpmspeed/60)*(1.0/self._fps)
++    # "click" angles:
++    self._old_cang = 0.0
++    self._cang = 0.0
++    # "dragging" (mouseclicked) radial velocity
++    self._dradvel = 0.0
++    self._lastdradvel = 0.0
++    self._isSpinning = 0
++    self._dragfrict = 0.55
++    self._radvelnow = 0
++    self._radvelprev = 0
++    self._isAnimating = 0
++    self._max_dradvel = math.pi/2
++    self._astep = 0
++    self._defaultrpm = 33
++    self._drapf = self._defaultrpm/(60.0*self._fps)*TWOPI
++    self._astepsc = 0 # scaled
++  def DrawInsetCircle(self, dc, pencolour):
++    super(RotKnobCtrl, self).DrawInsetCircle(dc, pencolour) # this draws the original inset as-is
++    p1 = wx.Pen(self.OffsetColour(pencolour, -70), 1) # second arg: linewidth
++    dc.SetPen(p1)
++    cx, cy = self._knobcenter
++    pt1 = self.Width/2
++    pt2 = self.Height/2
++    #dc.DrawArcPoint(pt1, pt2, (cx, cy)) # fails, even if copied ?!
++    dc.DrawLine(pt1, pt2, cx, cy)       # draws fine !?
++    if self._state == 2: # draw "helper" line on mouse press
++      dc.SetPen(wx.Pen(wx.NamedColour("white"), 1))
++      cx, cy = self._mousePosition
++      dc.DrawLine(pt1, pt2, cx, cy)
++  def DrawDiagonalGradient(self, dc, size):
++    col1 = self._startcolour
++    r1, g1, b1 = int(col1.Red()), int(col1.Green()), int(col1.Blue())
++    dc.SetPen(wx.TRANSPARENT_PEN)
++    dc.SetBrush(wx.Brush(col1, wx.SOLID))
++    sizex, sizey = size
++    #~ dc.DrawCircle(self.Width/2, self.Height/2, sizex)
++    dc.DrawRectangle(0, 0, sizex, sizey) # same effect as the dc.DrawCircle (prob. faster)
++  def RunRotation(self, doRun):
++    if doRun == 0:
++      #~ self.timer.Stop()
++      self._isSpinning = 0
++    else:
++      if not(self.timer.IsRunning()): self.RunAnimation(1)
++      self._isSpinning = 1
++  def RunAnimation(self, doAnimate):
++    if doAnimate == 0:
++      self.timer.Stop()
++      self._isAnimating = 0
++    else:
++      self._isAnimating = 1
++      msecs = 1000.0/self._fps
++      print("msecs {0}; rapf {1}".format(msecs, self._rapf))
++      self.timer.Start(milliseconds=msecs, oneShot=False)
++  def SetRPM(self, inRPM):
++    self._rpmspeed = inRPM
++    self._rapf = self._rpmspeed/(60.0*self._fps)*TWOPI
++  def SetDefaultRPM(self, inRPM):
++    self._defaultrpm = inRPM
++    self._drapf = self._defaultrpm/(60.0*self._fps)*TWOPI
++  def OnMouseEvents(self, event):
++    if self._state == 0 and event.Entering():
++      self._state = 1
++    elif self._state >= 1 and event.Leaving():
++      self._state = 0
++    elif self._state == 1 and event.LeftDown():
++      self._state = 2
++      self._mousePosition = event.GetPosition()
++      self.SetTrackPositionB(1)
++    elif self._state == 2 and event.LeftIsDown():
++      self._mousePosition = event.GetPosition()
++      if not(self.timer.IsRunning()): self.recalcAngleDraw()
++    elif self._state == 2 and event.LeftUp():
++      self._state = 1
++      self.UpdateDrawing() # also trigger here
++  def SetTrackPositionB(self, isFirstClick):
++    """ Used internally. """
++    if self._state != 2:
++      self._dradvel = 0
++      return
++    width, height = self.GetSize()
++    x = self._mousePosition.x
++    y = self._mousePosition.y
++    ang = self.GetAngleFromCoord(x, y)
++    self._cang = ang
++    if isFirstClick == 1: self._old_cang = self._cang
++    self._dradvel = TWOPI-self._old_cang+self._cang if (self._cang < math.pi and self._old_cang > THREEPIHALF) else (-TWOPI-self._old_cang+self._cang if (self._old_cang < math.pi and self._cang > THREEPIHALF) else self._cang - self._old_cang)
++    if (self._state == 2 and self._dradvel == self._lastdradvel): self._dradvel = 0 # self._state < 2 above; self._max_dradvel
++    self._lastdradvel = self._dradvel
++    self._old_cang = self._cang
++  def recalcAngleDraw(self):
++    self.SetTrackPositionB(0)
++    radvelcontrib = (self._rapf*(1-self._dragfrict) if (self._isSpinning==1 and self._state < 2) else 0) + self._dradvel
++    self._radvelprev = self._radvelnow
++    self._radvelnow = radvelcontrib + (self._radvelnow*self._dragfrict if self._state < 2 else 0)
++    self._astep = (self._radvelnow+self._radvelprev)/2
++    self._astepsc = self._astep/self._drapf
++    #print("B %.2f %.2f %.2f %.2f %.4f"%(self._cang, self._old_cang, self._dradvel, self._radvelnow, self._astepsc))
++    self._old_ang = (self._old_ang + self._astep) % TWOPI
++    event = KC.KnobCtrlEvent(KC.wxEVT_KC_ANGLE_CHANGING, self.GetId())
++    event.SetEventObject(self)
++    event.SetOldValue(self.GetValue())
++    if self.GetEventHandler().ProcessEvent(event):
++      # the caller didn't use event.Skip()
++      return
++    event.SetEventType(KC.wxEVT_KC_ANGLE_CHANGED)
++    self.UpdateDrawing()
++    self.GetEventHandler().ProcessEvent(event)
++  def timerUpdate(self, event):
++    self.recalcAngleDraw()
++  def SetForegroundColour(self, strcolour): # override
++    mycolour = wx.Colour()
++    mycolour.SetFromName(strcolour)
++    self._startcolour = mycolour
++    self.UpdateDrawing()
++  def GetForegroundColour(self): # override
++    return self._startcolour
++
++## ----------------------------------------------------
++## ----------------------------------------------------
++
++import wx.lib.agw.labelbook as LB
++from wx.lib.agw.fmresources import *
++import wx.lib.ogl as ogl
++# these just to overload font and size of LabelContainer for LabelBook:
++import wx.lib.agw.artmanager as AM
++INB_BOLD_TAB_SELECTION = 16384
++
++"""
++Class for rectangular "MIDI" note shape, and its event handler
++"""
++
++# simulating bottom-left anchor with this one:
++class NoteRectShape(ogl.RectangleShape):
++  def __init__(self, parent, w = 0.0, h = 0.0):
++    super(NoteRectShape, self).__init__(w, h)
++    self.SetCentreResize(False) # do not resize from center
++    self.parent = parent
++    self.note = -1 # "pitch" == row number in grid, 0-based
++    self.step = -1 #         == column number in grid, 0-based
++    self.rlen = -1.0 # length relative to gridsize
++    self.velo = 0.5 # velocity (relative, 0.0 to 1.0) - draw relative to gridsize (one grid square only)
++    self.velbrush = wx.Brush(wx.NamedColour("white"))
++    self.isVeloChanging = False
++    self.cvelpen = wx.Pen(wx.NamedColour("grey"))
++    self.chevent = SeqChangedEvent(myEVT_SEQCHANGED, parent.parent.GetId())
++    self.justadded = False
++  def getLeftAnchorCorrections(self, gs, w=None, h=None): # width, height, gridsize
++    if ((w is None) and (h is None)): w, h = self.GetBoundingBoxMax()
++    cx = (w/2)-int((w/2)/gs)*gs ; cx = -(gs-cx) if cx>(gs/2) else cx;
++    # this cy seems to be the best marquee dragger, but unfortunately, it also snaps to upper left corner
++    cy = (h/2)-int((h/2)/gs)*gs ; cy = (gs-cy) if cy>(gs/2) else -cy;
++    return cx , -cy
++  def calcNoteStepRlen(self):
++    w, h = self.GetBoundingBoxMax()
++    x, y = self.GetX(), self.GetY()
++    self.rlen = 1.0*w/self.parent.gridsize
++    self.note = 1.0*(y - self.parent.chhp)/self.parent.gridsize # column header height
++    self.step = 1.0*(x - self.parent.rhwp)/self.parent.gridsize # row header width
++  def OnBeginDragLeft(self, x, y, keys = 0, attachment = 0):
++    #global DragOffsetX, DragOffsetY
++    if self._sensitivity & ogl.OP_DRAG_LEFT != ogl.OP_DRAG_LEFT:
++      if self._parent:
++        hit = self._parent.HitTest(x, y)
++        if hit:
++          attachment, dist = hit
++        self._parent.GetEventHandler().OnBeginDragLeft(x, y, keys, attachment)
++      return
++    w, h = self.GetBoundingBoxMax()
++    self.predragx = self._xpos ; self.predragy = self._ypos
++    # xx+w/2, yy-h/2 so it anchors bottom left!?
++    ogl.DragOffsetX = self._xpos - x
++    ogl.DragOffsetY = self._ypos - y
++    dc = wx.ClientDC(self.GetCanvas())
++    self.GetCanvas().PrepareDC(dc)
++    # New policy: don't erase shape until end of drag.
++    # self.Erase(dc)
++    xx = x + ogl.DragOffsetX
++    yy = y + ogl.DragOffsetY
++    xx, yy = self._canvas.Snap(xx, yy)
++    dc.SetLogicalFunction(ogl.OGLRBLF)
++    dottedPen = wx.Pen(wx.Colour(0, 0, 0), 2, wx.SHORT_DASH)
++    dc.SetPen(dottedPen)
++    dc.SetBrush(wx.TRANSPARENT_BRUSH)
++    #~ print("%.2f %.2f"%(w/self.parent.gridsize, h/self.parent.gridsize))
++    self.cx, self.cy = self.getLeftAnchorCorrections(self.parent.gridsize, w, h)
++    self.GetEventHandler().OnDrawOutline(dc, xx+self.cx, yy+self.cy, w, h)
++    self._canvas.CaptureMouse()
++  def OnDragLeft(self, draw, x, y, keys = 0, attachment = 0):
++    #super(NoteRectShape, self).OnDragLeft(draw, x, y, keys, attachment)
++    # must include the whole thing, to be able to change strokewidth - and to adjust bottom left anchor snapping
++    if self._sensitivity & ogl.OP_DRAG_LEFT != ogl.OP_DRAG_LEFT:
++      if self._parent:
++        hit = self._parent.HitTest(x, y)
++        if hit:
++          attachment, dist = hit
++        self._parent.GetEventHandler().OnDragLeft(draw, x, y, keys, attachment)
++      return
++    w, h = self.GetBoundingBoxMax()
++    dc = wx.ClientDC(self.GetCanvas())
++    self.GetCanvas().PrepareDC(dc)
++    dc.SetLogicalFunction(ogl.OGLRBLF)
++    dottedPen = wx.Pen(wx.Colour(0, 0, 0), 2, wx.SHORT_DASH)
++    dc.SetPen(dottedPen)
++    dc.SetBrush(wx.TRANSPARENT_BRUSH)
++    xx = x + ogl.DragOffsetX
++    yy = y + ogl.DragOffsetY
++    xx, yy = self._canvas.Snap(xx, yy) # OnEndDragLeft has snap too; _after_ it would call registered event listeners; killing snap here doesn't look good
++    self.GetEventHandler().OnDrawOutline(dc, xx+self.cx, yy+self.cy, w, h)
++  # now must overload this too, to cancel the snap at end of drag: which is the placement
++  def OnEndDragLeft(self, x, y, keys = 0, attachment = 0):
++    if self._canvas.HasCapture():
++      self._canvas.ReleaseMouse()
++    if self._sensitivity & ogl.OP_DRAG_LEFT != ogl.OP_DRAG_LEFT:
++      if self._parent:
++        hit = self._parent.HitTest(x, y)
++        if hit:
++          attachment, dist = hit
++        self._parent.GetEventHandler().OnEndDragLeft(x, y, keys, attachment)
++      return
++    dc = wx.ClientDC(self.GetCanvas())
++    self.GetCanvas().PrepareDC(dc)
++    dc.SetLogicalFunction(wx.COPY)
++    xx = x + ogl.DragOffsetX
++    yy = y + ogl.DragOffsetY
++    xx, yy = self._canvas.Snap(xx, yy) # snaps here
++    # New policy: erase shape at end of drag.
++    self.Erase(dc)
++    w, h = self.GetBoundingBoxMax()
++    # now not just xx+w/2, yy-h/2 so it anchors bottom left!
++    self.Move(dc, xx+self.cx, yy+self.cy)
++    if self._canvas and not self._canvas.GetQuickEditMode():
++      self._canvas.Redraw(dc)
++    self.calcNoteStepRlen() # at end of operation
++    if ((self._xpos != self.predragx) or (self._ypos != self.predragy)):
++      self.parent.parent.GetEventHandler().ProcessEvent(self.chevent)
++  def OnSizingBeginDragLeft(self, pt, x, y, keys = 0, attachment = 0):
++    # simply prevent drag sizing, if the control point is not horizontal;
++    # (but Begin alone is not enough, have to overload the others, too)
++    if (pt._type != ogl.CONTROL_POINT_HORIZONTAL): return
++    self.predragw, dontcare = self.GetBoundingBoxMax()
++    super(NoteRectShape, self).OnSizingBeginDragLeft(pt, x, y, keys, attachment)
++  def OnSizingDragLeft(self, pt, draw, x, y, keys = 0, attachment = 0):
++    if (pt._type != ogl.CONTROL_POINT_HORIZONTAL): return
++    super(NoteRectShape, self).OnSizingDragLeft(pt, draw, x, y, keys, attachment)
++  def OnSizingEndDragLeft(self, pt, x, y, keys = 0, attachment = 0):
++    if (pt._type != ogl.CONTROL_POINT_HORIZONTAL): return
++    super(NoteRectShape, self).OnSizingEndDragLeft(pt, x, y, keys, attachment)
++    self.calcNoteStepRlen() # at end of operation
++    w, dontcare = self.GetBoundingBoxMax()
++    if (self.predragw != w):
++      self.parent.parent.GetEventHandler().ProcessEvent(self.chevent)
++  def DoDelete(self):
++    parent=self.parent # SeqTrackPanel; parent.parent is SequencerInterface
++    parent.noteshapes.remove(self)
++    parent.parent.GetEventHandler().ProcessEvent(self.chevent)
++    self.Delete()
++    parent.Refresh(False)
++  def OnDraw(self, dc):
++    super(NoteRectShape, self).OnDraw(dc) # draw the usual...
++    # ... then draw velocity "stick":
++    w, h = self.GetBoundingBoxMax()
++    x, y = self.GetX(), self.GetY()
++    velh = round(self.velo*self.parent.gridsize)
++    llcx, llcy = x-w/2, y-h/2+(self.parent.gridsize-velh) # lower left corner coords
++    dc.SetPen(wx.TRANSPARENT_PEN); dc.SetBrush(self.velbrush)
++    dc.DrawRectangle(llcx+3, llcy, 2, velh)
++    if self.isVeloChanging:
++      dc.SetPen(self.cvelpen); dc.SetBrush(wx.TRANSPARENT_BRUSH)
++      dc.DrawRectangle(llcx+2, y+h/2, 4, self.cveldiff)
++  def OnBeginDragRight(self, x, y, keys = 0, attachment = 0):
++    self.isVeloChanging = True
++    self.predragvelo = self.velo
++    self.calcDragRight(x,y)
++    canvas = self.GetCanvas(); dc = wx.ClientDC(canvas); canvas.PrepareDC(dc)
++    self.Select(False, dc); canvas.Refresh(False)
++  def OnDragRight(self, draw, x, y, keys = 0, attachment = 0):
++    self.calcDragRight(x,y)
++    canvas = self.GetCanvas(); dc = wx.ClientDC(canvas); canvas.PrepareDC(dc)
++    self.Select(False, dc); canvas.Refresh(False)
++  def OnEndDragRight(self, x, y, keys = 0, attachment = 0):
++    self.calcDragRight(x,y)
++    self.velo = -1.0*self.cveldiff/self.parent.gridsize
++    self.isVeloChanging = False
++    if (self.predragvelo != self.velo):
++      self.parent.parent.GetEventHandler().ProcessEvent(self.chevent)
++    canvas = self.GetCanvas(); dc = wx.ClientDC(canvas); canvas.PrepareDC(dc)
++    self.Select(False, dc); canvas.Refresh(False)
++  def calcDragRight(self, x, y):
++    # gsh half gridsize
++    self.cveldiff = (y-(self._ypos+self.parent.gsh))
++    self.cveldiff = -self.parent.gridsize if (self.cveldiff < -self.parent.gridsize) else (0 if (self.cveldiff > 0) else self.cveldiff) ;
++
++# copyfrom OGL.pyl; modded
++class NoteRectEvtHandler(ogl.ShapeEvtHandler):
++  def __init__(self, parent): #
++    ogl.ShapeEvtHandler.__init__(self)
++    self.parent = parent
++  def UpdateStatusBar(self, shape):
++    x, y = shape.GetX(), shape.GetY()
++    width, height = shape.GetBoundingBoxMax()
++    self.parent.Refresh(False) # do here, to redraw the background after a drag move, or scale of shape
++    #~ print("Pos: (%d, %d)  Size: (%d, %d)" % (x, y, width, height))
++  def OnLeftClick(self, x, y, keys=0, attachment=0):
++    # note: to deselect a selected shape, don't click the background, but click the shape again
++    shape = self.GetShape()
++    if (keys & ogl.KEY_SHIFT):
++      # delete on shift-click - there is some flickering of cursor on deletion, even with callAfter, but it's really small, so nevermind
++      wx.CallAfter(shape.DoDelete)
++      return # bail out
++    canvas = shape.GetCanvas()
++    dc = wx.ClientDC(canvas)
++    canvas.PrepareDC(dc)
++    if shape.justadded: # this to keep selection when first adding
++      shape.justadded = False
++    else:
++      if shape.Selected():
++        shape.Select(False, dc)
++        #canvas.Redraw(dc)
++        canvas.Refresh(False)
++      else:
++        redraw = False
++        shapeList = canvas.GetDiagram().GetShapeList()
++        toUnselect = []
++        for s in shapeList:
++          if s.Selected():
++            # If we unselect it now then some of the objects in
++            # shapeList will become invalid (the control points are
++            # shapes too!) and bad things will happen...
++            toUnselect.append(s)
++        shape.Select(True, dc)
++        if toUnselect:
++          for s in toUnselect:
++            s.Select(False, dc)
++          ##canvas.Redraw(dc)
++          canvas.Refresh(False)
++    self.UpdateStatusBar(shape)
++  def OnEndDragLeft(self, x, y, keys=0, attachment=0):
++    shape = self.GetShape()
++    width, height = shape.GetBoundingBoxMax()
++    # xx+w/2, yy-h/2 so it anchors bottom left!? cannot from here
++    ogl.ShapeEvtHandler.OnEndDragLeft(self, x, y, keys, attachment)
++    if not shape.Selected():
++      self.OnLeftClick(x, y, keys, attachment)
++    self.UpdateStatusBar(shape)
++  def OnSizingEndDragLeft(self, pt, x, y, keys, attch):
++    ogl.ShapeEvtHandler.OnSizingEndDragLeft(self, pt, x, y, keys, attch)
++    self.UpdateStatusBar(self.GetShape())
++  def OnMovePost(self, dc, x, y, oldX, oldY, display):
++    shape = self.GetShape()
++    ogl.ShapeEvtHandler.OnMovePost(self, dc, x, y, oldX, oldY, display)
++    self.UpdateStatusBar(shape)
++    if "wxMac" in wx.PlatformInfo:
++      shape.GetCanvas().Refresh(False)
++  #~ def OnRightClick(self, *dontcare):
++    #~ #self.log.WriteText("%s\n" % self.GetShape())
++    #~ print("OnRightClick")
++
++"""
++Instead of a radio button, which calls too many onPaint; a custom drawing class
++"""
++class SeqCircle:
++  def __init__(self, parent, pos=(0,0), size=(2,2), name="X"):
++    self.pos = pos
++    self.size = size
++    self.shown = True
++    self.text = None
++    self.name = name
++    self.bgbrush = wx.Brush(wx.Colour(64,64,64))
++    self.isSelected = False
++  def HitTest(self, pt):
++    rect = self.GetRect()
++    return rect.InsideXY(pt.x, pt.y)
++  def GetRect(self):
++    return wx.Rect(self.pos[0], self.pos[1],
++            self.size[0], self.size[1])
++  def Draw(self, dc):
++    hfsize = self.size[0]/2 ; qtsize = int(0.6*hfsize) # expect size[0] == [1]
++    dc.SetPen(wx.TRANSPARENT_PEN) ; dc.SetBrush(self.bgbrush)
++    dc.DrawCircle(self.pos[0]+hfsize, self.pos[1]+hfsize, hfsize-2)
++    if self.isSelected:
++      dc.SetBrush(wx.RED_BRUSH) ; dc.DrawCircle(self.pos[0]+hfsize, self.pos[1]+hfsize, qtsize-2)
++
++
++"""
++The "MIDI" sequencer panel that draws the grid, and holds the notes, for each track tab
++Note: since we now draw the grid dynamically, all elements must be expressed in terms of gridsize = step;
++Also, if the grid is quadratic, can calc it either via total width or total height - will go with width
++so we have:
++rowheader + 16 steps (columns) = total width
++  let rowheader = 4 steps; total width = 20 steps
++colheader + 5 notes (rows) + bottom = total height;
++  let colheader = 1 steps; total height >= 6 steps
++"""
++
++# first a class for an event dispatched/raised when radio button sequencer is pressed
++
++myEVT_SEQRADSETSTEP = wx.NewEventType()
++EVT_SEQRADSETSTEP = wx.PyEventBinder(myEVT_SEQRADSETSTEP, 1)
++class SeqRadSetStepEvent(wx.PyCommandEvent):
++  def __init__(self, evtType, id, step = None):
++    wx.PyCommandEvent.__init__(self, evtType, id)
++    self.step = step
++  def SetStep(self, val):
++    self.step = val
++  def GetStep(self):
++    return self.step
++
++# a class for an event dispatched/raised when a change in the sequence has been made
++myEVT_SEQCHANGED = wx.NewEventType()
++EVT_SEQCHANGED = wx.PyEventBinder(myEVT_SEQCHANGED, 1)
++class SeqChangedEvent(wx.PyCommandEvent):
++  def __init__(self, evtType, id, step = None):
++    wx.PyCommandEvent.__init__(self, evtType, id)
++    # no need for methods, etc
++
++class SeqTrackPanel(ogl.ShapeCanvas, wx.Panel):
++  def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize, style=0, name="SeqTrackPanel", nSteps=16):
++    super(SeqTrackPanel, self).__init__(parent, id, pos, size, style, name)
++    self.parent = parent
++    self.nNotes = 5
++    self.nSteps = nSteps
++    self.radiobtns = []
++    for ix in xrange(0, self.nSteps):
++      self.radiobtns.append(SeqCircle(self,name=str(ix)))
++    self.radiobtns[0].isSelected = True
++    self.gridsize = 20 # in pixels; starter
++    self.oldgridsize = self.gridsize
++    self.rhw = 4 # in gridsize units; row header width
++    self.rtw = 1 # in gridsize units; row trailer width
++    self.chh = 1 # in gridsize units; column header height
++    self.cth = 1 # in gridsize units; column trailer height
++    # must have these (w. Diagram) if using ogl.ShapeCanvas:
++    self.diagram = ogl.Diagram()
++    self.SetDiagram(self.diagram)
++    self.diagram.SetCanvas(self)
++    self.SetDiagramGridSnap()
++    # initialize array of shapes (== "MIDI" notes)
++    self.noteshapes = []
++    self.SetNoteShapeColour()
++    self.SetNoteVeloColour()
++    self.lastnoteadded = None
++    self.BRSH_W = wx.Brush(wx.NamedColour("white"))
++    self.BRSH_B = wx.Brush(wx.NamedColour("black"))
++    self.PEN_B = wx.Pen(wx.NamedColour("black"))
++    self.lighterbgc = wx.Colour(wx.TRANSPARENT)
++    self.BRSH_LIGHTERBGC = wx.Brush(self.lighterbgc)
++    self.Bind(wx.EVT_SIZE, self.OnSize)
++    self.Bind(wx.EVT_PAINT, self.OnPaint)
++    self.Bind(wx.EVT_LEFT_DOWN, self.OnMousePress)
++  def SetNoteShapeColour(self, incolor=wx.NamedColour("#505050")): # gray
++    self.nscol = incolor
++    self.nsbrush = wx.Brush(self.nscol)
++  def SetNoteVeloColour(self, incolor=wx.NamedColour("orange")):
++    self.velcol = incolor
++    self.velbrush = wx.Brush(self.velcol)
++    self.cvelpen = wx.Pen(wx.Colour(int(0.7*self.velcol.Red()), int(0.7*self.velcol.Green()), int(0.7*self.velcol.Blue())))
++  def OnMousePress(self, event):
++    mx, my = event.GetPosition()
++    isXin = ((mx >= self.rhwp) and (mx <= self.hpwm))
++    isYin = ((my >= self.chhp) and (my <= self.vphm))
++    #~ print("x:{0} > {1} < {2}: {3}|y:{4} > {5} < {6}: {7}".format(self.rhwp, mx, self.hpwm, isXin, self.chhp, my, self.vphm, isYin))
++    onExisting = False
++    for nshape in self.noteshapes:
++      nx, ny = nshape.GetX(), nshape.GetY() ; nw, nh = nshape.GetBoundingBoxMax()
++      #~ print("{0}: {1},{2},{3},{4} {5},{6},{7}".format(nshape._id, nx, ny, nw, nh, nshape.step, nshape.note, nshape.rlen))
++      if nshape.HitTest(mx, my):
++        #~ print("hit on {0}".format(nshape._id))
++        onExisting = True
++        break
++      for handle in nshape._controlPoints:
++        if handle.HitTest(mx, my):
++          #~ print("hit on {0} cp".format(nshape._id))
++          onExisting = True
++          break
++      if onExisting: break
++    if onExisting: event.Skip() # must have Skip(), to have the handles show on selection
++    else:
++      # since not on existing - disable previous selections:
++      self.DeselectNoteShapes()
++      if (isXin and isYin and not(onExisting)):
++        tid = len(self.noteshapes)
++        nw, nh = self.gridsize, self.gridsize
++        ctrlMod = False
++        if event.ControlDown(): # if Ctrl was pressed during click:
++          if self.lastnoteadded is not None:
++            ctrlMod = True
++        if ctrlMod:
++          nw, dontcare = self.lastnoteadded.GetBoundingBoxMax() # don't update nh
++          mx += (nw - self.gridsize)/2.0
++        nrc = NoteRectShape(self, nw, nh) ; nrc._id = tid
++        self.AddNoteShape(nrc, mx, my, wx.BLACK_PEN, self.nsbrush, "") #"%d"%(tid)) # don't put texts anymore
++        if ctrlMod: nrc.velo = self.lastnoteadded.velo
++        self.Refresh(False)
++        self.lastnoteadded = nrc
++      else: # check if radiobuttons press..
++        for ix in xrange(0, self.nSteps):
++          if(self.radiobtns[ix].HitTest(wx.Point(mx, my))):
++            self.parent.SetStep(ix)
++            # here dispatch event: (works only if both GetId and GetEventHandler are in respect to self.parent - but NOT if they are in respect to self!)
++            event = SeqRadSetStepEvent(myEVT_SEQRADSETSTEP, self.parent.GetId())
++            event.SetStep(ix)
++            self.parent.GetEventHandler().ProcessEvent(event)
++            break
++    event.Skip() # propagate elsewhere? no difference?! or some events started appearing?!
++  def OnMouseEvent(self, evt): # just an overload; binding should be done in base class
++    super(SeqTrackPanel, self).OnMouseEvent(evt)
++    evt.Skip() # EVT_CHILD_FOCUS on left, and EVT_CONTEXT_MENU on right-click start appearing with this (via eventwatcher) - those are probably the doing of SequencerInterface(LB.LabelBook)
++  def SetStep(self, instep): # 0 to 15
++    for ix in xrange(0, self.nSteps):
++      self.radiobtns[ix].isSelected=False
++      if (ix==instep): self.radiobtns[ix].isSelected = True
++    self.Refresh()
++  def SetDiagramGridSnap(self):
++    self.diagram.SetGridSpacing( self.gridsize )
++    self.diagram.SetSnapToGrid( True )
++  def OnSize(self, event):
++    self.oldgridsize = self.gridsize
++    x, y, w, h = self.GetClientRect()
++    self.hparts = self.rhw + self.nSteps + self.rtw
++    self.gridsize = (w) / (self.hparts)
++    self.vparts = self.chh + self.nNotes + self.cth
++    self.hpw = self.hparts*self.gridsize # hparts width, in pixels
++    self.hpwm = (self.hparts - self.rtw)*self.gridsize # width of hparts-1
++    self.vph = self.vparts*self.gridsize # vparts height, in pixels
++    self.vphm = (self.vparts - self.cth)*self.gridsize # height of vparts-1
++    self.rhwp = self.rhw*self.gridsize # row header width in pixels
++    self.rhwph = self.rhwp/2 # half rhwp
++    self.nph = self.nNotes*self.gridsize # note parts height in pixels
++    self.chhp = self.chh*self.gridsize # column header height in pixels
++    self.gsh = self.gridsize/2 # half gridsize
++    self.SetDiagramGridSnap()
++    for ix in xrange(0, self.nSteps):
++      self.radiobtns[ix].size=(self.gridsize,self.gridsize) ; self.radiobtns[ix].pos=(self.rhwp+ix*self.gridsize,0)
++    scfact = 1.0*self.gridsize/self.oldgridsize if self.oldgridsize != 0 else 1;
++    if ((scfact > 0) and (self.gridsize != self.oldgridsize)):
++      for nshape in self.noteshapes: # must resize these too...? not needed in gripd (sizing would only be at start there), but just in case... actually, it *is* needed - in case the PIN_BUTTON is pressed!:
++        w, h = nshape.GetBoundingBoxMax()
++        nw, nh = round(w*scfact), round(h*scfact) ;
++        nshape.SetSize(nw,nh)
++        # most correct it seems to calc directly with step, note as floats, and _without_ anchor corrections!!
++        tx = self.rhwp + (nshape.step)*self.gridsize # row header width
++        ty = self.chhp + (nshape.note)*self.gridsize # column header height
++        nx, ny = round(tx), round(ty) #tx+cx, ty+cy # round seems a tad bit better than int here
++        nshape.SetX(nx) ; nshape.SetY(ny)
++    self.Refresh() # must have here!
++    event.Skip()
++  def DrawBackgroundGrid(self):
++    dc = wx.PaintDC(self)
++    rx, ry, rw, rh = rect = self.GetClientRect()
++    penfgc = wx.Pen(self.GetForegroundColour())
++    # draw vertical bands at 4 steps with lighter background color
++    dc.SetBrush(self.BRSH_LIGHTERBGC); dc.SetPen(wx.TRANSPARENT_PEN)
++    for ix in xrange(0,self.nSteps):
++      if ix%4 == 0: dc.DrawRectangle(self.rhwp+ix*self.gridsize, 0, self.gridsize, self.vphm)
++    # after the vert. bands, the custom circle "radiobuttons"
++    for ix in xrange(0, self.nSteps):
++      self.radiobtns[ix].Draw(dc)
++    dc.SetBrush(wx.TRANSPARENT_BRUSH)
++    dc.SetPen(penfgc)
++    for ix in xrange(self.rhw,self.hparts+1): # vertical lines
++      tx = ix*self.gridsize; dc.DrawLine(tx, ry, tx, ry+(self.vph if (ix >= self.hparts-1) else self.vphm))
++    # proceed with horizontal grid lines
++    dc.SetBrush(wx.TRANSPARENT_BRUSH) ; dc.SetPen(penfgc)
++    for iy in xrange(0,self.vparts+1): # horizontal lines
++      ty = iy*self.gridsize; dc.DrawLine(rx, ty, rx+(self.hpwm if (iy >= 1 and iy <= self.nNotes) else self.hpw), ty)
++    # draw "piano" row header over the vertical lines BRSH_W
++    dc.SetPen(wx.TRANSPARENT_PEN)
++    # actually, just slap the white directly as bckg
++    dc.SetBrush(self.BRSH_W)
++    dc.DrawRectangle(0, self.chhp, self.rhwp, self.nph)
++    dc.SetBrush(self.BRSH_B)
++    dc.SetPen(self.PEN_B)
++    # for 5 notes can loop for black keys like this; otherwise it will be more complicated to make a piano
++    for ix in xrange(1, self.nNotes+1):
++      if (ix%2)==0:
++        iy = ix*self.gridsize; iyh = iy+self.gsh; dc.DrawRectangle(self.rhwph, iy, self.rhwph, self.gridsize) ; dc.DrawLine(0, iyh, self.rhwph, iyh)
++  def OnPaint(self, event):
++    #~ print("Onpaint {0} {1} {2}".format(time.clock(), event.GetId(), event.GetEventObject()))
++    dc = wx.PaintDC(self) # works
++    self.DrawBackgroundGrid()
++    self.diagram.GetCanvas().Redraw(dc) # this to redraw the elements on top of the grid, drawn just before
++  def DeselectNoteShapes(self):
++    for nshape in self.noteshapes: nshape.Select(False)
++  # MyAddShape is from OGL.py:
++  def AddNoteShape(self, shape, x, y, pen, brush, text, fireEvent=True, doSelect=True):
++    # Composites have to be moved for all children to get in place
++    if isinstance(shape, ogl.CompositeShape):
++      dc = wx.ClientDC(self)
++      self.PrepareDC(dc)
++      shape.Move(dc, x, y) # not correcting this for left anchor
++    else:
++      shape.SetDraggable(True, True)
++    shape.SetCanvas(self)
++    x, y = shape._canvas.Snap(x, y)
++    cx, cy = shape.getLeftAnchorCorrections(self.gridsize)
++    shape.SetX(x+cx)
++    shape.SetY(y+cy)
++    if pen:  shape.SetPen(pen)
++    if brush:  shape.SetBrush(brush)
++    if text:
++      for line in text.split('\n'):
++        shape.AddText(line)
++    #shape.SetShadowMode(ogl.SHADOW_RIGHT)
++    shape.velbrush = self.velbrush ; shape.cvelpen = self.cvelpen
++    self.diagram.AddShape(shape)
++    if doSelect:
++      shape.Select(True) # also select: show handles/control points on new add
++    shape.Show(True)
++    evthandler = NoteRectEvtHandler(self)
++    evthandler.SetShape(shape)
++    evthandler.SetPreviousHandler(shape.GetEventHandler())
++    shape.SetEventHandler(evthandler)
++    self.noteshapes.append(shape)
++    shape.calcNoteStepRlen()
++    shape.justadded = True
++    if fireEvent:
++      event = SeqChangedEvent(myEVT_SEQCHANGED, self.parent.GetId())
++      self.GetEventHandler().ProcessEvent(event)
++    return shape
++  def SetBackgroundColour(self, colour):
++    super(SeqTrackPanel, self).SetBackgroundColour(colour)
++    nr = colour.red+14; nr = 255 if nr > 255 else nr;
++    ng = colour.green+14; ng = 255 if ng > 255 else ng;
++    nb = colour.blue+14; nb = 255 if nb > 255 else nb;
++    self.lighterbgc = wx.Colour(nr, ng, nb)
++    self.BRSH_LIGHTERBGC = wx.Brush(self.lighterbgc)
++
++# this just to monkeypatch LabelDraw so font can be set from Gripd
++class LabelContainerB(LB.LabelContainer):
++  def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize,
++               style=0, agwStyle=0, name="LabelContainer"):
++    super(LabelContainerB, self).__init__(parent, id, pos, size, style, agwStyle, name)
++    self.parent = parent
++    self.WIDTHLIMITPIX=20
++  def DrawLabel(self, dc, rect, text, bmp, imgInfo, orientationLeft, imgIdx, selected, hover): # of LabelContainer -
++    dcsaver = AM.DCSaver(dc)
++    nPadding = 6
++    if orientationLeft:
++      rect.x += nPadding
++      rect.width -= nPadding
++    else:
++      rect.width -= nPadding
++    textRect = wx.Rect(*rect)
++    imgRect = wx.Rect(*rect)
++    dc.SetFont(self.GetFont()) #(wx.SystemSettings_GetFont(wx.SYS_DEFAULT_GUI_FONT))
++    w, h = dc.GetTextExtent(text)
++    textRect.x += nPadding
++    textRect.y = rect.y + (rect.height - h)/2
++    textRect.width = rect.width - 2 * nPadding
++    if bmp.Ok():
++      textRect.x += (bmp.GetWidth() + nPadding)
++      textRect.width -= (bmp.GetWidth() + nPadding)
++    textRect.height = h
++    caption = AM.ArtManager.Get().TruncateText(dc, text, textRect.width)
++    if bmp.Ok():
++      imgRect.x += nPadding
++      imgRect.width = bmp.GetWidth()
++      imgRect.y = rect.y + (rect.height - bmp.GetHeight())/2
++      imgRect.height = bmp.GetHeight()
++    if selected:
++      dc.SetBrush(wx.Brush(self._coloursMap[INB_ACTIVE_TAB_COLOUR]))
++      if self.HasAGWFlag(INB_BORDER):
++        dc.SetPen(wx.Pen(self._coloursMap[INB_TABS_BORDER_COLOUR]))
++      else:
++        dc.SetPen(wx.Pen(self._coloursMap[INB_ACTIVE_TAB_COLOUR]))
++      labelRect = wx.Rect(*rect)
++      if orientationLeft:
++        labelRect.width += 3
++      else:
++        labelRect.width += 3
++        labelRect.x -= 3
++      dc.DrawRoundedRectangleRect(labelRect, 3)
++      if not orientationLeft and self.HasAGWFlag(INB_DRAW_SHADOW):
++        dc.SetPen(wx.BLACK_PEN)
++        dc.DrawPoint(labelRect.x + labelRect.width - 1, labelRect.y + labelRect.height - 1)
++    if caption != "":
++      if selected:
++        dc.SetTextForeground(self._coloursMap[INB_ACTIVE_TEXT_COLOUR])
++      else:
++        dc.SetTextForeground(self._coloursMap[INB_TEXT_COLOUR])
++      dc.DrawText(caption, textRect.x, textRect.y)
++      imgInfo.SetTextRect(textRect)
++    else:
++      imgInfo.SetTextRect(wx.Rect())
++    if bmp.Ok():
++      dc.DrawBitmap(bmp, imgRect.x, imgRect.y, True)
++    if self.HasAGWFlag(INB_DRAW_SHADOW) and selected:
++      sstyle = 0
++      if orientationLeft:
++        sstyle = BottomShadow
++      else:
++        sstyle = BottomShadowFull | RightShadow
++      if self.HasAGWFlag(INB_WEB_HILITE):
++        AM.ArtManager.Get().DrawBitmapShadow(dc, rect, sstyle)
++      else:
++        if imgIdx+1 != self._nHoeveredImgIdx:
++          AM.ArtManager.Get().DrawBitmapShadow(dc, rect, sstyle)
++    if hover:
++      if self.HasAGWFlag(INB_WEB_HILITE) and caption != "":
++        self.DrawWebHover(dc, caption, textRect.x, textRect.y)
++      else:
++        self.DrawRegularHover(dc, rect)
++    imgInfo.SetPosition(rect.GetPosition())
++    imgInfo.SetSize(rect.GetSize())
++  def Resize(self, event): # copy from wx/lib/agw/labelbook.py
++    # Resize our size
++    self._tabAreaSize = self.GetSize()
++    newWidth = self._tabAreaSize.x
++    x = event.GetX()
++    if self.HasAGWFlag(INB_BOTTOM) or self.HasAGWFlag(INB_RIGHT):
++      newWidth -= event.GetX()
++    else:
++      newWidth = x
++    # hack: was 100 here
++    if newWidth < self.WIDTHLIMITPIX: #100: # Dont allow width to be lower than that
++      newWidth = self.WIDTHLIMITPIX #100
++    self.SetSizeHints(newWidth, self._tabAreaSize.y)
++    # Update the tab new area width
++    self._nTabAreaWidth = newWidth
++    self.GetParent().Freeze()
++    self.GetParent().GetSizer().Layout()
++    self.GetParent().Thaw()
++
++LB.LabelContainer = LabelContainerB # monkeypatch
++
++class SequencerInterface(LB.LabelBook):
++  def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize, style = wx.NB_LEFT, agwStyle = INB_LEFT | INB_FIT_LABELTEXT | INB_FIT_BUTTON | INB_SHOW_ONLY_TEXT | INB_USE_PIN_BUTTON, name="SequencerInterface"): # for fnb only
++    super(SequencerInterface, self).__init__(parent, id, pos, size, style, agwStyle, name)
++    self._fontSizeMultiple = 1.0
++    self._fontBold = False
++    self.trackps = []
++    self.nSteps = 16
++    self.tstep = 0
++    self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)
++    ogl.OGLInitialize()
++    # instantiate the tracks here:
++    self.addTrack("Track 1", wx.NamedColour('#AACCAA'))
++    self.addTrack("Track 2", wx.Colour(186, 206, 156)) #
++    print("SequencerInterface: {0}".format(self._pages))
++    self._pages.SetFocus() # restore Key Events? won't work, because of ogl
++    #self.Bind(wx.EVT_RIGHT_DOWN, self.OnMousePress) # nowork?
++    #self._pages.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPressedS) # won't work, because of ogl
++    self._pages.Bind(wx.EVT_RIGHT_DOWN, self.OnMouseRightPressDown) # works! but not even with .Skip() does it not let the right-down to bubble to the gripdControl... (that one also checks widget under mouse?!); actually - resending the event while changing its object to this, makes gripd right-click edit selection work (but only when right-clicked on the LabelContainer)!
++  def addTrack(self, inname, incolor):
++    mytrackpanel = SeqTrackPanel(self, -1, name="SeqTrackPanel "+inname, nSteps=self.nSteps)
++    mytrackpanel.SetBackgroundColour(incolor)
++    self.AddPage(mytrackpanel, inname)
++    self.trackps.append(mytrackpanel) # prob. no need for this, have self._windows
++  def SetStep(self, instep): # 0 to 15
++    # iterate through all pages/child panels, and call SetStep on each
++    for idx in xrange(0, self.GetPageCount()):
++      page = self._windows[idx] # ok for LabelBook; is SeqTrackPanel
++      page.SetStep(instep)
++      self.tstep = instep # does nothing on timer; here to handle explicit clicks
++  def OnPageChanged(self, event):
++    idxSelPage = event.GetSelection() # index of selected page
++    page = self._windows[idxSelPage]
++    #~ print((event.GetEventObject().GetName(), idxSelPage, page.GetName()))
++  #~ def OnKeyPressedS(self, event):
++    #~ keyCode = event.GetKeyCode()
++    #~ print("SequencerInterface.OnKeyPressed (LabelCont): %d"%(keyCode) )
++    #~ event.Skip() # must have this, to have the parent.OnKeyPressed trigger as well!
++  def OnMouseRightPressDown(self, event):
++    #~ print(("EEEEEE", event.GetEventObject(), self)) # LabelContainer, mSequencerInterface;
++    event.SetEventObject(self) # let's try cheat? nowork, with just Skip()...
++    self.GetEventHandler().ProcessEvent(event) # this should dispatch an event just like wx.PostEvent... YES, this finally causes Gripd right-click selection!
++    event.Skip() # probably not needed anymore, but leave it
++  #def OnMouseLeftDown(self, event): # just an overload; binding should be done in base class
++  #  super(SequencerInterface, self).OnMouseLeftDown(event)
++  #  # no reaction here as such - probably because LabelBook as such is unclickable - only panels inside (LabelContainer=self._pages or SeqTrackPanel) are?
++  #  print(event.ShouldPropagate())
++  #  event.Skip() #
++  def GetSequence(self):
++    # get the sequence as a PD [list] string (space separated) for [table] - all tracks!
++    # the SeqIntf doesn't "know" what song it is, so can return only "current" state (as "current" song) - actually, it is current _pattern_ sequence returned
++    # .note (y) is 0 on top to 4 on bottom
++    # no need to recalc relative values here: .note, .step and .rlen are all relative (except .step needs to be modified according to rlen)
++    ## the list starts with 0 (index to insert), then floats in range -1:1
++    ## prepend id: (Song-)Track-Notenum (or (Song-)Channel-Track) to list
++    ## (separate lists with comma) - not anymore, now |
++    ## the length (for the moment) cannot be float due to PD engine, so quantize it "to gridsize"
++    allseqstrs = [""]*len(self.trackps)
++    for tindex, trackpnl in enumerate(self.trackps):
++      if len(trackpnl.noteshapes)>0:
++        tnotearr = [[] for x in xrange(0,trackpnl.nNotes)]
++        for nshape in trackpnl.noteshapes:
++          #nx, ny = nshape.GetX(), nshape.GetY() ; nw, nh = nshape.GetBoundingBoxMax()
++          nnt = int(nshape.note) # truncate here
++          nns = int(round(nshape.step-nshape.rlen/2))
++          nnl = int(round(nshape.rlen))
++          #~ print((["%.2f"%(x/trackpnl.gridsize) for x in (nx, ny, nw, nh)], ["%.2f"%(x) for x in (nshape.note, nshape.step, nshape.rlen)], [nnt, nns, nnl] ))
++          tnotearr[nnt].append([nns, nnl, nshape.velo])
++        #print(tnotearr)
++        tseqarr = [[0]*trackpnl.nSteps for x in xrange(0,trackpnl.nNotes)]
++        # try like this, without sorting of tnotearr insides:
++        for tnpitch,tnpitchseq in enumerate(tnotearr):
++          for tninfo in tnpitchseq:
++            for tnidx in xrange(tninfo[0], tninfo[0]+tninfo[1]):
++              # use %g instead of %.2f; in this case should remove insignificant trailing zeros and  decimal point
++              # also, embed trigger information by adding +2 to the velocity value; then subtract in PD to get correct velocity
++              velval = abs(tninfo[2])
++              velval = velval+2 if (tnidx == tninfo[0]) else velval
++              tseqarr[tnpitch][tnidx] = "%g"%(float("%.2f"%( velval ))) # eliminate potential minus here w abs
++        #~ pprint.pprint(tseqarr)
++        tseqstrs = [""]*trackpnl.nNotes
++        for tnpitch,tnpitchseq in enumerate(tseqarr):
++          tseqstrs[tnpitch] = "%d%dv 0 "%(tindex, tnpitch) + " ".join(list(map(str, tseqarr[tnpitch])))
++        #~ pprint.pprint(tseqstrs)
++        allseqstrs[tindex] = " | ".join(tseqstrs) # make sure joining with space; decided against comma " , " as PD separator; complicates matters
++    #pprint.pprint(allseqstrs)
++    # join will add a trailing comma if the last element in the array is "" empty string
++    # so filter first
++    allseqstrs_finstr = " | ".join(filter(lambda x: x is not "", allseqstrs))
++    #print(len(allseqstrs_finstr))
++    return allseqstrs_finstr #[:115] # [:116] [:127] [:128] breaks gripd.c in PureData; [:115] doesn't?
++  def ClearSequence(self, doRefresh=True, fireEvent=True):
++    # clear the current (pattern) sequence - all tracks!
++    #print("ClearSequence")
++    hasCleared = False
++    for tindex, trackpnl in enumerate(self.trackps):
++      if len(trackpnl.noteshapes)>0:
++        hasCleared = True
++        while len(trackpnl.noteshapes)>0:
++          tnoteshape = trackpnl.noteshapes.pop() # remove and return last item
++          tnoteshape.Delete()
++    if hasCleared:
++      if fireEvent:
++        event = SeqChangedEvent(myEVT_SEQCHANGED, self.GetId())
++        self.GetEventHandler().ProcessEvent(event)
++      if doRefresh: self.Refresh(False)
++  def SetSequence(self, instr):
++    lanedatas = instr.split("|")
++    if len(lanedatas) > 1: # got some:
++      self.ClearSequence(doRefresh=False, fireEvent=False) # clear first
++      mypnlsel = self.GetSelection() # remember original selection
++      curseqpnlt = -1
++      for ilndats in lanedatas:
++        ilnarr = ilndats.split()
++        ilnlabel = ilnarr[0] # ilnarr[1] is the insertion zero for PD table
++        ilnlbla = list(ilnlabel) # split to characters;
++        ilnseqpnltrack = int(ilnlbla[0]) ; ilnnote = int(ilnlbla[1])
++        if (curseqpnlt != ilnseqpnltrack):
++          curseqpnlt = ilnseqpnltrack
++          # the setselection does update trackpnl.gridsize and other vars needed for calc here:
++          self.SetSelection(curseqpnlt)
++        trackpnl = self.trackps[ilnseqpnltrack]
++        nrc = None
++        for istep, iNoteVelStr in enumerate(ilnarr[2:]):
++          iNoteVel = float(iNoteVelStr)
++          if iNoteVel>=2 or (nrc is None and iNoteVel>0):
++            velo = iNoteVel-2
++            nrc = NoteRectShape(trackpnl, trackpnl.gridsize, trackpnl.gridsize) ; nrc._id = len(trackpnl.noteshapes) ; nrc.velo = velo
++            mx = istep*trackpnl.gridsize + trackpnl.rhwp
++            my = ilnnote*trackpnl.gridsize + trackpnl.chhp
++            trackpnl.AddNoteShape(nrc, mx, my, wx.BLACK_PEN, trackpnl.nsbrush, "", fireEvent=False, doSelect=False) # does calcNoteStepRlen
++          elif iNoteVel>0: # and nrc is not None
++            w, h = nrc.GetBoundingBoxMax()
++            nrc.SetSize(w+trackpnl.gridsize,h)
++            nrc.SetX(nrc.GetX()+round(trackpnl.gridsize/2.0))
++            nrc.calcNoteStepRlen() # must call explicitly
++          else: nrc = None # iNoteVel==0
++      self.SetSelection(mypnlsel) # restore original selection
++      event = SeqChangedEvent(myEVT_SEQCHANGED, self.GetId())
++      self.GetEventHandler().ProcessEvent(event)
++      self.Refresh(False)
++  def SetFont(self, infont):
++    super(SequencerInterface, self).SetFont(infont)
++    self._pages.SetFont(infont) # nowork - labelbook hardcodes usage of wx.SYS_DEFAULT_GUI_FONT; works only if monkeypatch - and actually must be present if monkeypatch
++  def GetFontBold(self):    # copy from wx/lib/agw/labelbook.py
++      return self._fontBold
++  def ResizeTabArea(self):  # copy from wx/lib/agw/labelbook.py
++    agwStyle = self.GetAGWWindowStyleFlag()
++    if agwStyle & INB_FIT_LABELTEXT == 0:
++      return
++    if agwStyle & INB_LEFT or agwStyle & INB_RIGHT:
++      dc = wx.MemoryDC()
++      dc.SelectObject(wx.EmptyBitmap(1, 1))
++      font = wx.SystemSettings_GetFont(wx.SYS_DEFAULT_GUI_FONT)
++      font.SetPointSize(font.GetPointSize()*self._fontSizeMultiple)
++      if self.GetFontBold() or agwStyle & INB_BOLD_TAB_SELECTION:
++        font.SetWeight(wx.FONTWEIGHT_BOLD)
++      dc.SetFont(font)
++      maxW = 0
++      for page in xrange(self.GetPageCount()):
++        caption = self._pages.GetPageText(page)
++        w, h = dc.GetTextExtent(caption)
++        maxW = max(maxW, w)
++      maxW += 24 #TODO this is 6*4 6 is nPadding from drawlabel
++      if not agwStyle & INB_SHOW_ONLY_TEXT:
++        maxW += self._pages._nImgSize * 2
++      maxW = max(maxW, self._pages.WIDTHLIMITPIX) # hack: was 100 here
++      self._pages.SetSizeHints(maxW, -1)
++      self._pages._nTabAreaWidth = maxW
++
++## ----------------------------------------------------
++## ----------------------------------------------------
++
++class KnobCtrlPlain(KC.KnobCtrl):
++  def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition,
++               size=wx.DefaultSize,
++               agwStyle=KC.KC_BUFFERED_DC):
++    super(KnobCtrlPlain, self).__init__(parent, id, pos, size, agwStyle)
++  def DrawDiagonalGradient(self, dc, size):
++    col1 = self.GetForegroundColour() #self._startcolour
++    r1, g1, b1 = int(col1.Red()), int(col1.Green()), int(col1.Blue())
++    sizex, sizey = size
++    # must have a filled draw here, to erase previous draws:
++    dc.SetPen(wx.TRANSPARENT_PEN)
++    dc.SetBrush(wx.Brush(col1, wx.SOLID))
++    #~ dc.DrawCircle(self.Width/2, self.Height/2, sizex)
++    dc.DrawRectangle(0, 0, sizex, sizey) # same effect as circle; prob. faster?
++  def SetForegroundColour(self, strcolour): # override
++    mycolour = wx.Colour()
++    mycolour.SetFromName(strcolour)
++    self._startcolour = mycolour
++    self.UpdateDrawing()
++  def GetForegroundColour(self): # override
++    return self._startcolour
++  # these two here, to allow that setting of range (and explicit re-set of _minvalue, _maxvalue after), scales the given range of values to given range of angles:
++  def SetTrackPosition(self): # overload
++    width, height = self.GetSize()
++    x = self._mousePosition.x
++    y = self._mousePosition.y
++    ang = self.GetAngleFromCoord(x, y)
++    val = ang*180.0/math.pi
++    deltarange = self._maxvalue - self._minvalue
++    deltaangle = self._angleend - self._anglestart
++    coeff = float(deltaangle)/float(deltarange)
++    #mang = ang - self._minvalue*coeff # ang: radians, _mv*cf: degrees!
++    mval = val + self._minvalue*coeff # hack
++    if self._anglestart < 0 and mval >= 360.0 + self._anglestart:
++      scaledval = (mval  - (360.0 + self._anglestart))/coeff
++    else:
++      scaledval = (mval  - self._anglestart)/coeff
++    #scaledval += self._minvalue*coeff # after the `if`? is not correct - reaction if way off from mouse pointer!
++    #print("stp: dr %.2f da %.2f cf %.2f a %.2f v %.2f mv %.2f sv %.2f"%(deltarange, deltaangle, coeff, ang, val, mval, scaledval))
++    if scaledval > self._maxvalue or scaledval < self._minvalue:
++      ang = self._old_ang
++    else:
++      event = KC.KnobCtrlEvent(KC.wxEVT_KC_ANGLE_CHANGING, self.GetId())
++      event.SetEventObject(self)
++      event.SetOldValue(self.GetValue())
++      event.SetValue(int(round(scaledval)))
++      if self.GetEventHandler().ProcessEvent(event):
++        # the caller didn't use event.Skip()
++        return
++      self.SetValue(scaledval)
++      event.SetEventType(KC.wxEVT_KC_ANGLE_CHANGED)
++      event.SetOldValue(scaledval)
++      self.GetEventHandler().ProcessEvent(event)
++    self._old_ang = ang
++  def SetValue(self, val): # overload
++    if val < self._minvalue or val > self._maxvalue:
++      return
++    width, height = self.GetSize()
++    deltarange = self._maxvalue - self._minvalue
++    deltaangle = self._angleend - self._anglestart
++    coeff = float(deltaangle)/float(deltarange)
++    dang = 360.0 + val*coeff + self._anglestart
++    dmang = dang - self._minvalue*coeff
++    ang = dmang*math.pi/180.0
++    #print("sv: dr %.2f da %.2f cf %.2f a %.2f v %.2f da %.2f dm %.2f"%(deltarange, deltaangle, coeff, ang, val, dang, dmang))
++    self._old_ang = ang
++    self._trackposition = int(round(val))
++    self.UpdateDrawing()
++
++
++## ----------------------------------------------------
++## ----------------------------------------------------
++
++class MouseWatcher(wx.Panel):
++  def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize, style=0, name="MyPanel"):
++    super(MouseWatcher, self).__init__(parent, id, pos, size, style, name)
++    self.parent = parent
++    self.bgbrush = wx.Brush(self.GetBackgroundColour())
++    self.fgbrush = wx.Brush(self.GetForegroundColour())
++    self.brdpen = wx.Pen(wx.BLACK, 4) # also thick strokewidth
++    self.actbrush = wx.Brush(wx.NamedColour("orange"))
++    self.lmb = self.rmb = False
++    self.OnSize(None) # init first draw
++    self.Bind(wx.EVT_SIZE, self.OnSize)
++    self.Bind(wx.EVT_PAINT, self.OnPaint)
++    self.Bind(wx.EVT_LEFT_DOWN, self.OnInitParentRecursiveListeners)
++  def OnInitParentRecursiveListeners(self, event):
++    self.Unbind(wx.EVT_LEFT_DOWN)           # unbind first
++    self.RecursiveSetListeners(self.parent) # then initialize listeners for all widgets of parent
++  def RecursiveSetListeners(self, inwidget):
++    print("setting listeners: " + inwidget.GetName())
++    inwidget.Connect(wx.ID_ANY, -1, wx.wxEVT_LEFT_DOWN, self.OnMouseEvents)
++    inwidget.Connect(wx.ID_ANY, -1, wx.wxEVT_LEFT_UP, self.OnMouseEvents)
++    inwidget.Connect(wx.ID_ANY, -1, wx.wxEVT_RIGHT_DOWN, self.OnMouseEvents)
++    inwidget.Connect(wx.ID_ANY, -1, wx.wxEVT_RIGHT_UP, self.OnMouseEvents)
++    for child in inwidget.GetChildren():
++      self.RecursiveSetListeners(child)
++  def SetBackgroundColour(self, colour): # overload
++    super(MouseWatcher, self).SetBackgroundColour(colour)
++    self.bgbrush = wx.Brush(colour)
++    self.Refresh(False)
++  def SetForegroundColour(self, colour): # overload
++    super(MouseWatcher, self).SetForegroundColour(colour)
++    self.fgbrush = wx.Brush(colour)
++    self.Refresh(False)
++  def OnMouseEvents(self, event):
++    self.lmb = event.LeftDown() or event.LeftIsDown()
++    self.rmb = event.RightDown() or event.RightIsDown()
++    self.Refresh(False)
++    event.Skip() # must have it now; to propagate, in case button is clicked
++  def OnSize(self, event):
++    #super(MouseWatcher, self).OnSize(event) # 'super' object has no attribute 'OnSize'
++    self.w, self.h = self.GetSize()
++    self.h1 = int(0.618034*self.h) ; self.h2 = self.h-self.h1 # golden ratio; 1/1.61803399
++    self.wh = self.w / 2; # width half
++    self.Refresh(False)
++  def OnPaint(self, event):
++    #print("Onpaint {0} {1} {2}".format(time.strftime("%M:%S"), event.GetId(), event.GetEventObject()))
++    # mss = wx.GetMouseState() ; print(mss) # won't trigger
++    dc = wx.PaintDC(self) #
++    #dc.Clear() # clears all with white; not really needed since we cover the entire area anyways
++    dc.SetPen(wx.TRANSPARENT_PEN)
++    dc.SetBrush(self.bgbrush) ; dc.DrawRectangle(0, self.h2, self.w, self.h1)
++    dc.SetBrush(self.fgbrush) ; dc.DrawRectangle(0, 0, self.w, self.h2)
++    if self.lmb or self.rmb:
++      dc.SetBrush(self.actbrush)
++      if self.lmb: dc.DrawRectangle(0, 0, self.wh, self.h2)
++      if self.rmb: dc.DrawRectangle(self.wh, 0, self.wh, self.h2)
++    dc.SetPen(self.brdpen) ; dc.SetBrush(wx.TRANSPARENT_BRUSH)
++    dc.DrawRectangle(0, 0, self.w, self.h)
++    dc.DrawLine(0, self.h2, self.w, self.h2) ; dc.DrawLine(self.wh, 0, self.wh, self.h2) # horizontal, then vertical line
++
++
++## ----------------------------------------------------
++
++# Gripd Class for RotKnobCtrl
++class mRotKnobCtrl(mControl, RotKnobCtrl):
++    def __init__(self, parentApp, type, id, text, pos, sSym, rSym, conn):
++        RotKnobCtrl.__init__(self, parentApp.mainFrame.mainPanel,
++                          id, pos)
++        mControl.__init__(self, parentApp, type, sSym, rSym, conn)
++        KC.EVT_KC_ANGLE_CHANGED(parentApp.mainFrame.mainPanel,
++                   self.GetId(), self.eAngleChanged)
++    def eAngleChanged(self, event):
++        if (not self.editMode):
++            # must be a string, even if sending numbers;
++            # space separated strings can be `unpack f f`'d in PD
++            #self.sendMessage(repr(self._old_ang) + " " + repr(self._astepsc)) # avoid e-178:
++            self.sendMessage("%.8f %.8f"%(self._old_ang, self._astepsc))
++    def PDAction(self, value):
++        cmdarg = value.split(None, 1) # max 2 returns
++        if (cmdarg[0] == "setrpm"):
++            self.SetRPM(float(cmdarg[1]))
++        elif (cmdarg[0] == "setdefaultrpm"):
++            self.SetDefaultRPM(float(cmdarg[1]))
++        elif (cmdarg[0] == "runrotation"):
++            self.RunRotation(int(cmdarg[1]))
++        elif (cmdarg[0] == "runanimation"):
++            self.RunAnimation(int(cmdarg[1]))
++
++# Gripd Class for SequencerInterface
++class mSequencerInterface(mControl, SequencerInterface):
++    def __init__(self, parentApp, type, id, text, pos, sSym, rSym, conn):
++        SequencerInterface.__init__(self, parentApp.mainFrame.mainPanel,
++                          id, pos)
++        mControl.__init__(self, parentApp, type, sSym, rSym, conn)
++        # events binding here!
++        EVT_SEQRADSETSTEP(parentApp.mainFrame.mainPanel,
++                   self.GetId(), self.eSeqRadioStepSet) #
++        EVT_SEQCHANGED(parentApp.mainFrame.mainPanel,
++                   self.GetId(), self.eSeqChanged) #
++    def PDAction(self, value):
++        cmdarg = value.split(None, 1) # max 2 returns
++        if (cmdarg[0] == "setstep"):
++            self.SetStep(int(cmdarg[1]))
++        elif (cmdarg[0] == "getsequence"):
++            # this is actually pattern sequence
++            # [:115] # [:116] [:127] [:128] breaks; [:115] doesn't?
++            strseq = self.GetSequence(); #print(strseq)
++            self.sendMessage("patsequence %s"%( strseq ))
++        elif (cmdarg[0] == "clearpatseq"):
++            # this will dispatch SEQCHANGED - which eSeqChanged should respond to
++            self.ClearSequence()
++        elif (cmdarg[0] == "setpatseq"):
++            # here the entire sequence should be as a space separated string in cmdarg[1]; again SEQCHANGED should be dispatched
++            if len(cmdarg[1])>0: # can have a better condition here, too
++                self.SetSequence(cmdarg[1])
++    def eSeqRadioStepSet(self, event):
++        if (not self.editMode):
++            self.sendMessage("radsetstep %d"%( event.GetStep() ))
++    def eSeqChanged(self, event):
++        if (not self.editMode):
++            strseq = self.GetSequence(); #print(strseq)
++            self.sendMessage("patsequence %s"%( strseq ))
++
++# Gripd Class for KnobCtrlPlain
++class mKnobCtrlPlain(mControl, KnobCtrlPlain):
++    def __init__(self, parentApp, type, id, text, pos, sSym, rSym, conn):
++        KnobCtrlPlain.__init__(self, parentApp.mainFrame.mainPanel,
++                          id, pos)
++        mControl.__init__(self, parentApp, type, sSym, rSym, conn)
++        KC.EVT_KC_ANGLE_CHANGED(parentApp.mainFrame.mainPanel,
++                   self.GetId(), self.eAngleChanged)
++    def eAngleChanged(self, event):
++        if (not self.editMode):
++            # must be a string, even if sending numbers;
++            # space separated strings can be `unpack f f`'d in PD
++            #self.sendMessage(repr(self._old_ang)) # avoid e-178:
++            self.sendMessage("%.2f"%(event.EventObject.GetValue())) # send scaled values here
++    def PDAction(self, value):
++        cmdarg = value.split(None, 1) # max 2 returns
++        if (cmdarg[0] == "settags"):
++            args = cmdarg[1].split()
++            rngtags = range(int(args[0]), int(args[1]), int(args[2])) #; print(rng)
++            # SetTags will only set minimum if smaller than current (<0)...
++            self.SetTags(rngtags) # so re-set min and max nonetheless:
++            self._minvalue = min(rngtags) ; self._maxvalue = max(rngtags) # this alone, unfortunately, doesn't stretch in vanilla class - it simply blocks at the min value (but in respect to 0); but it works in the hacked class!
++        elif (cmdarg[0] == "setangularrange"):
++            args = cmdarg[1].split()
++            self.SetAngularRange( int(args[0]), int(args[1]) )
++        elif (cmdarg[0] == "setvalue"):
++            self.SetValue( int(cmdarg[1]) )
++
++# Gripd Class for LEDNumberCtrl
++class mLEDNumberCtrl(mControl, gizmos.LEDNumberCtrl):
++    def __init__(self, parentApp, type, id, text, pos, sSym, rSym, conn):
++        gizmos.LEDNumberCtrl.__init__(self, parentApp.mainFrame.mainPanel,
++                          id, pos)
++        mControl.__init__(self, parentApp, type, sSym, rSym, conn)
++        # directly set these here, can't be bothered to pull events right now
++        self.SetAlignment(gizmos.LED_ALIGN_RIGHT)
++        self.SetDrawFaded(False)
++        # this class has no events
++    def PDAction(self, value):
++        cmdarg = value.split(None, 1) # max 2 returns
++        if (cmdarg[0] == "setvalue"):
++            # to two decimal places - and don't render .00 when integer
++            strval = "%.2f"%(float(cmdarg[1])) ; strval = strval.replace('.00','.  ')
++            self.SetValue(strval) # must be string
++
++# Gripd Class for ComboBox
++class mComboBox(mControl, wx.ComboBox): # NB: name 'wxComboBox' is not defined
++    def __init__(self, parentApp, type, id, text, pos, sSym, rSym, conn):
++        # NB: ComboBox ctor is (parent, id, value, pos, size, choices, style, validator, name)
++        # just setting pos=pos as positional is good enough;
++        # but add "default" entry, since there is a Clear() method
++        # CB_READONLY seems not to have an effect
++        wx.ComboBox.__init__(self, parentApp.mainFrame.mainPanel,
++                          id, value="default", pos=pos, style=wx.CB_READONLY)
++        mControl.__init__(self, parentApp, type, sSym, rSym, conn)
++        # events binding here! NB: global name 'EVT_COMBOBOX' is not defined
++        wx.EVT_COMBOBOX(parentApp.mainFrame.mainPanel,
++                   self.GetId(), self.eComboBoxChanged)
++        wx.EVT_TEXT_ENTER(parentApp.mainFrame.mainPanel,
++                   self.GetId(), self.eComboBoxEnter)
++    def eComboBoxChanged(self, event):
++        if (not self.editMode):
++            cb = event.GetEventObject()
++            data = cb.GetClientData(event.GetSelection())
++            self.sendMessage("cbchange %s %s"%(event.GetString(), data)) # send both values here
++    def eComboBoxEnter(self, event):
++        if (not self.editMode):
++            self.sendMessage("cbenter %s"%(event.GetString()))
++    def PDAction(self, value):
++        cmdarg = value.split(None, 1) # max 2 returns
++        if (cmdarg[0] == "append"):
++            svals = cmdarg[1].split()
++            sval1 = svals[0]
++            sval2 = svals[1] if len(svals)>1 else ""
++            self.Append(sval1, sval2)
++        elif (cmdarg[0] == "clear"):
++            self.Clear()
++        elif (cmdarg[0] == "setselection"): # Sets the selection to the given item n or removes the selection entirely if n == NOT_FOUND .
++            intval = int(cmdarg[1]) if len(cmdarg)>1 else wx.NOT_FOUND
++            self.SetSelection(intval)
++        elif (cmdarg[0] == "setvalue"): # Sets the text for the combobox text field.
++            strval = cmdarg[1] if len(cmdarg)>1 else ""
++            self.SetValue(strval)
++
++# Gripd Class for MouseWatcher
++class mMouseWatcher(mControl, MouseWatcher):
++    def __init__(self, parentApp, type, id, text, pos, sSym, rSym, conn):
++        MouseWatcher.__init__(self, parentApp.mainFrame.mainPanel,
++                          id, pos)
++        mControl.__init__(self, parentApp, type, sSym, rSym, conn)
++        # this class has no events to set here
++        # no need for PDAction (not receiving from PD); nor are we sending to PD anything (no binding to widget events)
++
++# turns out, wx.ComboBox has a bug on Ubuntu, where font cannot be set:
++# http://wxpython-users.1045709.n5.nabble.com/How-can-I-set-the-font-of-the-choices-text-in-a-wx-ComboBox-td2366173.html
++# wx.Choice does not have that bug - so adding that too:
++# Gripd Class for Choice
++class mChoice(mControl, wx.Choice):
++    def __init__(self, parentApp, type, id, text, pos, sSym, rSym, conn):
++        # NB: ComboBox ctor is (parent, id, value, pos, size, choices, style, validator, name)
++        # Choice ctor is (parent, id, pos, size, choices, style, validator, name)
++        wx.Choice.__init__(self, parentApp.mainFrame.mainPanel,
++                          id, pos=pos)
++        mControl.__init__(self, parentApp, type, sSym, rSym, conn)
++        # events binding here! NB: global name 'EVT_COMBOBOX' is not defined
++        wx.EVT_CHOICE(parentApp.mainFrame.mainPanel,
++                   self.GetId(), self.eChoiceChanged)
++    def eChoiceChanged(self, event):
++        if (not self.editMode):
++            cb = event.GetEventObject()
++            data = cb.GetClientData(event.GetSelection())
++            self.sendMessage("cbchange %s %s"%(event.GetString(), data)) # send both values here ; keep the same name cbchange as ComboBox
++        # here, MouseWatcher doesn't receive the mouse up, so it keeps left button shown as active:
++        #event.SetEventType(wx.wxEVT_LEFT_UP) # doesn't help propagating left mouse up
++        #event.Skip() # neither does this (alone)
++        # creating a new left_up event and dispatching it makes MouseWatcher work as expected:
++        event = wx.MouseEvent(wx.wxEVT_LEFT_UP)
++        self.GetEventHandler().ProcessEvent(event) # redispatch
++    def PDAction(self, value):
++        cmdarg = value.split(None, 1) # max 2 returns
++        if (cmdarg[0] == "append"):
++            svals = cmdarg[1].split()
++            sval1 = svals[0]
++            sval2 = svals[1] if len(svals)>1 else ""
++            self.Append(sval1, sval2)
++        elif (cmdarg[0] == "clear"):
++            self.Clear()
++        elif (cmdarg[0] == "setselection"): # Sets the selection to the given item n or removes the selection entirely if n == NOT_FOUND .
++            intval = int(cmdarg[1]) if len(cmdarg)>1 else wx.NOT_FOUND
++            self.SetSelection(intval)
++        #~ elif (cmdarg[0] == "setvalue"): # Sets the text for the combobox text field. # none such in Choice
+diff --git a/extensions/gripd/gripd_SdMainPatch.py b/extensions/gripd/gripd_SdMainPatch.py
+new file mode 100644
+index 0000000..11c8676
+--- /dev/null
++++ b/extensions/gripd/gripd_SdMainPatch.py
+@@ -0,0 +1,126 @@
++
++from wxPython.wx import * # contains NULL
++from gripdMain import mainApp, gripdFrame
++from gripd_SdControls import *
++
++ID_ROTKNOBCTRL     = 224
++ID_SEQINTERFACE    = 225
++ID_KNOBCTRLPLN     = 226
++ID_LEDNUMCTRL      = 227
++ID_COMBOBOX        = 228
++ID_MOUSEWATCH      = 229
++ID_CHOICE          = 230
++
++# [http://www.gossamer-threads.com/lists/python/python/1029397 Is it possible monkey patch like this? | Python | Python]
++# [http://stackoverflow.com/questions/3765222/monkey-patch-python-class monkeypatching - Monkey-patch Python class - Stack Overflow]
++
++class mainAppSd(mainApp):
++  def __init__(self, args):
++    super(mainAppSd, self).__init__(args)
++  def addControl(self, type, label, pos, sSym, rSym, filepath = ""):
++    #print("calling super {0} {1} {2}".format(type, sSym, rSym))
++    tControl = super(mainAppSd, self).addControl(type, label, pos, sSym, rSym, filepath)
++    #print("after super " + str(tControl)) # could be None here, not NULL!
++    #if tControl is not None:
++    if (tControl != NULL):
++        return (tControl)
++    else: # if not found (None), try these:
++      if (type == MROTKNOBCTRLTYPE):
++        self.rotKnobCtrlIndex = self.rotKnobCtrlIndex + 1
++        # label here is def'd in ctors (=text), but not used
++        tControl = mRotKnobCtrl(self, type, -1, label, pos, sSym,
++                          rSym, self.connection)
++      elif (type == MSEQINTERFACETYPE):
++        self.seqInterfaceIndex = self.seqInterfaceIndex + 1
++        tControl = mSequencerInterface(self, type, -1, label, pos, sSym,
++                          rSym, self.connection)
++      elif (type == MKNOBCTRLPLNTYPE):
++        self.knobCtrlPlnIndex = self.knobCtrlPlnIndex + 1
++        tControl = mKnobCtrlPlain(self, type, -1, label, pos, sSym,
++                          rSym, self.connection)
++      elif (type == MLEDNUMCTRLTYPE):
++        self.ledNumCtrlIndex = self.ledNumCtrlIndex + 1
++        tControl = mLEDNumberCtrl(self, type, -1, label, pos, sSym,
++                          rSym, self.connection)
++      elif (type == MCOMBOBOXTYPE):
++        self.comboBoxIndex = self.comboBoxIndex + 1
++        tControl = mComboBox(self, type, -1, label, pos, sSym,
++                          rSym, self.connection)
++      elif (type == MMOUSEWATCHTYPE):
++        self.mouseWatchIndex = self.mouseWatchIndex + 1
++        tControl = mMouseWatcher(self, type, -1, label, pos, sSym,
++                          rSym, self.connection)
++      elif (type == MCHOICETYPE):
++        self.choiceIndex = self.choiceIndex + 1
++        tControl = mChoice(self, type, -1, label, pos, sSym,
++                          rSym, self.connection)
++      if (tControl != NULL):
++        self.controlList.append(tControl)
++      return (tControl)
++  def resetControlIndecies(self):
++    super(mainAppSd, self).resetControlIndecies()
++    self.rotKnobCtrlIndex = 0
++    self.seqInterfaceIndex = 0
++    self.knobCtrlPlnIndex = 0
++    self.ledNumCtrlIndex = 0
++    self.comboBoxIndex = 0
++    self.mouseWatchIndex = 0
++    self.choiceIndex = 0
++  def eAddRotKnobCtrl(self, event):
++    self.createControl(MROTKNOBCTRLTYPE, self.rotKnobCtrlIndex, "rotknobctrl")
++  def eAddSeqInterface(self, event):
++    self.createControl(MSEQINTERFACETYPE, self.seqInterfaceIndex, "seqintf")
++  def eAddKnobCtrlPlain(self, event):
++    self.createControl(MKNOBCTRLPLNTYPE, self.knobCtrlPlnIndex, "knobcpln")
++  def eAddLedNumCtrl(self, event):
++    self.createControl(MLEDNUMCTRLTYPE, self.ledNumCtrlIndex, "lednum")
++  def eAddComboBox(self, event):
++    self.createControl(MCOMBOBOXTYPE, self.comboBoxIndex, "combobox")
++  def eAddMouseWatcher(self, event):
++    self.createControl(MMOUSEWATCHTYPE, self.mouseWatchIndex, "mousewatch")
++  def eAddChoice(self, event):
++    self.createControl(MCHOICETYPE, self.choiceIndex, "choice")
++
++mainApp = mainAppSd # reassign - monkeypatch
++
++class gripdFrameSd(gripdFrame):
++  def __init__(self, parent, ID, title, position,
++               resizable, locked, alwaysOnTop):
++    super(gripdFrameSd, self).__init__(parent, ID, title, position, resizable, locked, alwaysOnTop)
++    # can't do nothing with wxacceltable - so isolated that part as setAccelerators, which we can monkey patch
++    #wxacceltable = self.GetAcceleratorTable()
++    #print(wxacceltable.__dict__) # just `this`
++    #print(wxacceltable.GetCount()) # no attribute 'GetCount' in python :(
++    #print(inspect.getmembers(wxacceltable))
++    #newtab = wxAcceleratorTable([wxacceltable])
++  def setAccelerators(self):
++    super(gripdFrameSd, self).setAccelerators()
++    self.aclList.append(wxAcceleratorEntry(wxACCEL_ALT, ord("4"),
++                                      ID_ROTKNOBCTRL))
++    self.aclList.append(wxAcceleratorEntry(wxACCEL_ALT, ord("5"),
++                                      ID_SEQINTERFACE))
++    self.aclList.append(wxAcceleratorEntry(wxACCEL_ALT, ord("6"),
++                                      ID_KNOBCTRLPLN))
++    self.aclList.append(wxAcceleratorEntry(wxACCEL_ALT, ord("7"),
++                                      ID_LEDNUMCTRL))
++    self.aclList.append(wxAcceleratorEntry(wxACCEL_ALT, ord("8"),
++                                      ID_COMBOBOX))
++    self.SetAcceleratorTable(wxAcceleratorTable(self.aclList))
++  def createMenu(self):
++    super(gripdFrameSd, self).createMenu()
++    self.addMenu.Append(ID_ROTKNOBCTRL, "&RotKnobCtrl\tAlt-4", "Add a RotKnobCtrl")
++    EVT_MENU(self, ID_ROTKNOBCTRL, self.mParent.eAddRotKnobCtrl)
++    self.addMenu.Append(ID_SEQINTERFACE, "&SequencerInterface\tAlt-5", "Add a SequencerInterface")
++    EVT_MENU(self, ID_SEQINTERFACE, self.mParent.eAddSeqInterface)
++    self.addMenu.Append(ID_KNOBCTRLPLN, "&KnobCtrlPlain\tAlt-6", "Add a KnobCtrlPlain")
++    EVT_MENU(self, ID_KNOBCTRLPLN, self.mParent.eAddKnobCtrlPlain)
++    self.addMenu.Append(ID_LEDNUMCTRL, "&LEDNumberCtrl\tAlt-7", "Add a LEDNumberCtrl")
++    EVT_MENU(self, ID_LEDNUMCTRL, self.mParent.eAddLedNumCtrl)
++    self.addMenu.Append(ID_COMBOBOX, "&ComboBox\tAlt-8", "Add a ComboBox")
++    EVT_MENU(self, ID_COMBOBOX, self.mParent.eAddComboBox)
++    self.addMenu.Append(ID_MOUSEWATCH, "&MouseWatcher", "Add a MouseWatcher")
++    EVT_MENU(self, ID_MOUSEWATCH, self.mParent.eAddMouseWatcher)
++    self.addMenu.Append(ID_CHOICE, "C&hoice", "Add a Choice")
++    EVT_MENU(self, ID_CHOICE, self.mParent.eAddChoice)
++
++gripdFrame = gripdFrameSd # reassign - monkeypatch
+diff --git a/extensions/gripd/src/Makefile.Linux b/extensions/gripd/src/Makefile.Linux
+index 40324e7..f7523ad 100644
+--- a/extensions/gripd/src/Makefile.Linux
++++ b/extensions/gripd/src/Makefile.Linux
+@@ -4,7 +4,9 @@ current: all
+ 
+ all: gripd.pd_linux joystickmodule.so midimodule.so
+ 
+-LINUXCFLAGS = -DPD -O2 -funroll-loops -fomit-frame-pointer \
++# for debug - add g, and below comment the strip
++#LINUXCFLAGS = -DPD -O2 -funroll-loops -fomit-frame-pointer \#
++LINUXCFLAGS = -DPD -g -funroll-loops -fomit-frame-pointer \
+     -Wall -W -Wshadow -Wstrict-prototypes \
+     -Wno-unused -Wno-parentheses -Wno-switch
+ MIDIDEFINES = -D$(MIDIOSSUBTYPE) -DLINUX
+@@ -17,7 +19,7 @@ endif
+ gripd.pd_linux:
+ 	cc $(LINUXCFLAGS) $(PDINCLUDE) -o gripd.o -c gripd.c
+ 	ld -export_dynamic -lm  -shared -o gripd.pd_linux gripd.o -lc -lm
+-	strip --strip-unneeded gripd.pd_linux
++#	strip --strip-unneeded gripd.pd_linux
+ 	cp gripd.pd_linux ..
+ 
+ joystickmodule.so:
+diff --git a/extensions/gripd/src/gripd.c b/extensions/gripd/src/gripd.c
+index fce1aa5..91da96a 100644
+--- a/extensions/gripd/src/gripd.c
++++ b/extensions/gripd/src/gripd.c
+@@ -74,6 +74,7 @@ void gripd_setup(void)
+     class_addsymbol(gripdRcvr_class, (t_method)gripdR_symbol);
+     class_addanything(gripdRcvr_class, (t_method)gripdR_anything);
+     class_addlist(gripdRcvr_class, (t_method)gripdR_list);
++    //raise(SIGINT); // here, to setup breakpoint; REMOVE/comment when done, else plain PD will fail when loading with "Error: Not connected to 'pd' process"!!
+ }
+ 
+ void *gripd_new(t_floatarg port)
+@@ -388,6 +389,8 @@ void gripd_recv(t_gripd *x)
+                 symValue[i] = '\0';
+                 count++;
+                 i = 0;
++                //raise(SIGINT);
++                //post("GrIPD: symName %s symValue %s", symName, symValue); // for debug
+                 if (symName[0] == COMMANDCHAR)
+                 {
+                     if ((strcmp(SETRCVRSTRING, symName) == 0) \
+@@ -466,6 +469,11 @@ void gripd_recv(t_gripd *x)
+                                             atomList[argc].a_w.w_float =
+                                                 (float)atof(tempString);
+                                         }
++                                        else if (strcmp(tempString, ",")==0) // hack
++                                        {
++                                            //post("SETCOMMA"); //debug
++                                            SETCOMMA(&(atomList[argc]));
++                                        }
+                                         else
+                                         {
+                                             atomList[argc].a_type = A_SYMBOL;
+diff --git a/extensions/gripd/src/gripd.h b/extensions/gripd/src/gripd.h
+index 67ef16b..4376b30 100644
+--- a/extensions/gripd/src/gripd.h
++++ b/extensions/gripd/src/gripd.h
+@@ -50,7 +50,8 @@
+ #define MAXDATASIZE        16384
+ #define MAXPORTSTRLEN      16
+ #define MAXSYMNAMELEN      128
+-#define MAXSYMVALUELEN     128
++/*#define MAXSYMVALUELEN     128 // seems too little; actually actually, for full size (note on every lane, every track, velo with two decimal points) it is (string length 877, item length 189) - so 512 doesn't cut it! must have: */
++#define MAXSYMVALUELEN     1024
+ /* separates send/recv object names from value they send/recv */
+ #define SYMMSGSEP          31
+ /* separates send/recv value pairs */
+@@ -93,7 +94,7 @@
+ #define DEFSDELTIME        1
+ /* default send poll time in ms */
+ #define DEFSTRSIZE         256
+-#define MAXALISTLEN        64
++#define MAXALISTLEN        256 /*64 // is too little, segfaults! */
+ 
+ #ifdef NT
+ #define MSG_DONTWAIT       0
+diff --git a/extensions/gripd/src/makefile b/extensions/gripd/src/makefile
+index f44bf91..445cc14 100644
+--- a/extensions/gripd/src/makefile
++++ b/extensions/gripd/src/makefile
+@@ -15,7 +15,8 @@ JOYSTICK = TRUE
+ MIDIOSSUBTYPE = ALSA
+ #MIDIOSSUBTYPE = OSS
+ PDINCLUDE =  -I../../src -I../../../pd/src
+-LINUXPYTHONINCLUDE = -I/usr/include/python2.5
++#LINUXPYTHONINCLUDE = -I/usr/include/python2.5
++LINUXPYTHONINCLUDE = -I/usr/include/python2.7
+ SYSTEMLIBDIR = /usr/lib
+ 
+ #----------- Settings (Windows) -------------------------------
+diff --git a/externals/ggee/Makefile b/externals/ggee/Makefile
+index 3634ec9..822ec23 100644
+--- a/externals/ggee/Makefile
++++ b/externals/ggee/Makefile
+@@ -34,7 +34,9 @@ EXTRA_DIST =
+ #
+ #------------------------------------------------------------------------------#
+ 
+-CFLAGS = -DPD -I. -I"$(PD_INCLUDE)"/pd -Wall -W -g
++# because of change below, don't add /pd - but instead use the include path as is:
++#CFLAGS = -DPD -I. -I"$(PD_INCLUDE)"/pd -Wall -W -g
++CFLAGS = -DPD -I. -I"$(PD_INCLUDE)" -Wall -W -g
+ LDFLAGS =  
+ LIBS = 
+ 
+@@ -49,7 +51,12 @@ LIBRARY_VERSION = $(shell sed -n 's|^\#X text [0-9][0-9]* [0-9][0-9]* VERSION \(
+ 
+ CFLAGS += -DVERSION='"$(LIBRARY_VERSION)"'
+ 
+-PD_INCLUDE = $(PD_PATH)/include
++#PD_PATH = # cannot, because
++# /DISKPATHTO/pd-extended_0.43.4-1/usr/include/pdextended
++# /DISKPATHTO/pd-l2ork_git/pd/src/m_pd.h
++# so force explicit:
++#PD_INCLUDE = $(PD_PATH)/include
++PD_INCLUDE = /DISKPATHTO/pd-extended_0.43.4-1/usr/include/pdextended
+ # where to install the library, overridden below depending on platform
+ prefix = /usr/local
+ libdir = $(prefix)/lib
+diff --git a/externals/ggee/control/shell.c b/externals/ggee/control/shell.c
+index f71ddce..bbdc491 100644
+--- a/externals/ggee/control/shell.c
++++ b/externals/ggee/control/shell.c
+@@ -56,6 +56,7 @@ static int shell_pid;
+ 
+ void shell_cleanup(t_shell* x)
+ {
++    if (x->fdpipe[0]>0) // add check here too, to suppress the warning? Yup, works fine, now "warning: -1 removed from poll list but not found" does not occur anymore
+      sys_rmpollfn(x->fdpipe[0]);
+ 
+      if (x->fdpipe[0]>0) close(x->fdpipe[0]);
+@@ -75,7 +76,10 @@ void shell_check(t_shell* x)
+ 	int ret;
+ 	int status;
+ 	ret = waitpid(x->pid,&status,WNOHANG);
+-	if (ret == x->pid) {
++  //error("checking shell_check: %d ; %d; \n", ret, x->pid, x->fdpipe[0]); // constantly -1, even after the process should have terminated (uncomment this command to see the looping and if it stops); that is why:
++  // x->fdpipe[0] == -1 can be a signal if we've explicitly decided to bail out early; so add it here in the condition:
++  // (with this hack, will get "warning: -1 removed from poll list but not found" even for outlet_float 0 [actually, fixed - see above]; but at least the shell_check loop stops after this is done [see also comments below])
++	if ((ret == x->pid) || (x->fdpipe[0] == -1)) {
+ 	     shell_cleanup(x);
+ 	     if (WIFEXITED(status)) {
+ 		  outlet_float(x->x_done,WEXITSTATUS(status));
+@@ -113,7 +117,7 @@ static void shell_doit(void *z, t_binbuf *b)
+ 	    for (i = msg; i < emsg; i++)
+ 	    	if (at[i].a_type == A_DOLLAR || at[i].a_type == A_DOLLSYM)
+ 	    {
+-	    	pd_error(x, "netreceive: got dollar sign in message");
++	    	pd_error(x, "shell: got dollar sign in message");
+ 		goto nodice;
+ 	    }
+ 	    if (at[msg].a_type == A_FLOAT)
+@@ -141,7 +145,10 @@ void shell_read(t_shell *x, int fd)
+ 	  (x->sr_inhead >= x->sr_intail ? INBUFSIZE : x->sr_intail-1);
+      int ret;
+ 
+-     ret = read(fd, buf,INBUFSIZE-1);
++     // see http://stackoverflow.com/questions/5857300/gdb-ctrlc-doesnt-interrupt-process-as-it-usually-does
++     // to interrupt gdb, need to use kill -TRAP pid from another terminal window
++     ret = read(fd, buf,INBUFSIZE-1); // chokes here, fd=14
++     //error("checking ret: %d\n", ret);
+      buf[ret] = '\0';
+ 
+      for (i=0;i<ret;i++)
+@@ -171,6 +178,16 @@ void shell_read(t_shell *x, int fd)
+ 	 natom = binbuf_getnatom(bbuf);
+ 	 at = binbuf_getvec(bbuf);
+ 	 shell_doit(x,bbuf);
++   if (ret < INBUFSIZE-1) {
++    // no point in looping further, if we got the entire request in one go:
++     //post("All done on fd %d\n", fd);
++     binbuf_free(bbuf);
++     sys_rmpollfn(fd); // now "warning: -1 removed from poll list but not found", because shell_check would handle it; supress? withough it, getting "shell: pipe read error" and the warning, so leave it.
++     x->fdpipe[0] = -1; // this is now a signal that we finished reading
++     close(fd);
++     //shell_check(x); // to activate the DONE outlet in this case?! don't call explicity, shell_check loops in the background
++     return;
++   }
+        }
+      binbuf_free(bbuf);
+ }
+diff --git a/externals/grill/trunk/flext/buildsys/config-lnx-pd-gcc.txt b/externals/grill/trunk/flext/buildsys/config-lnx-pd-gcc.txt
+index 8b2f5bb..c13942c 100644
+--- a/externals/grill/trunk/flext/buildsys/config-lnx-pd-gcc.txt
++++ b/externals/grill/trunk/flext/buildsys/config-lnx-pd-gcc.txt
+@@ -1,6 +1,9 @@
+ # where is the PD source package?
+ # (this should point to the main folder, which has a "src" subfolder)
+-PDPATH=../../../../pd
++#PDPATH=/usr/local/src/pd
++#PDPATH=/DISKPATHTO/pd-l2ork_git/pd
++# won't work, but will add inc manually:
++PDPATH=/DISKPATHTO/pd-extended_0.43.4-1/usr/bin
+ 
+ ###############################################################
+ 
+@@ -9,7 +12,20 @@ PDPATH=../../../../pd
+ # libraries are in $(FLEXTPREFIX)/lib
+ # build system is in $(FLEXTPREFIX)/lib/flext
+ 
+-FLEXTPREFIX=./libbuild
++#FLEXTPREFIX=/usr/local
++FLEXTPREFIX=/DISKPATHTO/pd-l2ork_git/externals/grill/trunk/flext/source
++
++# flext.h
++INCPATH += -I/DISKPATHTO/pd-l2ork_git/externals/grill/trunk/flext/source
++# Python.h
++INCPATH += -I/usr/include/python2.7
++# for faking
++INCPATH += -I/DISKPATHTO/pd-extended_0.43.4-1/usr/include/pdextended
++# debug-shared: libflext-pd_d.so.0.5.2; release-multi: libflext-pd_t.a.0.5.2
++# don't use this libpath when building flext itself!!
++# and MUST have -L in front!
++LIBPATH += -L/DISKPATHTO/pd-l2ork_git/externals/grill/trunk/flext/pd-linux/release-multi
++#LIBPATH += -L/DISKPATHTO/pd-l2ork_git/externals/grill/trunk/flext/pd-linux/release-single
+ 
+ ###############################################################
+ 
+@@ -17,7 +33,7 @@ FLEXTPREFIX=./libbuild
+ OUTPATH=pd-linux
+ 
+ # where should the external be installed?
+-INSTPATH=/usr/lib/pd/extra
++INSTPATH=/usr/local/lib/pd/extra
+ 
+ ###############################################################
+ 
+@@ -25,11 +41,11 @@ INSTPATH=/usr/lib/pd/extra
+ # http://ccrma.stanford.edu/software/stk
+ 
+ # where to find the STK header files (e.g. stk.h)
+-STK_INC=/usr/include/stk
++STK_INC=/usr/local/include/stk
+ 
+ # where to find the STK library (normally libstk.a)
+ # (comment out STK_LIB if you don't use STK)
+-#STK_LIB=/usr/lib/libstk.a
++#STK_LIB=/usr/local/lib/libstk.a
+ 
+ ###############################################################
+ 
+@@ -37,16 +53,16 @@ STK_INC=/usr/include/stk
+ # http://music.nuim.ie//musictec/SndObj
+ 
+ # where to find the SndObj header files (e.g. sndobj.h)
+-SNDOBJ_INC=/usr/include/SndObj
++SNDOBJ_INC=/usr/local/include/sndobj
+ 
+ # where to find the SndObj library (normally libsndobj.a)
+ # (comment out STK_LIB if you don't use SndObj)
+-#SNDOBJ_LIB=/usr/lib/libsndobj.a
++#SNDOBJ_LIB=/usr/local/lib/libsndobj.a
+ 
+ ###############################################################
+ 
+ # make flags (e.g. use multiprocessor)
+-MFLAGS=-j 2
++#MFLAGS=-j 2
+ 
+ # user defined compiler flags
+ # (check if they match your system!)
+@@ -58,4 +74,4 @@ UFLAGS+=-DFLEXT_USE_CMEM
+ # (check if they match your system!)
+ OFLAGS=-O3
+ # optimizations for Pentium 4
+-# OFLAGS+=-march=pentium4 
++OFLAGS+=-march=pentium4 
+diff --git a/externals/grill/trunk/py/buildnotes.txt b/externals/grill/trunk/py/buildnotes.txt
+new file mode 100644
+index 0000000..2c23a78
+--- /dev/null
++++ b/externals/grill/trunk/py/buildnotes.txt
+@@ -0,0 +1,227 @@
++# note, using as basis this revision of pd-l2ork: git diff --ignore-space-change c5b6526ae29ea82e87db489611a0e87ea98082e4 HEAD > l2ork-gripd.patch
++
++$ bash /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/flext/build.sh pd gcc
++-------------------------------------------------------------------------
++A default package configuration file has been created.
++Please edit config.txt, then start again.
++-------------------------------------------------------------------------
++make: *** [config.txt] Error 1
++
++# editing - the script again:
++source/pyprefix.h:17:19: fatal error: flext.h: No such file or directory
++
++# the file /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/flext/buildsys/config-lnx-pd-gcc.txt
++# was already added - needed for gripd; not sure why it fails here?
++# OK, simply added the path to pd-l2ork_git/externals/grill/trunk/flext/buildsys/config-lnx-pd-gcc.txt
++# INCPATH += -I/DISKPATHTO/.../flext/source
++# it seems to work, but Python.h is missing now - same fix for it
++
++# now it compiles, but linker error:
++/usr/bin/ld: cannot find -lflext-pd_t
++
++# ok, so I have to build flext... that created:
++# /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/flext/pd-linux/debug-shared/libflext-pd_d.so.0.5.2
++# nope, had to run this command:
++
++./build.sh pd gcc build-release-all
++
++$ find . -name 'libflext*'
++./pd-linux/release-multi/libflext-pd_t.a.0.5.2
++./pd-linux/release-single/libflext-pd_s.a.0.5.2
++./pd-linux/release-shared/libflext-pd.so.0.5.2
++
++# but even with that, and correct -L path, still cannot find?
++# http://stackoverflow.com/questions/19406024/c-linker-cannot-find-lcrypto-but-the-library-is-in-the-path
++# http://stackoverflow.com/questions/335928/ld-cannot-find-an-existing-library
++# needs a symlink:
++$ cd pd-linux/release-multi/
++$ ln -s libflext-pd_t.a.0.5.2 libflext-pd_t.a
++
++# and FINALLY it built...
++
++# bash ../flext/build.sh pd gcc - also works from this directory
++
++# to install:
++extra$ mkdir py
++cp /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/py/pd-linux/release-multi/py.pd_linux py/ # better ln -s
++cp -a /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/py/pd py/examples # better ln -s
++cp -a # better ln -s /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/py/scripts py/
++
++# add
++
++  -path $PDPATH/usr/lib/pd-extended/extra/py \
++  -path $PDPATH/usr/lib/pd-extended/extra/py/scripts \
++  -lib py \
++
++# but:
++/DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/py/py.pd_linux: /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/py/py.pd_linux: undefined symbol: sys_vguid
++
++it was:
++PDPATH=/DISKPATHTO/pd-l2ork_git/pd
++
++then changed in ref to:
++/DISKPATHTO/pd-extended_0.43.4-1/usr/include/pdextended/m_pd.h
++(/DISKPATHTO/pd-l2ork_git/pd/src/m_pd.h)
++(/DISKPATHTO/pd-extended_0.43.4-1/usr/bin/pd-extended)
++
++again undefined symbol: sys_vguid
++
++try rebuild flext - and py after that... THAT WAS IT:
++py/pyext 0.2.2 - python script objects
++(C)2002-2011 Thomas Grill - http://grrrr.org/ext
++
++... but now:
++
++*** glibc detected *** /DISKPATHTO/pd-extended_0.43.4-1/usr/bin/pdextended: free(): invalid pointer: 0x086cfaa4 ***
++======= Backtrace: =========
++/lib/i386-linux-gnu/libc.so.6(+0x6f751)[0x2f2751]
++/lib/i386-linux-gnu/libc.so.6(+0x7107b)[0x2f407b]
++/lib/i386-linux-gnu/libc.so.6(cfree+0x6d)[0x2f720d]
++/DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/vasp.pd_linux(_ZN16flext_root_multidlEPv+0x32)[0x1ebcc74]
++/DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/vasp.pd_linux(_ZN9QueueFifoD2Ev+0x1d1)[0x1ec59fb]
++/DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/py/py.pd_linux(+0x2e9e3)[0xddd9e3]
++...
++
++Ok, so definitely cannot use it... (also tried the examples, same thing - pyext cannot be found,
++py alone makes stacktraces and freezes)
++
++-----------
++
++let's also here put some notes for pd lua:
++
++http://puredata.info/downloads/pdlua ->
++https://svn.code.sf.net/p/pure-data/svn/trunk/externals/loaders/pdlua/
++
++git svn clone https://svn.code.sf.net/p/pure-data/svn/trunk/externals/loaders/pdlua pdlua_sgit
++change PD_PATH etc in makefile
++
++builds fine; (patch below); BUT:
++
++/DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/pdlua/pdlua.pd_linux: /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/pdlua/pdlua.pd_linux: undefined symbol: lua_version
++lua: can't load library
++undefined symbol: lua_version
++maximum object loading depth 1000 reached
++ pdlua
++... couldn't create
++
++Ah: http://lua-users.org/wiki/LuaVersionCompatibility
++ LuaFiveTwo contains new library functions: [lua_version] and [luaL_checkversion].
++
++ok, let's try to rebuild as 5.2?
++need ?:
++sudo ln -s /usr/lib/i386-linux-gnu/liblua5.2.so.0 /usr/lib/i386-linux-gnu/liblua5.2.so
++
++$ apt-show-versions -r lua5.2
++liblua5.2-0 5.2.0-2 installed: No available version in archive
++... but have no headers for that;
++svn claims it should autodetect 5.1 vs 5.2...
++tried replacing lua_version() with LUA_VERSION_NUM - it builds, but needs some pointer trickery there, which I did, and now it finally even runs Hello World - even if sometimes can still say "error loading ... canvas_open()" - need to see what works from it, but at least something works...
++
++The patch:
++
++diff --git a/Makefile b/Makefile
++index 395b691..9144624 100644
++--- a/Makefile
+++++ b/Makefile
++@@ -61,15 +61,18 @@ CFLAGS = -Wall -W -g
++ LDFLAGS =
++ LIBS =
++
++-LUA_CFLAGS = -I/usr/include/lua
++-LUA_LIBS   = -llua
+++#LUA_CFLAGS = -I/usr/include/lua
+++LUA_CFLAGS = -I/usr/include/lua5.1
+++#LUA_LIBS   = -llua
+++LUA_LIBS   = -llua5.1
++
++ # get library version from meta file
++ LIBRARY_VERSION = $(shell sed -n 's|^\#X text [0-9][0-9]* [0-9][0-9]* VERSION \(.*\);|\1|p' $(LIBRARY_META))
++
++ ALL_CFLAGS += -DPD -DVERSION='"$(LIBRARY_VERSION)"'
++
++-PD_INCLUDE = $(PD_PATH)/include/pd
+++#PD_INCLUDE = $(PD_PATH)/include/pd
+++PD_INCLUDE = /DISKPATHTO/pd-extended_0.43.4-1/usr/include/pdextended
++ # where to install the library, overridden below depending on platform
++ prefix = /usr/local
++ libdir = $(prefix)/lib
++diff --git a/src/pdlua.c b/src/pdlua.c
++index 6891bfc..b6530b1 100644
++--- a/src/pdlua.c
+++++ b/src/pdlua.c
++@@ -1754,7 +1754,8 @@ void pdlua_setup(void)
++     char*               luaver = "lua 0.6~svn (GPL) 2008 Claude Heiland-Allen <claude@mathr.co.uk>";
++     char                compiled[MAXPDSTRING];
++     char                luaversionStr[MAXPDSTRING];
++-    const lua_Number    *luaversion = lua_version (NULL);
+++    int                 myLuaVersion = LUA_VERSION_NUM;
+++    const lua_Number    *luaversion = &myLuaVersion; //lua_version (NULL); lua_version crashes my 5.1
++     int                 lvm, lvl;
++
++     snprintf(compiled, MAXPDSTRING-1, "pdlua: compiled for pd-%d.%d on %s %s",
++
++------------
++
++Actually, just realized that in the above stack trace for py, it is [vasp] (downloaded one) that interferes with flext/py! After renaming to _vasp.__dl_pd_linux to stop it from loading, then upon instantiation of PD, new stack trace:
++
++/DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/xsample.pd_linux(_ZN17flext_root_singledlEPv+0x32)[0xbaa7b4]
++/DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/xsample.pd_linux(_ZN9QueueFifoD2Ev+0x1d1)[0xbb03eb]
++/DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/py.pd_linux(+0x2ccb5)[0xd83cb5]
++/DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/py.pd_linux(_ZN16flext_base_multi7QWorkerEPN11flext_multi10thr_paramsE+0x51)[0xd859c3]
++/DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/py.pd_linux(+0x25d22)[0xd7cd22]
++
++... and xsample was downloaded as well! mv xsample.pd_linux _xsample.__dl_pd_linux -- AND NOW [py] INSTANTIATES!! (although it takes a while); there are seemingly no *help* files; but there is /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/py/pd with *.pd examples; most use [pyext] which I don't have built; but actually the errors are:
++
++ImportError: No module named sendrecv
++ pyext sendrecv ex1 he hu
++... couldn't create
++py - No namespace available
++ImportError: No module named script
++
++... maybe I need a path to scripts ("pd -lib py -path scripts") - that dir has only *.py scripts...
++/DISKPATHTO/pd-extended_0.43.4-1/usr/bin/pdextended -lib py -path /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/py/scripts
++
++... and with that, finally pd-l2ork_git/externals/grill/trunk/py/pd/script-1.pd works! all the other scripts do too, [pym] works too, [pyx.] works too, [pyext] works too. So [py] module is solved...
++
++-----
++cd /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/xsample
++bash ../flext/build.sh pd gcc # also works from this directory (once flext is built)
++# /usr/bin/ld: cannot find -lflext-pd_s # works with -o pd-linux/release-single/inter.opp; so:
++ln -s /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/flext/pd-linux/release-single/libflext-pd_s.a.0.5.2 /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/flext/pd-linux/release-single/libflext-pd_s.a
++# in /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/flext/buildsys/config-lnx-pd-gcc.txt:
++
++LIBPATH += -L/DISKPATHTO/pd-l2ork_git/externals/grill/trunk/flext/pd-linux/release-single
++
++bash ../flext/build.sh pd gcc clean
++bash ../flext/build.sh pd gcc # yeah, builds now
++
++mkdir /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/xsample
++ln -s /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/xsample/pd-linux/release-single/xsample.pd_linux /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/xsample/
++ln -s /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/xsample/pd/*help.pd /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/xsample/
++mkdir /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/xsample/examples
++ln -s /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/xsample/pd-ex/* /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/xsample/examples/
++
++# ....
++
++cd /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/vasp
++bash ../flext/build.sh pd gcc # also works from this directory (once flext is built)
++# /usr/bin/ld: cannot find -lflext-pd_t
++# this is pd-linux/release-multi/, so restore previous in /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/flext/buildsys/config-lnx-pd-gcc.txt:
++
++LIBPATH += -L/DISKPATHTO/pd-l2ork_git/externals/grill/trunk/flext/pd-linux/release-multi
++
++bash ../flext/build.sh pd gcc clean
++bash ../flext/build.sh pd gcc # yeah, builds now
++
++mkdir /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/vasp
++ln -s /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/vasp/pd-linux/release-multi/vasp.pd_linux /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/vasp/
++ln -s /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/vasp/pd/* /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/vasp/
++mkdir /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/vasp/vasp_help
++ln -s /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/vasp/pd-help/* /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/vasp/vasp_help/
++mkdir /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/vasp/examples
++ln -s /DISKPATHTO/pd-l2ork_git/externals/grill/trunk/vasp/pd-ex/* /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/vasp/examples/
++
++# using strace, found that PD looks for help-vasp_v.pd or vasp_v-help.pd, for right-click/Help on plain [vasp]; no dedicated help directories (-helppath), but in usr/lib/pd-extended/extra/vasp/, usr/lib/pd-extended/doc/5.reference/, usr/lib/pd-extended/doc/5.reference/extra/, ..., usr/lib/pd-extended/doc/5.reference/cyclone/ ..., ~/pd-externals/, /usr/local/lib/pd-externals/ - looped for either version of the name...
++# so have to add what I've called `vasp_help` to -helppath, and otherwise symlink VASP-HELP.pd to vasp_v-help.pd
++
++(cd /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/vasp; ln -s VASP-HELP.pd vasp_v-help.pd)
+diff --git a/externals/grill/trunk/py/config.txt b/externals/grill/trunk/py/config.txt
+new file mode 100644
+index 0000000..7531e1d
+--- /dev/null
++++ b/externals/grill/trunk/py/config.txt
+@@ -0,0 +1,17 @@
++# what is the base prefix of the Python installation?
++PYTHONPREFIX=/usr/bin
++
++# which Python version do you want to compile against?
++PYTHONVERSION=2.7
++
++# uncomment if numpy/numarray/numeric support should be compiled in
++# for info see http://numeric.scipy.org
++PY_NUMPY=1
++# PY_NUMARRAY=1
++# PY_NUMERIC=1
++
++# use thread-safe GIL functionality (do this for python version >= 2.3!)
++PY_USE_GIL=1
++
++# use inofficial (pure data) functionality
++# PY_USE_INOFFICIAL=1
+diff --git a/externals/mjlib/Makefile b/externals/mjlib/Makefile
+index e3cce7a..4e23ab9 100644
+--- a/externals/mjlib/Makefile
++++ b/externals/mjlib/Makefile
+@@ -32,7 +32,7 @@ EXTRA_DIST = VERSION mjLib.c mjLib.h StdAfx.h about.h convolve~.h metroplus.h mo
+ #
+ #------------------------------------------------------------------------------#
+ 
+-CFLAGS = -DPD -I"$(PD_INCLUDE)" -Wall -W -g
++CFLAGS = -DPD -I"$(PD_INCLUDE)" -I../../pd/src -Wall -W -g
+ LDFLAGS =  
+ LIBS = 
+ 
+@@ -47,6 +47,7 @@ LIBRARY_VERSION = $(shell sed -n 's|^\#X text [0-9][0-9]* [0-9][0-9]* VERSION \(
+ 
+ CFLAGS += -DVERSION='"$(LIBRARY_VERSION)"'
+ 
++# -I../../src -I../../../pd/src
+ PD_INCLUDE = $(PD_PATH)/include
+ # where to install the library, overridden below depending on platform
+ prefix = /usr/local

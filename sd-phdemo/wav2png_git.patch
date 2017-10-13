@@ -1,0 +1,213 @@
+diff --git a/README.md b/README.md
+index ba5b3f6..44a1d49 100644
+--- a/README.md
++++ b/README.md
+@@ -1,5 +1,9 @@
+ # wav2png
+
++# note: now can do:
++# ../bin/Linux/wav2png -n -w 600 -h 400 /DISKPATHTO/tmp/tt_seqintf_song1_93.wav 2>/dev/null | feh $(cat /dev/stdin)
++# ../bin/Linux/wav2png -nl -w 600 -h 400 -f a0c0a0ff -b 000000ff /DISKPATHTO/tmp/tt_seqintf_song1_93.wav | feh $(cat /dev/stdin)
++
+ Author: Benjamin Schulz
+
+ email: beschulz[the a with the circle]betabugs.de
+@@ -112,6 +116,9 @@ If you have suggestions for performance improvements, please drop a line.
+
+ # Installation
+
++## sd note: bin/Linux/wav2png: error while loading shared libraries: libboost_program_options.so.1.42.0: cannot open shared object file: No such file or directory
++# it is a requirement, then
++
+ ## On Linux (Ubuntu, Debian)
+
+ ### install dependencies
+diff --git a/bin/Linux/wav2png b/bin/Linux/wav2png
+index 8b52cda..dcb3c5f 100755
+Binary files a/bin/Linux/wav2png and b/bin/Linux/wav2png differ
+diff --git a/build/Makefile b/build/Makefile
+index 08f8b4b..ff31989 100644
+--- a/build/Makefile
++++ b/build/Makefile
+@@ -37,7 +37,8 @@ $(SRC)/version.hpp: Makefile version.txt
+ $(BINARY): $(SRC)/*.cpp $(SRC)/*.hpp $(SRC)/version.hpp
+ 	mkdir -p `dirname $(BINARY)`
+ 	echo $(INCLUDES)
+-	$(CC) -O3 -Wall -Werror $(SRC)/*.cpp $(INCLUDES) $(LD_PLATFORM_FLAGS) -o $(BINARY)
++	#~ $(CC) -O3 -Wall -Werror $(SRC)/*.cpp $(INCLUDES) $(LD_PLATFORM_FLAGS) -o $(BINARY)
++	$(CC) -g -Wall -Werror $(SRC)/*.cpp $(INCLUDES) $(LD_PLATFORM_FLAGS) -o $(BINARY)
+
+ clean:
+ 	rm -f $(BINARY)
+diff --git a/src/main.cpp b/src/main.cpp
+index 645348c..b6a3358 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -36,6 +36,7 @@ int main(int argc, char* argv[])
+   }
+
+   //cerr << "length: " << wav.frames() / wav.samplerate() << " seconds" << endl;
++  //cerr << "channels: " << wav.channels() << endl;
+
+   // create image
+   png::image< png::rgba_pixel > image(options.width, options.height);
+@@ -47,6 +48,8 @@ int main(int argc, char* argv[])
+     options.background_color,
+     options.foreground_color,
+     options.use_db_scale,
++    options.mono_render,
++    options.draw_mid_line,
+     options.db_min,
+     options.db_max,
+     progress_callback
+@@ -56,5 +59,9 @@ int main(int argc, char* argv[])
+   // write image to disk
+   image.write(options.output_file_name);
+
++  if (options.output_image_fn) {
++    cout << options.output_file_name << endl;
++  }
++
+   return 0;
+ }
+diff --git a/src/options.hpp b/src/options.hpp
+index 427c07f..b4598ba 100644
+--- a/src/options.hpp
++++ b/src/options.hpp
+@@ -34,6 +34,12 @@ struct Options
+           		"config file to use")
+     		("db-scale,d", po::value(&use_db_scale)->zero_tokens()->default_value(false),
+     			"use logarithmic (e.g. decibel) scale instead of linear scale")
++    		("mono,m", po::value(&mono_render)->zero_tokens()->default_value(false),
++    			"render mono (leftmost channel) only")
++    		("nameimgout,n", po::value(&output_image_fn)->zero_tokens()->default_value(false),
++    			"output image filename")
++    		("linemiddraw,l", po::value(&draw_mid_line)->zero_tokens()->default_value(false),
++    			"draw middle line")
+     		("db-min", po::value(&db_min)->default_value(-48.0f),
+     			"minimum value of the signal in dB, that will be visible in the waveform")
+ 		    ("db-max", po::value(&db_max)->default_value(0.0f),
+@@ -196,6 +202,9 @@ struct Options
+ 	std::string config_file_name;
+
+ 	bool use_db_scale;
++	bool mono_render;
++	bool output_image_fn;
++	bool draw_mid_line;
+ 	float db_min;
+ 	float db_max;
+ };
+diff --git a/src/wav2png.cpp b/src/wav2png.cpp
+index 1b84210..b46769c 100644
+--- a/src/wav2png.cpp
++++ b/src/wav2png.cpp
+@@ -69,6 +69,8 @@ void compute_waveform(
+   const png::rgba_pixel& bg_color,
+   const png::rgba_pixel& fg_color,
+   bool use_db_scale,
++  bool mono_render,
++  bool draw_mid_line,
+   float db_min,
+   float db_max,
+   progress_callback_t progress_callback
+@@ -98,9 +100,13 @@ void compute_waveform(
+   int samples_per_pixel = wav.channels() * frames_per_pixel;
+   std::size_t progress_divisor = std::max<std::size_t>(1, image.get_width()/100);
+
++  const unsigned ph = h/wav.channels(); //part_height
++  //cerr << "height part: " << ph << " frames_per_pixel: " << frames_per_pixel << " samples_per_pixel " << samples_per_pixel << endl;
++
+   // temp buffer for samples from audio file
+   std::vector<sample_type> block(samples_per_pixel);
+
++  if (mono_render) {
+   /*
+     the processing works like this:
+     for each vertical pixel in the image (x), read frames_per_pixel frames from
+@@ -153,6 +159,73 @@ void compute_waveform(
+       if ( progress_callback && !progress_callback( 100*x/image.get_width() ) )
+           return;
+     }
++  } // end for
++  } else {
++  /*
++    the processing works like this:
++    for each vertical pixel in the image (x), read frames_per_pixel frames from
++    the audio file and find the min and max values.
++  */
++  for (int np=0; np<wav.channels(); ++np) {
++    //cerr << "part: " << np << endl;
++    int lnp = np*ph; // location of part np (height)
++    // reset to beginning:
++    const_cast<SndfileHandle&>(wav).seek(0, SEEK_SET);
++    for (size_t x = 0; x < image.get_width(); ++x)
++    {
++      // read frames
++      sf_count_t n = const_cast<SndfileHandle&>(wav).readf(&block[0], frames_per_pixel) * wav.channels();
++      assert(n <= (sf_count_t)block.size());
++
++      // find min and max
++      sample_type min(0);
++      sample_type max(0);
++      //~ for (int i=0; i<n; i+=1+np)//wav.channels()) // not only left channel, but the first is mixed
++      for (int i=np; i<n; i+=wav.channels()) // this does the channels correctly
++      {
++        min = std::min( min, block[i] );
++        max = std::max( max, block[i] );
++      }
++
++      // compute "span" from top of image to min
++      float y1_ = use_db_scale?
++        ph/2 - map2range( float2db(min / (float)sample_scale<sample_type>::value ), db_min, db_max, 0, ph/2):
++        map2range( min, -sample_scale<sample_type>::value, 0, 0, ph/2);
++      assert(0 <= y1_ && y1_ <= ph/2);
++      size_t y1 = (size_t)y1_;
++
++      // compute "span" from max to bottom of image
++      float y2_ = use_db_scale?
++        ph/2 + map2range( float2db(max / (float)sample_scale<sample_type>::value ), db_min, db_max, 0, ph/2):
++        map2range( max, 0, sample_scale<sample_type>::value, ph/2, ph);
++      assert(ph/2 <= y2_ && y2_ <= ph);
++      size_t y2 = (float)y2_;
++
++      // fill span top to min
++      for(size_t y=0+lnp; y<y1+lnp;++y)
++        image.set_pixel(x, y, bg_color);
++
++      // fill span min to max
++      for(size_t y=y1+lnp; y<y2+lnp;++y)
++        image.set_pixel(x, y, fg_color);
++
++      // fill span max to bottom
++      for(size_t y = y2+lnp; y<ph+lnp; ++y)
++        image.set_pixel(x, y, bg_color);
++
++      // print progress
++      if ( x%(progress_divisor) == 0 )
++      {
++        if ( progress_callback && !progress_callback( 50*x/image.get_width() + 50*np ) )
++            return;
++      }
++    } // end for
++    if (draw_mid_line) {
++    // try add middle line at end
++    for(size_t x = 0; x<image.get_width(); ++x)
++      image.set_pixel(x, ph/2+lnp, bg_color);
++    }
++  } // end for
+   }
+
+     if ( progress_callback && !progress_callback( 100 ) )
+diff --git a/src/wav2png.hpp b/src/wav2png.hpp
+index bb7afce..de05ca0 100644
+--- a/src/wav2png.hpp
++++ b/src/wav2png.hpp
+@@ -13,6 +13,8 @@ void compute_waveform(
+   const png::rgba_pixel& bg_color,
+   const png::rgba_pixel& fg_color,
+   bool use_db_scale,
++  bool mono_render,
++  bool draw_mid_line,
+   float db_min,
+   float db_max,
+   progress_callback_t progress_callback

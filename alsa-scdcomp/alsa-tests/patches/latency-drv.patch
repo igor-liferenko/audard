@@ -1,0 +1,72 @@
+--- ./orig/dummy-2.6.32-patest.c	2013-08-03 07:25:04.036935922 +0200
++++ ./new/dummy-2.6.32-patest.c	2013-09-02 21:24:58.634185847 +0200
+@@ -587,7 +587,7 @@
+   //~ dbg("%s: pos: %u", __func__, pos);
+   // report in frames directly (calc in bytes elsewhere);
+   // function name is auto-printed by trace_printk - but not in function_graph!
+-  trace_printk("_pointer: %d (%d) a:%lu h:%lu\n", pos, substream->stream, substream->runtime->control->appl_ptr, substream->runtime->status->hw_ptr);
++  trace_printk("_pointer: %d (%d) a:%lu h:%lu d:%ld\n", pos, substream->stream, substream->runtime->control->appl_ptr, substream->runtime->status->hw_ptr, substream->runtime->delay);
+
+ 	return pos;
+ }
+--- ./orig/dummy-2.6.32-orig.c	2013-09-12 15:10:44.683980298 +0200
++++ ./new/dummy-2.6.32-orig.c	2013-09-02 21:24:58.634185847 +0200
+@@ -17,6 +17,8 @@
+  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+  *
+  */
++// started from http://lxr.linux.no/linux+v2.6.32/+save=sound/drivers/dummy.c
++// modded sdaau 2013
+
+ #include <linux/init.h>
+ #include <linux/err.h>
+@@ -110,6 +112,14 @@
+ #define USE_PERIODS_MAX		8
+ #endif
+
++#if 1 /* like patest_duplex test */
++#define USE_FORMATS		SNDRV_PCM_FMTBIT_S16_LE
++#define USE_CHANNELS_MIN	2
++#define USE_CHANNELS_MAX	2
++#define USE_RATE		SNDRV_PCM_RATE_8000|SNDRV_PCM_RATE_44100
++#define USE_RATE_MIN		8000
++#define USE_RATE_MAX		44100
++#endif
+
+ /* defaults */
+ #ifndef MAX_BUFFER_SIZE
+@@ -154,7 +164,12 @@
+ #ifdef CONFIG_HIGH_RES_TIMERS
+ static int hrtimer = 1;
+ #endif
+-static int fake_buffer = 1;
++
++//static int fake_buffer = 1;
++// NOTE: IF WE INTEND TO WRITE TO
++// DMA_AREA, fake_buffer CANNOT BE 1
++// ELSE VERY SERIOUS CRASHES HAPPEN
++static int fake_buffer = 0;
+
+ module_param_array(index, int, NULL, 0444);
+ MODULE_PARM_DESC(index, "Index value for dummy soundcard.");
+@@ -407,6 +422,9 @@
+ 			       dpcm->base_time);
+ 	delta = div_u64(delta * runtime->rate + 999999, 1000000);
+ 	div_u64_rem(delta, runtime->buffer_size, &pos);
++  // report in frames directly (calc in bytes elsewhere);
++  // function name is auto-printed by trace_printk - but not in function_graph!
++  trace_printk("_pointer: %d (%d) a:%lu h:%lu d:%ld\n", pos, substream->stream, substream->runtime->control->appl_ptr, substream->runtime->status->hw_ptr, substream->runtime->delay);
+ 	return pos;
+ }
+
+--- ./orig/hda_intel_2.6.38_patched.c	2013-09-12 15:18:25.510265513 +0200
++++ ./new/hda_intel_2.6.38.c	2013-09-02 21:24:58.634185847 +0200
+@@ -1896,7 +1896,7 @@
+                          azx_get_position(chip, azx_dev));
+   // report in frames directly (calc in bytes elsewhere);
+   // function name is auto-printed by trace_printk - but not in function_graph!
+-  trace_printk("_pointer: %ld (%d) a:%lu h:%lu\n", ploc, substream->stream, substream->runtime->control->appl_ptr, substream->runtime->status->hw_ptr);
++  trace_printk("_pointer: %ld (%d) a:%lu h:%lu d:%ld\n", ploc, substream->stream, substream->runtime->control->appl_ptr, substream->runtime->status->hw_ptr, substream->runtime->delay);
+   return ploc;
+   //~ return bytes_to_frames(substream->runtime,
+                          //~ azx_get_position(chip, azx_dev));

@@ -1,0 +1,145 @@
+diff --git a/test_stdout.py b/test_stdout.py
+new file mode 100644
+index 0000000..fffdf52
+--- /dev/null
++++ b/test_stdout.py
+@@ -0,0 +1,18 @@
++import xnuplot
++import numpy
++
++x = numpy.linspace(0, 5.0 * numpy.pi, 200)
++y1 = numpy.sin(x)
++y2 = numpy.cos(x)
++data = numpy.column_stack((x, y1, y2)) # Make a 200-by-3 array.
++plot = xnuplot.Plot(autorefresh=False)
++plot("set terminal png")
++plot("set output '/dev/stdout'")
++print plot
++plot.append(xnuplot.record(data, using=(0, 1), options="notitle with lines"))
++print plot
++plot.append(xnuplot.record(data, using=(0, 2), options="notitle with lines"))
++print plot
++#print "XXX", plot.refresh()
++tr = plot.refresh()
++# print tr
+diff --git a/xnuplot/_gnuplot.py b/xnuplot/_gnuplot.py
+index 76705bb..537a21c 100644
+--- a/xnuplot/_gnuplot.py
++++ b/xnuplot/_gnuplot.py
+@@ -42,7 +42,7 @@ class GnuplotError(RuntimeError):
+ 
+ class RawGnuplot(object):
+     """Low-level manager for communication with a Gnuplot subprocess.
+-    
++
+     A RawGnuplot instance encapsulates a dedicated Gnuplot process and the
+     means for communication with it through a pseudoterminal. It can pass data
+     to Gnuplot using a temporary file or pipe, but is agnostic of the format of
+@@ -261,7 +261,7 @@ class RawGnuplot(object):
+     def pause(self, *params):
+         command = " ".join(("pause",) + params)
+         # At least with the tested build of Gnuplot 4.4.0 on Mac OS X, closing
+-        # the window does not cause `pause mouse close' to immediately return. 
++        # the window does not cause `pause mouse close' to immediately return.
+         # Sending an extra newline appears to get around the block, so here is
+         # a special workaround.
+         send_extra_newline = False
+@@ -389,7 +389,7 @@ class RawGnuplot(object):
+ 
+ class Gnuplot(RawGnuplot):
+     """Manager for communication with a Gnuplot subprocess.
+-    
++
+     The Gnuplot class inherits from RawGnuplot and adds methods (plot(),
+     splot(), replot(), fit(), script()) that simplify the passing of data when
+     issuing commands that require data to be read from files.
+@@ -424,6 +424,11 @@ class Gnuplot(RawGnuplot):
+         result = self(cmd + " " + ", ".join(item_strings), **data_dict)
+         # Result should be the empty string if successful.
+         if len(result):
++            # HACK: raw png stdout
++            #print "EEEE", result[:10]
++            if "\x89PNG" in result:
++              #sys.stdout.write(result)
++              return result
+             # Remove Gnuplot's syntax error pointer.
+             msg = result.strip().lstrip("^").strip()
+             # XXX Our handling of Gnuplot warnings is not perfect.
+@@ -448,14 +453,14 @@ class Gnuplot(RawGnuplot):
+         Gnuplot().plot("sin(x) notitle", "'some_file.dat' with lp",
+                        (some_data, "binary array=(512,512) with image"))
+         """
+-        self._plot("plot", *items)
++        return self._plot("plot", *items)
+ 
+     def splot(self, *items):
+         """Issue an `splot' command with the given items.
+ 
+         See the documentation for plot().
+         """
+-        self._plot("splot", *items)
++        return self._plot("splot", *items)
+ 
+     def replot(self, *items):
+         """Issue a `replot' command with the given items.
+@@ -465,7 +470,7 @@ class Gnuplot(RawGnuplot):
+         Note that `replot' does not work when the previous plot was made by
+         passing data to Gnuplot, unless temporary files were used explicitly.
+         """
+-        self._plot("replot", *items)
++        return self._plot("replot", *items)
+ 
+     def fit(self, data, expr, via, ranges=None):
+         """Issue a `fit' command.
+diff --git a/xnuplot/_plot.py b/xnuplot/_plot.py
+index dc24990..234022e 100644
+--- a/xnuplot/_plot.py
++++ b/xnuplot/_plot.py
+@@ -48,11 +48,13 @@ class _ObservedList(list):
+         if self._block_refresh:
+             return
+ 
++        tr = None
+         try:
+             self._block_refresh = True
+-            self._perform_refresh()
++            tr= self._perform_refresh()
+         finally:
+             self._block_refresh = False
++        return tr
+ 
+     def _perform_refresh(self):
+         pass
+@@ -198,7 +200,7 @@ class Plot(_BasePlot):
+             return
+ 
+         if len(self):
+-            self._plotmethod(*self)
++            return self._plotmethod(*self)
+         else:
+             self("clear")
+ 
+@@ -339,6 +341,7 @@ class Multiplot(_BasePlot):
+         if not self.isalive():
+             return
+ 
++        rez=""
+         if len(self):
+             saved_script = self.environment_script()
+             saved_prompt = self.gp_prompt
+@@ -366,13 +369,14 @@ class Multiplot(_BasePlot):
+                         self("set origin %e, %e" % plot.origin)
+ 
+                     plotmethod = plot._plotmethod.im_func
+-                    plotmethod(self, *plot)
++                    rez = plotmethod(self, *plot)
+             finally:
+                 self.gp_prompt = saved_prompt
+                 self("unset multiplot")
+                 self.source(saved_script)
+         else:
+             self("clear")
++        return rez
+ 
+     def notify_change(self, old, new):
+         new_ids = [id(p) for p in new]

@@ -1,0 +1,116 @@
+################################################################################
+# NOTICE:
+# This README (and the contents) is under construction;
+# upon completion, this notice will be removed
+################################################################################
+
+This is the folder of the collection {alsa-}scdcomp; more detailed explanation
+will follow.
+
+For the time being, it contains the following 10 directories, 93 files:
+
+alsa-scdcomp
+├── alsa-tests
+│   ├── data
+│   │   └── collectmirq_both_n.csv
+│   ├── drivers
+│   │   ├── dummy-2.6.32-patest.c
+│   │   ├── dummy-2.6.32-patest-fix.c
+│   │   ├── hda_intel_2.6.38_mod.c
+│   │   └── Makefile
+│   ├── patches
+│   │   ├── audacity-portaudio.patch
+│   │   ├── hda_intel_2.6.38_B.patch
+│   │   ├── hda_intel_2.6.38.patch
+│   │   ├── latency-drv.patch
+│   │   └── trace-cmd-exitprint.patch
+│   ├── userspace-programs
+│   │   ├── captmini.c
+│   │   ├── latency-mod.c
+│   │   ├── patest_duplex_wire.c
+│   │   └── playmini.c
+│   ├── batch_traceLogFile.sh
+│   ├── cappics.sh
+│   ├── captmini-debug-fg.gdb
+│   ├── collectmirq.gp
+│   ├── collectmirq.sh
+│   ├── comparecsv.pl
+│   ├── copylogs.sh
+│   ├── csv_normalize_cols.py
+│   ├── data_montage.tar.xz
+│   ├── lat-anim.pl
+│   ├── montikz-pdf.pl
+│   ├── playdelay.sh
+│   ├── quikgppdf.sh
+│   ├── README.alsa-capttest
+│   ├── README.alsa-patest-duplex
+│   ├── README.fix
+│   ├── rerun.sh
+│   ├── run-alsa-capttest.sh
+│   ├── run-alsa-lattest.sh
+│   ├── run-alsa-pa-tests.README
+│   ├── run-alsa-pa-tests.sh
+│   ├── run-audacity-test.sh
+│   ├── runner-alsa-capttest.sh
+│   ├── traceAdbgAcity.gp
+│   ├── traceFGLatLogfile2Csv.py
+│   ├── traceFGLatLogGraph.gp
+│   ├── traceFGTXLogfile2Csv.py
+│   ├── traceFGTXLogGraph.gp
+│   ├── traceLogfile2Csv.py
+│   └── traceLogGraph.gp
+├── ftdi_profiler
+│   ├── ftdi_profiler_chaco.py
+│   ├── ftdi_profiler.gp
+│   ├── ftdi_profiler.h
+│   ├── ftdi_profiler.kst
+│   ├── ftdi_profiler.sh
+│   ├── ftdi_sio-audard-16s.c
+│   ├── ftdi_sio.h
+│   ├── ftdi_sio_ids.h
+│   └── Makefile
+├── multitrack_plot
+│   ├── multitrack_plot.glade
+│   ├── multitrack_plot.py
+│   ├── multitrack_user.py
+│   └── xnuplot_diff_7c71428.patch
+├── snd_ftdi_audard-an16s
+│   ├── copylogs.sh
+│   ├── ftdi_sio-audard-16s.c
+│   ├── ftdi_sio.h
+│   ├── ftdi_sio_ids.h
+│   ├── Makefile
+│   ├── rerun.sh
+│   ├── snd_ftdi_audard_16s_B.h
+│   ├── snd_ftdi_audard_16s_C.h
+│   └── snd_ftdi_audard_16s.h
+├── testjiffy
+│   ├── calcmeanstdev.py
+│   ├── captures.tar.gz
+│   ├── getHZ.sh
+│   ├── Makefile
+│   ├── rerun.sh
+│   ├── testjiffy.c
+│   └── testjiffy_hr.c
+├── trace-user-program
+│   ├── callmodule.c
+│   ├── data-out.tar.gz
+│   ├── Makefile
+│   ├── min.c
+│   ├── min.S
+│   └── trace-minprog.sh
+├── alsa-info-MSI-10.04.txt
+├── alsa-info-NetColors-11.04.txt
+├── alsa-sox-notes.sh
+├── csv-pygtk.py
+├── ftdi-sio-duemillanove-info.txt
+├── genbindata_sawramp_16s.pl
+├── hexdump.pl
+├── LICENSE
+├── load-alsa-debug-modules.sh
+├── outshark_48_audacok.csv
+├── prepend_wav_header.pl
+├── print_sawramp.sh
+├── README
+└── unpack-tshark.sh
+

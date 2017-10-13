@@ -1,0 +1,766 @@
+numStepCsvLogVis - analyze logfile data in CSV format
+===============================================
+
+http://sdaaubckp.sourceforge.net/numStepCsvLogVis/
+
+
+Copyleft 2013, sdaau
+This package is free software, released
+under the GNU General Public License.
+NO WARRANTY; for license information see
+the file LICENSE
+
+
+CONTENTS
+--------
+
+* [NAME](#name)
+* [SYNOPSIS](#synopsis)
+* [DESCRIPTION](#description)
+* [DOWNLOAD](#download)
+* [INSTALLATION REQUIREMENTS](#inst)
+* [DEV PLATFORM, COMPATIBILITY AND PERFORMANCE](#devp)
+* [USAGE](#usage)
+    * [TERMINAL MODES, STEP PLAYER AND STRINGMODE](#termmode)
+    * [STDIN/PIPES AND FILE HANDLING](#pipefile)
+    * [CSV PARSING, COLUMNSPEC AND WRAPPING](#colspec)
+    * [GUI MODE AND GUI CONFIG FILE](#guiconf)
+* [DETAILS / TUTORIAL](#details)
+    * [GENERATE DEBUG TRACE IN SYSLOG](#gensyslog)
+    * [CONVERT NUMERIC SYSLOG DATA TO CSV](#convlogcsv)
+    * [FIND PLAYERSPEC IN TERMINAL MODE](#playspecterm)
+    * [GUI CONFIG AND RENDERING PNG](#guipng)
+    * [SONIFICATION AND RENDERING AUDIO](#sonify)
+    * [RENDERING FINAL AUDIO/VISUAL MOVIE](#renderfinal)
+* [BUGS](#bugs)
+* [AUTHOR](#author)
+
+&nbsp;
+
+## <a id="name"></a>NAME ##
+
+numStepCsvLogVis.py - analyze: step, play, plot, visualize and sonify numeric logfile data in CSV format
+
+## <a id="synopsis"></a>SYNOPSIS ##
+
+    python numStepCsvLogVis.py sample.csv
+
+## <a id="description"></a>DESCRIPTION ##
+
+`numStepCsvLogVis` is an application intended for analysis of comma-separated values (CSV) files, containing numerical data; in particular, it aims to allow for analysis of programming logfiles, whose contents lend itself to conversion to a CSV format.
+
+While typical logfile analyzers like `Xlogmaster`, `Swatch (Simple Log Watcher)`, or `Webalizer`, are typically intended for a specific logfile format, with one of their primary tasks being syntax coloring of the logfile content -- `numStepCsvLogVis` allows for: stepping and playback of CSV rows/lines in a command-line terminal, with or without a `curses` interface; visualisation of arbitrary CSV columns per row/line on a plot; export of sequence of plots as animation frames in PNG format; and generation of output useful for sonification in case of timing data.
+
+In brief - it can take a logfile with timestamps like [testTSB.log](http://sdaaubckp.svn.sourceforge.net/viewvc/sdaaubckp/numStepCsvLogVis/archive/testTSB.log); and through the intermediate CSV format, render numeric data therein in an animated and sonified plot video like [testTSB_log2.avi](http://sdaaubckp.sourceforge.net/numStepCsvLogVis/testTSB_log2.avi) <s>[testTSB_log.mpg](http://sdaaubckp.sourceforge.net/numStepCsvLogVis/testTSB_log.mpg)</s>.
+
+[<img src="http://sdaaubckp.sourceforge.net/numStepCsvLogVis/numStepCsvLogVis.png" width="500"/>](http://sdaaubckp.sourceforge.net/numStepCsvLogVis/numStepCsvLogVis.png)
+
+`numStepCsvLogVis` is a collection of an eponymous Python script, and several other Python scripts, all of which are ran in the terminal:
+
+* `numStepCsvLogVis.py` - the main application
+* `tools/genCsvLines.py` - tester program that generates the CSV data in `sample.csv`
+* `tools/numLogfile2Csv.py` - conversion program that can convert a log file to CSV format
+* `tools/naiveConvolveWav.py` - example convolution program, which can be used to generate sonification audio
+* `makeCsvMovie.py` - batch script (Linux), that generates audio and animation frame, and merges them in a video file
+
+The file VERSION both sets the current version of the application (in the very first line), and serves as a NEWS/ChangeLog file.
+
+## <a id="download"></a>DOWNLOAD ##
+
+You can [browse the source code online](http://sdaaubckp.svn.sourceforge.net/viewvc/sdaaubckp/numStepCsvLogVis/), or check it out from `svn` through:
+
+    svn co https://sdaaubckp.svn.sourceforge.net/svnroot/sdaaubckp/numStepCsvLogVis
+
+With this, you will checkout the installation directory `numStepCsvLogVis` and its subfolders. Consult the following sections for installation details.
+
+## <a id="inst"></a>INSTALLATION REQUIREMENTS ##
+
+The Python scripts need an installation of Python version 2.6 or newer; they have been tested on Python 2.7.1 and Python 3.2. In addition, the following Python packages are needed for different aspects of the `numStepCsvLogVis` application - but are not required, for the application to start and run with minimal default settings:
+
+* `curses`
+* `tkinter`
+* `numpy`
+* `matplotlib`
+
+Running the help, via `python numStepCsvLogVis -h`, should report whether these packages (if any) have been found by the Python installation.
+
+They may or may not already be available for installation through the package manager of your operating system; please see the next section for more details, as pertaining to the development platform.
+
+## <a id="devp"></a>DEV PLATFORM, COMPATIBILITY AND PERFORMANCE ##
+
+The development machine was a netbook with Ubuntu 11.04 (Natty) OS, with the following processor (and other) info:
+
+    $ cat /proc/cpuinfo | grep "processor\|model name\|MHz\|cores"
+    processor	: 0       # (same for 1)
+    model name	: Intel(R) Atom(TM) CPU N450   @ 1.66GHz
+    cpu MHz		: 1000.000
+    cpu cores	: 1
+    $ echo $(cat /etc/issue ; uname -a)
+    Ubuntu 11.04 \n \l Linux mypc 2.6.38-16-generic #67-Ubuntu SMP Thu Sep 6 18:00:43 UTC 2012 i686 i686 i386 GNU/Linux
+    $ echo $(lsb_release -a 2>/dev/null | tr '\n' ' ')
+    Distributor ID: Ubuntu Description: Ubuntu 11.04 Release: 11.04 Codename: natty
+    $ python --version
+    Python 2.7.1+
+
+This OS by default installs Python 2.7. However, it was also important to both support the new Python 3; and support the previous, LTS version of this OS, Ubuntu 10.04 (Lucid), which installs Python 2.6.
+
+Python on Linux usually ships with the `curses` library included. On Windows, one could use `curses` with Python under Cygwin; otherwise there seem to be no true cross-platform editions (in spite of mentions of possible alternatives like `PDCurses` or `WCurses`)
+
+The other requirements, on Debian/Ubuntu, can usually be found — for the default install version of Python — in the Debian/Ubuntu packages, that can be installed via:
+
+    sudo apt-get install python-tk python-numpy python-matplotlib
+
+The `tkinter` package, installed by `python-tk`, is considered the default GUI toolkit of Python - however, as seen on the above command - on the development OS, it needs to be installed separately from a .deb package.
+
+The package `argparse`, which is also used in the `numStepCsvLogVis`, ships included in python 2.7 or later - and as such, isn't included in the default Python 2.6 on Ubuntu Lucid. However, it can be easily installed using:
+
+    sudo easy_install-2.6 argparse
+
+With these default packages, the `numStepCsvLogVis` has been confirmed to work with these respective versions of Python and libraries:
+
+    # the test OS: Ubuntu 10.04 (Lucid)
+    $ python2.6 -c 'import sys; exec("for n in [\"curses\",\"Tkinter\",\"numpy\",\"matplotlib\"]:\n m = __import__(n)\n try: v=m.__version__\n except: v=m.version\n print(\"%s %s\" % (n, v))")'
+    curses 2.2
+    Tkinter $Revision: 73770 $
+    numpy 1.3.0
+    matplotlib 0.99.1.1
+
+    # the development OS: Ubuntu 11.04 (Natty)
+    $ python2.7 -c 'import sys; exec("for n in [\"curses\",\"Tkinter\",\"numpy\",\"matplotlib\"]:\n m = __import__(n)\n try: v=m.__version__\n except: v=m.version\n print(\"%s %s\" % (n, v))")'
+    curses 2.2
+    Tkinter $Revision: 81008 $
+    numpy 1.5.1
+    matplotlib 0.99.3
+
+On Ubuntu 11.04, Python 3 is available from the standard repository `natty-updates`; otherwise an often used repository for Python on Ubuntu is Felix Krull's `ppa:fkrull/deadsnakes` (which also has, say, both Python 2.7 and 3.2 for 10.04). However, availability of Python in a repository, doesn't mean that all its modules are available, too. On the development OS, it was possible to install `tkinter` for Python 3 through:
+
+    sudo apt-get install python3-tk
+
+... from a prebuilt Debian package - however, not `matplotlib` (nor `numpy`, which is a requirement for `matplotlib`). These packages were, thus, built from source, using the following procedure:
+
+    sudo apt-get install python3-dev  # else "SystemError: Cannot compile 'Python.h'"
+
+    # numpy:
+    wget "http://downloads.sourceforge.net/project/numpy/NumPy/1.7.0/numpy-1.7.0.tar.gz?r=http%3A%2F%2Fsourceforge.net%2Fprojects%2Fnumpy%2Ffiles%2F&ts=1368895680&use_mirror=kent" -O numpy-1.7.0.tar.gz
+    tar xzvf numpy-1.7.0.tar.gz
+    cd numpy-1.7.0/
+    sudo python3.2 setup.py install   # takes a while - runs RefactoringTool... and 2to3 apparently
+
+    # matplotlib
+    #sudo apt-get build-dep python-matplotlib # tries to get 106 packages; 544 MB of archives!
+    # Can get away with:
+    sudo apt-get install libatk1.0-dev   libcairo-script-interpreter2 libcairo2-dev libcgraph5 libfontconfig1-dev libfreetype6-dev   libgdk-pixbuf2.0-dev libgtk2.0-dev libgvpr1 libice-dev libpango1.0-dev libpixman-1-dev   libpng12-dev libpthread-stubs0 libpthread-stubs0-dev libsm-dev libx11-dev libxau-dev libxcb-render0-dev libxcb-shm0-dev   libxcb1-dev libxcomposite-dev libxcursor-dev libxdamage-dev libxdmcp-dev libxext-dev   libxfixes-dev libxft-dev libxi-dev libxinerama-dev libxrandr-dev libxrender-dev libxss-dev tipa tk8.5-dev x11proto-composite-dev x11proto-core-dev x11proto-damage-dev   x11proto-fixes-dev x11proto-input-dev x11proto-kb-dev x11proto-randr-dev   x11proto-render-dev x11proto-scrnsaver-dev x11proto-xext-dev x11proto-xinerama-dev   xorg-sgml-doctools xtrans-dev
+    # and then:
+    wget https://github.com/downloads/matplotlib/matplotlib/matplotlib-1.2.0.tar.gz
+    tar xzvf matplotlib-1.2.0.tar.gz
+    cd matplotlib-1.2.0/
+    python3.2 setup.py build  # again Running 2to3...
+    sudo python3.2 setup.py install
+
+    # test
+    $ python3.2 numStepCsvLogVis.py --help
+    ...
+    -r, --curses          use (n)curses terminal mode (curses available)
+    ...
+    -g, --gui             Start GUI window; requires tkinter (available), numpy
+                          (available), matplotlib (available)
+    ...
+
+So, after a successful installation procedure - running the `numStepCsvLogVis` application's `--help`, should report that the packages required for a given functionality have been found. At this point, it should be possible to run all the facilities of the application.
+
+Finally, if the script runs - under Linux, we can easily compile it as a bytecode executable, and run it, like so (although, no dramatic speedups can be expected):
+
+    python -m py_compile numStepCsvLogVis.py
+    chmod +x ./numStepCsvLogVis.pyc
+    ./numStepCsvLogVis.pyc -h
+
+Given the diverse environments `numStepCsvLogVis` tries to address, this application internally tries to handle the following:
+
+* Differences between Python 2+ and 3+ handling of UTF-8/Unicode strings
+* Python 2.7's `curses` on Ubuntu 10.04 and 11.04 is linked against `libncurses`, which is incapable of rendering UTF-8 characters, the right library being `libncursesw`; if `curses` is requested, and the application detects it runs on Linux, the application then calls `ldd` to query whether `libncursesw` is linked against - and if it isn't, it tries to re-spawn the Python application, with the `LD_PRELOAD` environment variable set to the location of `libncursesw.so.5` (which seems to solve the problem on Python 2.7)
+* Keyboard UI navigation is implemented simulating the behavior of Windows `getch` and `kbhit`; and thus is, in principle, cross-platform portable (but currently hasn't been tested, nor keymaps implemented, for OS other than Linux)
+* The terminal size (for text wrapping in terminal) is also implemented in a cross-platform way
+* `numpy` version >= "1.6.0" has the `nditer` iterator, earlier versions don't
+* `matplotlib` version < "1.0.0" - `FigureCanvasTkAgg` and `NavigationToolbar2TkAgg` need a fix to render on a `tkinter` GUI
+* `matplotlib` version < "1.0.0" - deals differently with custom markers than newer one
+
+Finally, note that, in respect to performance, one metric is to observe the application performance through "stepping" by permanently holding one of the arrow keys - and observing the CPU and memory utilization in a terminal window via `top -b -p PID` (where PID is the process ID of the application, output at startup); or `top -b | grep -i 'cpu\|mem'` for total (idle). On the development machine, the default mode (Py3.2) can result with up to 35% utilization of a single CPU (49.3% CPU idle total); `curses` with up to 38% utilization of a single CPU (59.1% CPU idle total). `curses` mode seems more responsive, possibly because it tries to use hardware acceleration - and possibly because it doesn't need to memorize previous printouts (the default terminal operation needs to, in order to allow for vertical scrolling).
+
+However, once we start up the `matplotlib` GUI, performance deteriorates significantly: it is very easy to get up to 100% utilization of a single CPU (39.4% CPU idle total) by holding the keyboard arrow keys - furthermore, the keypresses get queued, and once the application gets started this way, it can only be interrupted by Ctrl-C (and if that doesn't terminate the process, try `pkill -f numStep` in another terminal). Because of this, a brief and unsuccessful attempt was made to use the `multiprocessing` Python library in `numStepCsvLogVis`; however, because of the demands of `multiprocessing` to be initialized at particular places in the code, and to use "pickleable" objects (to which `tkinter` and `matplotlib` don't conform) - such undertaking would likely demand a complete rewrite of the application's current architecture; and thus has not been considered further. In turn, there is a facility to render `matplotlib` plots as PNG images, which facilitates their conversion to a video format.
+
+
+## <a id="usage"></a>USAGE ##
+
+With a proper installation in place, the user should be able to run the application, with a CSV textfile path as (the only positional) argument (a sample CSV file, `sample.csv`, is included in the `numStepCsvLogVis` directory):
+
+    python numStepCsvLogVis.py sample.csv
+
+This will start the application in default terminal mode, with CSV parsing enabled. From this point on, the user can "step" through the rows/lines of the CSV file, by using the keyboard arrow keys: Right and Up Arrow move to next row/line; Left and Down arrow move to previous row/line. This represents one aspect of the "step player" functionality.
+
+The application also makes use of a functionality of the `argparse` library, which allows saving command line options to the application in a file; and then loading that file by prefixing it on the command line with a special character. Here that special character is "at": `@`, and an example of such an argument file is given in the file `_cli_args.txt`, which sets the input file to `sample.csv`, along with several other command line options:
+
+    python numStepCsvLogVis.py @_cli_args.txt
+
+Note that in such a "cli arguments" file:
+
+* you _must_ specify each option on a separate line
+* The options requiring a setting _must_ have an equal sign `=` separating them from the value
+* For such option values which are strings, do not add quotation marks (unless you want them included verbatim) - even if the string you want to specify contains spaces
+
+
+### <a id="termmode"></a>TERMINAL MODES, STEP PLAYER AND STRINGMODE ###
+
+CSV parsing can be disabled by using the command line switch `-s`/`--stringmode`:
+
+    python numStepCsvLogVis.py -s sample.csv
+
+In this case, there is no CSV parsing at all - each line in the text file is merely wrapped at the width of the terminal window (if applicable), and output:
+
+    $ python numStepCsvLogVis.py -s sample.csv
+    initializing... Starting... term mode: default [term size: (91, 24)] pid 14202
+    Line limits: start: 1 end: 0 (last)
+    Data available. Terminal UI started.
+
+     1 ▲: INIT,10,0,,100                # (press Arrow Up)
+     2 ▲: 1,20,20,2,2                   # (press Arrow Up)
+     3 ▲: 2,20,20,6,1                   # (press Arrow Down)
+     2 ▼: 1,20,20,2,2                   # (press Arrow Down)
+     1 ▼: INIT,10,0,,100                # (press Arrow Up)
+     2 ▲: 1,20,20,2,2                   # (press Arrow Up)
+     3 ▲: 2,20,20,6,1
+    (disk) r: 3/13, c: 5
+
+The character "▼" indicates that we arrive at the current row/line from a later/bigger row/line numbers; "▲" indicates the opposite. In default terminal mode, the "current" row/line is output at the bottom (right above the status line) - and the previous lines are then scrolled up as a new "current" line is output (like in the usual operation of a command-line terminal); regardless of if we're stepping "forward" or "backward" in the player, in terms of input file line numbers.
+
+Furthermore, we can issue these commands to the application terminal, by pressing the respective keys:
+
+* `m` - for "marker"; expects a subcommand, "add" or "del"
+* `g` - for goto; expects argument - line number if parsed as integer, marker name otherwise
+* `l` - for list markers
+* `p` - for "play"; expects a player specification - "playerspec" - string
+
+Here is how a sample terminal session with these commands would look like (continued from previous printout; "press Enter" implies it's done after eventual typing at the prompt)
+
+      press m    :   3 ▲: 2,20,20,6,1
+      press Enter:   :: Marker command (add/del)? add nameA
+                     3* : 2,20,20,6,1
+                    (disk) r: 3/13, c: 5 m: nameA (Added marker `nameA` at line # 3; )
+                     4 ▲: 3,20,20,12,2
+      press g    :  (disk) r: 4/13, c: 5
+      press Enter:   :: Goto line number/marker? 100
+                          ...
+                    13 ▲: 12,10,10,40,40
+      press m    :  (disk) r: 13/13, c: 5  (Unhandled/invalid line # 100, going to 13; ok)
+      press Enter:   :: Marker command (add/del)? add
+                    13* : 12,10,10,40,40
+      press l    :  (disk) r: 13/13, c: 5 m: m1 (Added marker `m1` at line # 13; )
+                    Markers list:
+                     0: [3, "nameA"]
+                     1: [13, "m1"]
+
+                    13* : 12,10,10,40,40
+      press g    :  (disk) r: 13/13, c: 5 m: m1
+      press Enter:   :: Goto line number/marker? nameA
+                          ...
+                     3*▼: 2,20,20,6,1
+      press m    :  (disk) r: 3/13, c: 5 m: nameA (ok)
+      press Enter:   :: Marker command (add/del)? del
+                     3  : 2,20,20,6,1
+      press m    :  (disk) r: 3/13, c: 5  (Deleted marker `nameA` at line # 3; )
+      press Enter:   :: Marker command (add/del)? del m1
+      press l    :  (disk) r: 3/13, c: 5  (Deleted marker `m1` at line # 13; )
+                    Markers list:
+                    No markers.
+
+                     3  : 2,20,20,6,1
+                    (disk) r: 3/13, c: 5
+
+So, the `*` near the line number indicates if there is a marker on that line; marker `add` autogenerates a name if it doesn't have a name argument; marker `del` deletes the marker on the current row/line (if any) if it doesn't have a name argument. In all the commands that prompt for user input, the prompting can be cancelled at any time by pressing Esc - however, note that Esc otherwise quits the application, just like `q` does.
+
+Up to this point, we haven't used any CSV parsing - and the functionality thus far is applicable to plain text files as well; in all, this is not much different from what we can do with terminal pager programs like `less`. The first difference is the "play" command, which is also applicable in this context; after pressing `p`, we get a prompt like:
+
+    :: Play [0 1.0 2.0]? 0 1 25
+
+The play command expects a "playerspec" argument; if no such arguments is specified, then the last (or default) playerspec - shown above in square brackets, "0 1.0 2.0" - will be used. The above line, though, shows we typed a new playerspec, "0 1 25". The playerspec is parsed as a "i f f" string (integer, float, float - space separated); and due to the way Python parses floating point numbers, we can also write numbers in scientific notation (e.g. "1e-1") for the floating point arguments. The meaning of the arguments are:
+
+* 1st `i` - CSV column
+* 2nd `f` - increment step
+* 3rd `f` - "fps" (frames per second)
+
+Even for plain text files in stringmode, when no CSV parsing is done, the application manages "Column 0", also termed "ID", which keeps the current row/line number (or index). Thus the playerspec "0 1 25" means: start from current line; retrieve value of column 0 (the row/line numbers) at current line (which will be the current line number); increase it by step of 1 and move to that line; do this with a frequency of 25 fps (meaning a period of 1/25 = 0.04 seconds). The lines will then be played from the current location to the last line (typically the end of file).
+
+Playback can be stopped with Space; Space is also a toggle to start playback, with the last entered playerspec. One shouldn't specify negative steps - instead, one can use Ctrl-Space to play "backwards"/in reverse from the current line (towards the first line). Note that if the step is 0.5, it would count 1, 1.5, 2, 2.5 ..., again with a frequency of 25 Hz — but respective lines would be output, only when their line number was first reached (eg. at 1, 2, ...) Note that the playback is not very accurate - the "fps" timing is simply implemented as a "sleeping" delay; as such, the more complex the requirements from the application - the less accurate the playback at the requested fps will be.
+
+At this point, let's also mention that all functionality so far - for plain text files in stringmode, without CSV parsing - is also available in `curses` mode:
+
+    python numStepCsvLogVis.py -r -s sample.csv
+
+... except the display is somewhat different - for a terminal of size (62, 12), we get:
+
+    ┌CSV/log file: sample.csv────────────────────────────────────┐
+    │┌──────────────────────────────────────────────────────────┐│
+    ││  1  : INIT,10,0,,100                                     ││
+    ││> 2 ▲: 1,20,20,2,2                                        ││
+    ││  3  : 2,20,20,6,1                                        ││
+    │└──────────────────────────────────────────────────────────┘│
+    │┌Current line:─────────────────────────────────────────────┐│
+    ││                                                          ││
+    ││ 1,20,20,2,2                                              ││
+    ││                                                          ││
+    │└──────────────────────────────────────────────────────────┘│
+    └ (disk) r: 2/13, c: 5                                       ┘
+
+On the top, there is the "context" of raw lines, controllable through the `-a`/`--curses-num-rawlines` option; then there is a "main" window showing the "Current line", and on the bottom is the status line; the keyboard interaction is otherwise the same as in default terminal mode.
+
+### <a id="pipefile"></a>STDIN/PIPES AND FILE HANDLING ###
+
+The `numStepCsvLogVis` application tries to be "smart" in respect to input CSV files; if the file is accessible on the local filesystem, the application tries to read it through the Python `linecache` module - which obviates the need to read the whole file in memory, and in theory, enables large file support.
+
+However, even for local input files, the application starts a thread, which continuously monitors their modification date - and then, if it detects a modification, updates itself with the new number of lines available in the file. This allows for stepping through a local file, even if it hasn't finished saving. As an example, the `genCsvLines.py` script, which is the generator of the included `sample.csv`, is designed to loop endlessly, and generate CSV data with varying delays. Thus we can do in one terminal:
+
+    python ./tools/genCsvLines.py > sample.csv
+
+and in another terminal we can call:
+
+    python numStepCsvLogVis.py sample.csv
+
+... and we should be able to observe the total number of lines (as reported in the status line) change in time (though a player "step" may have to be performed, for the status line to update); as well as the new lines becoming available to the step player.
+
+The `numStepCsvLogVis` application can also read data from standard input (stdin), in which case, the input file name is simply specified as dash/minus `-`. It can be most readily tested by using, again, `genCsvLines.py` as source of stdin data:
+
+    python tools/genCsvLines.py | python numStepCsvLogVis.py
+
+Note, however, that we could also pipe to the application, using `cat` as source; `cat` will try to push all the data it can read through as fast as possible, and then exit; `numStepCsvLogVis` will handle that with a message that no more updates to the data can be expected:
+
+    $ cat sample.csv | python numStepCsvLogVis.py -s -
+    initializing... Starting... term mode: default [term size: (97, 24)] pid 17913
+    Line limits: start: 1 end: 0 (last)
+    CSV data read completely into RAM (14 lines); no updates forthcoming.
+    Data available. Terminal UI started.
+
+     1 ▲: INIT,10,0,,100
+    (RAM) r: 1/14, c: 5
+
+Finally, note here the command line options `-f`/`--dump-formatted` and `-b`/`--dump-playstep`; they will be clarified in more detail further on, however, here we can mention that they bypass the player completely, and output the requested lines (via `-l`/`--line-limits`), formatted by columnspec, and dump them on stdout. In this case, a typical use case is to redirect the output of `numStepCsvLogVis` to a file:
+
+    python numStepCsvLogVis.py -f -e sample.csv > formatd_sample_csv.txt
+
+... so that the formatted lines can be saved. The option `--line-limits` can be useful for dumps; note that if the line limits are not currently available, the application will try to wait until they are available, before it dumps them.
+
+### <a id="colspec"></a>CSV PARSING, COLUMNSPEC AND WRAPPING ###
+
+It was already mentioned that by default (i.e. without specifying `--stringmode`), the `numStepCsvLogVis` application starts in CSV parsing mode; in this case, a proper comma-separated value file is expected as input.
+
+Note that the focus of the application on numeric CSV data, can readily be seen when observing the `sample.csv` in CSV mode:
+
+    $ python numStepCsvLogVis.py sample.csv
+    initializing... Starting... term mode: default [term size: (97, 24)] pid 18148
+    Line limits: start: 1 end: 0 (last)
+    Columns (5)> 1: 'testA' 2: 'testB' 3: 'icount' 4: 'testC' 5: 'testD'
+    Columnspec: "@:" =[19]=> ['@(n1)', ' ', '@(v1)', ' ', '@(n2)', ' ', '@(v2)', ' ', '@(n3)', ' ', '@(v3)', ' ', '@(n4)', ' ', '@(v4)', ' ', '@(n5)', ' ', '@(v5)']
+    Data available. Terminal UI started.
+
+     1 ▲: testA _colspecfmt_failed_ 'INIT,10,0,,100' testB 10 icount 0 testC   testD 100
+     2 ▲: testA 1 testB 20 icount 20 testC 2 testD   2
+     3 ▲: testA 2 testB 20 icount 20 testC 6 testD   1
+    (disk) r: 3/13, c: 5
+
+At startup, the application informs us of the columns' names it has registered in the file (`Columns (5)> ...`); and of the line limits applicable. The first row/line in the CSV file is, by default, taken to contain the column names (this can be bypassed if the file starts with data, without column names, with `--no-header-line` - then the application auto-generates generic column names)
+
+The first row of data is `INIT,10,0,,100`, and `INIT` doesn't parse as a number - the application informs us of this with `_colspecfmt_failed_`, followed by a dump of the entire row. Also, there is an empty string as the fourth item of the first CSV row - however, the application handles that by interpreting it as a zero. But, in all other cases - we get an output which is formatted as: a column name, followed by the value of that column in that row, for all columns in the CSV file.
+
+This formatted output is controlled by a column specification, or _columnspec_ (colspec). The columnspec uses format specifier variables, that start with the character 'at' `@`, with arguments optionally delimited by parenthesis, consisting of a single-letter command identifier, column selection (1-based), and optional formula for numeric values only. The defined (primitive) columnspec format specifiers are:
+
+* `@n1` or `@(n1)` - name of column 1
+* `@v1` or `@(v1)` - numeric value (of column 1 at current row)
+* `@V1` or `@(V1)` - numeric value, shown in engineering notation
+* `@s1` or `@(s1)` - string value (of column 1 at current row)
+
+Again, column 0 is the automatic "ID"/index column. A column selection which is not primitive, is expanded to primitive format specifiers, separated by space:
+
+* `@nv1` or `@(nv1)` - expanded name and value (c.r.) of current column (1)
+* `@:2` - same as `@nv:2`; exp name & val of cols up to 2 (1 and 2)
+* `@(:2-[1]+0.5)` - exp name, and {value (c.r) - value (row 1) + 0.5} of columns 1 and 2
+
+Note that a row reference is enclosed in square brackets, and is only available in formulas (for numeric values); `[1]` means "the value of this column in row 1", however, also the variables `self.currow` (current row/line number) and `self.prevrow` (number of the row previously in player; including jumps with goto) are available. So one can specify `@(v2-[self.currow-1])` to obtain a delta of value at column 2, taken as the current (row) value minus the previous (row in file, `self.currow-1`) value - or, e.g.:
+
+    $ python numStepCsvLogVis.py -c="@V5 /delta: @(v5-[self.currow-1])" sample.csv
+    ...
+     1 ▲:  100      /delta: nan
+     2 ▲:    2      /delta: -98
+     3 ▲:    1      /delta:  -1
+     4 ▲:    2      /delta:   1
+    (disk) r: 4/13, c: 5
+
+The `@V` specifier formats in "fixed-string-length" engineering notation: with SI prefixes, with three decimals, along with characters for sign; where the exponent is 0 and the trailing decimals end with 0, the decimals are replaced with spaces (instead of truncated), up to and including the decimal point. This ensures that the number is always formatted in 9 characters, with the decimal point always at the same place.
+
+Note here, that the choice that: a) columnspec format specifiers, and b) the prefix character for cli argument list file - both start with the same character ('at', `@`) introduces a slight problem. That is — you cannot specify a columnspec on the command line (with `-c`), which begins with an `@`, and is separated with space from the `-c` argument — the invocation '`-c "@v5"`' would fail with "_error: [Errno 2] No such file or directory: 'v5'_". Thus, you either must use an equal sign (as in '`-c="@v5"`'), or no space at all (as in '`-c"@v5"`') to separate - or have the columnspec start with a different character, say a space: '`-c " @v5"`' works just as well.
+
+If a columnspec is not given as a command line argument, then it is assumed to be the default `@:`, which expands to `@(nv:)`, which then expands to column name followed by column value at current row, separated by space, for all columns in CSV. So, for the `sample.csv` there are 5 columns, and the application informs us of the expanded columnspec with:
+
+    Columnspec: "@:" =[19]=> ['@(n1)', ' ', '@(v1)', ' ', '@(n2)', ' ', '@(v2)', ' ', '@(n3)', ' ', '@(v3)', ' ', '@(n4)', ' ', '@(v4)', ' ', '@(n5)', ' ', '@(v5)']
+
+Thus, for this file, there are in all 19 expanded pieces in the columnspec: five column names, five column values, and nine "in-between" strings. Then, at each step in the player, the primitive format specifiers are replaced with their respective values, before the columnspec array is joined and output - as a "columnspec-formatted" string representation of a CSV row.
+
+There is a distinction for numeric values (those that can be parsed as numbers), because:
+
+* They can be used in calculations (such as for deltas)
+* They can be formatted in "fixed-string-length" engineering notation, with "managed wrap"
+* They can be visualized/plotted using `matplotlib`
+
+Note that for numeric value specifiers, the application algorithm automatically tries to left-pad them with spaces, up to the largest string length for that format specifier. At the same time, the terminal text wrapping algorithm tries to satisfy:
+
+* Break at commas and spaces (for CSV observed in stringmode)
+* Break at explicit `\n` (linefeed) in the columnspec
+* When breaking, don't move the position of numeric values, if their string length hasn't changed
+
+This can produce unexpected results, which is why the text wrapping engine is "managed"; that is, the wrapping indices are recalculated and remembered, only when the columnspec-formatted output string (as a whole) increases its length in characters (meaning one or more of its values increased in length, as the column names cannot change). Thus, the text is rewrapped only when the output string size changes - but otherwise, the values stay left-padded in the same position.
+
+Finally, there is the string columnspec format specifier, `@s` - this can retrieve the column value at a certain row as a string, and thus will not raise a parsing failure on the first line of `sample.csv`:
+
+    $ python numStepCsvLogVis.py -c="@ns:" sample.csv
+    ...
+     1 ▲: testA INIT testB 10 icount 0 testC  testD 100
+     2 ▲: testA 1 testB 20 icount 20 testC 2 testD 2
+     3 ▲: testA 2 testB 20 icount 20 testC 6 testD 1
+     4 ▲: testA 3 testB 20 icount 20 testC 12 testD 2
+    (disk) r: 4/13, c: 5
+
+... however, the numeric values are not right-aligned (left-padded with spaces) anymore.
+
+### <a id="guiconf"></a>GUI MODE AND GUI CONFIG FILE ###
+
+One of the main reasons for choosing CSV as an analysis file format for the `numStepCsvLogVis` application, is that it provides a definition of the data in its header (as column names); once the header is parsed, we can set up a visualisation engine that will plot each row of data independently - even if the input data file is not complete yet. This is the principle on which the plotting in GUI mode is based on. The GUI's only purpose is to display a `matplotlib` plot, so the terms GUI and plot may be used somewhat interchangeably here.
+
+If `tkinter` and `matplotlib` are available, the application can be started in GUI mode with the `-g`/`--gui` command line argument - but only in CSV parsing mode:
+
+    $ python numStepCsvLogVis.py -g -c="@ns:" sample.csv
+    ...
+    GUI requested - starting...
+    GUI conf file: /path/to/sample._gk renderSubdir: render_sample
+    creating GUI conf file... ok. reading GUI conf file... ok.
+    > loading [Tt]kinter... ($Revision: 81008 $) ok. loading numpy... (1.5.1) ok. loading matplotlib... (0.99.3) ok.
+
+     1 ▲: testA INIT testB 10 icount 0 testC  testD 100
+    (disk) r: 1/13, c: 5
+
+If `--stringmode` is specified together with `--gui`, the application will suppress the GUI, and render only stringmode in terminal. The main "step" player interaction still occurs through keypresses in terminal - however, there are some additional facilities on the GUI. Note that:
+
+* The columnspec on the command line is independent of the GUI, and relates to the output in terminal only
+* Instead of a columnspec, here there is a GUI configuration file
+* If a GUI configuration file isn't found (same directory and basename as input file, extension `_gk`), then one is created with default contents
+* Thus, the GUI config file name for `sample.csv`, is autocalculated to be `sample._gk` in the same directory - this can be overriden with the `-k`/`--gui-conf` command line argument.
+* The render subdirectory name is calculated based on the GUI config filename (thus, there will be different render subdirectories for differently named config files, loaded through `--gui-conf` - even if those GUI configs are intended to visualize the same CSV file)
+
+The label/extension `_gk` is used to refer to GUI [k]onfiguration file (chosen as such, because `_gc` already reminds too much of "garbage collection"). The default autogenerated `_gk` file, simply tries to visualise column 1's data by plotting is as the x position of a single marker (if it can be parsed as a number) - and as such, should be applicable to any CSV file with (more than two rows, and at least one comma in each row).
+
+Otherwise, the `_gk` file is actually a proper Python script, which is exec'd/eval'd at different points in the application, using some predefined names:
+
+* The perspective here is - `self` is the `guiCO` object (in code)
+* All lines starting with `self._gk.` (note the final dot), where the parser has detected a columnspec format specifier `@()`, are extracted separately, and re-evaluated at each step of the player
+* `_gk_setup` function is assigned to `self._gk_setup()` - and executed as soon as the `_gk` file has finished loading (or rather, executing)
+** Matplotlib fonts, and plot objects, are initialized here and stored into reference under `self._gk.`
+* `_gk_update` function is assigned to `self._gk_update()` - and is automatically called at each step of the player (that calls the GUI update), after the re-evaluation of lines with columnspec format specifiers has completed
+** referenced plot objects are updated here, with the latest re-evaluation of lines with columnspec
+
+Note that `matplotlib` by default doesn't autoscale the axis limits/ranges, when changes to its elements have been done in this way; the application thus offers a `update_Axes_xylim_range` function, which can be called from a `_gk_update` function, to have the axes update at each new redraw (alternatively, one could calculate limits "manually", and assign them, at each new frame).
+
+On the GUI, the text area has undo (Ctrl-Z) and redo (Ctrl-Shift-Z) enabled; copy and paste (Ctrl-C/V) work as well. "Save" button saves the current changes in the editor and reloads it; "Reload" explicitly reloads, ignoring changes in editor - the reload process also calls `_gk_update`. "MToolbar" shows the matplotlib figure toolbar (pan, zoom), "<" and ">" trigger a step previous/next in the terminal step player.
+
+The section labeled "PNG:" is related to PNG rendering facilities:
+
+* "cfc" checkmark is for continuous render frame count
+* "Render" button is a toggle - when it's active, every start and stop of playback in terminal player (but not stepping or goto) will start capture of the GUI plot, at each frame/step, as a PNG in a subdirectory
+* "DEL" - references to rendered PNG frames - from the current run only - are internally saved; DEL deletes such referenced PNG frames, and clears the references.
+
+If "cfc" is inactive - then: each time play is started with "Render" active, the render frame count will be reset to one - and frames previously rendered in the same application run will be deleted. "Quit" button exits the application (the terminal part included).
+
+Recall that in the playerspec, the "fps" specification is not adhered to very tightly - and as such, it does not have any influence on rendered frames. However, the step does have an influence - in the sense that a PNG frame will be rendered at each step: for instance, in the playerspec "0 0.5 25", we go along column 0 (ID/index, starting from 1) with a step of 0.5 (and fps of 25, which we ignore); thus the step counter will go like 1, 1.5, 2, 2.5, ... A PNG frame will be generated at each count - however, a new frame (a keyframe) will be rendered only upon first reaching a new integer row count (that is, at 1, 2,...); while at the other steps (1.5, 2.5), the saved PNG will be identical to (a copy of) the last PNG keyframe. The fps is ignored, in the sense that — on the development platform, at least — rendering a PNG frame (incl. the GUI update) takes at least half a second; and up to a second and more, even for mildly complex visualisation. As such, the real framerate is around 1 FPS or less; regardless of what we specify as intended "fps" in the playerspec.
+
+
+## <a id="details"></a>DETAILS / TUTORIAL ##
+
+In the installation directory `numStepCsvLogVis`, there is a subfolder `archive`, which contains some archival material (such as `numStepCsvTerminal.py`, which is the same as the application, but without the GUI part; or `gui-design-PAGE.tcl`, a `tkinter` design file for `PAGE` - Python Automatic GUI Generator software). That directory also contains some example files, which will be used as a small demonstration tutorial here.
+
+One specific problem, this application is meant to address, is debugging circular buffer operation in the kernel. For one, if pointers point at wrong areas of memory, different types of segmentation faults can occur, usually causing a system crash without a trace. However, pointers could be correct in terms of allocated memory - but the pointer arithmetic could be wrong; furthermore, code can introduce small delays. The most basic facility we have for debugging this sort of a problem, is using a printout of variables, usually using the C language `printf` function - or, in terms of the Linux kernel, `printk`. The variables we print out in this context are typically unsigned integers. The kernel function `printk` is notable in that it doesn't print to standard output, but instead to the system log file (typically `/var/log/syslog`).
+
+The example program `archive/testTimeSyslogBuffer.c` in the installation directory, aims to simulate such a context, but from userspace - it implements a basic circular/ring buffer code example from Wikipedia; and then logs its operation using `syslog` facilities, so the output is logged both to stderr, and to `/var/log/syslog`. As such, it logs numeric, timestamped data in a syslog file. The problem here, is that the process usually starts structured - e.g. one starts writing a well structured string as debug output, like:
+
+    printf("start: %d end: %d \n", startvar, endvar);
+
+... but then, as problems increase, less attention is paid to the string format, and more to variables that could potentially reveal something - like values obtained through modulo operation; so one often ends up with a mess like:
+
+    printf("start: %d %d end: %d-%d \n", startvar, startvar % someval, endvar, endvar % someval);
+
+In case of `printk`, this is dumped with a timestamp - so we may end up with final log content like:
+
+    [134868.420862] start 43020-0 end: 0,0
+    [134868.420873] start 0-0 end: 12425,4
+    ...
+
+... where one easily spends much more brain effort, in visually finding _where_ do particular numbers start (and end) on a line, than actual comparison of their values! But even with this taken into account - consider a line where 10 such variable values are printed, and hundreds of such lines in the log; either way, it becomes very difficult to determine whether change of start from, say 10023 to 10025, could have influenced a delay of, say, 0.000015 (as opposed to expected, say, 0.000010); which is why one would consider visualising this data as an animation: given that a timestamp is available, each line can be considered a frame in an animation, which is an image of a plot of the current values of inspected variables.
+
+That is exactly what `numStepCsvLogVis` tries to facilitate - both in terms of formatting textual representation of numeric values in a terminal; and in terms of generating plots based on numeric values - where the numeric values are obtained from a similar log file. This approach was tested in a previous script ([anim_parse_data-pipecursethrd.py](http://sdaaubckp.svn.sf.net/viewvc/sdaaubckp/single-scripts/anim_parse_data-pipecursethrd.py)); which however was made for a specific log file. At the prospect of going through that work again, merely to address differently named variables in a different log file, stimulated the development of `numStepCsvLogVis` - which, through the CSV file format interface, tries to approach this problem generically (for any similar kind of logfile).
+
+Note that the steps in this tutorial, especially those related to generating audio and video files, are repeated (and somewhat improved) in the batch script `makeCsvMovie.py` - which generates the [testTSB_log2.avi](http://sdaaubckp.sourceforge.net/numStepCsvLogVis/testTSB_log2.avi), from the same examples discussed here.
+
+### <a id="gensyslog"></a>GENERATE DEBUG TRACE IN SYSLOG ###
+
+Let's go back to the example program `archive/testTimeSyslogBuffer.c`. This program runs a loop a limited number of times, populating a circular buffer - and, as debug procedure, logging the state of the circular buffer variable at each step, to both `/var/log/syslog` and stderr. Furthermore, a small delay is introduced whenever a given variable (`cb.end`) reaches a certain value (4).
+
+To see the example program in action - first compile it; from the installation directory:
+
+    gcc archive/testTimeSyslogBuffer.c -o archive/testTimeSyslogBuffer -lrt
+
+... and then run the compiled executable:
+
+    ./archive/testTimeSyslogBuffer
+
+The program will run, and log each line in both stderr and `/var/log/syslog`; the lines in `/var/log/syslog` will have an additional info prepended (like another timestamp, and computer name):
+
+    # stderr output:
+    testTimeSyslogBuffer[23879]: [134868.420862] start 0-0 end: 0,0 size: 11 ; value 0 0
+    testTimeSyslogBuffer[23879]: [134868.421314] start 0-0 end: 1,1 size: 11 ; value 1 1
+    testTimeSyslogBuffer[23879]: [134868.421404] start 0-0 end: 2,2 size: 11 ; value 2 2
+    testTimeSyslogBuffer[23879]: [134868.421486] start 0-0 end: 3,3 size: 11 ; value 3 3
+    testTimeSyslogBuffer[23879]: [134868.421933] start 0-0 end: 4,4 size: 11 ; value 4 4
+    ...
+
+    # in /var/log/syslog:
+    May 26 12:01:14 mypc testTimeSyslogBuffer[23879]: [134868.420862] start 0-0 end: 0,0 size: 11 ; value 0 0
+    May 26 12:01:14 mypc testTimeSyslogBuffer[23879]: [134868.421314] start 0-0 end: 1,1 size: 11 ; value 1 1
+    May 26 12:01:14 mypc testTimeSyslogBuffer[23879]: [134868.421404] start 0-0 end: 2,2 size: 11 ; value 2 2
+    May 26 12:01:14 mypc testTimeSyslogBuffer[23879]: [134868.421486] start 0-0 end: 3,3 size: 11 ; value 3 3
+    May 26 12:01:14 mypc testTimeSyslogBuffer[23879]: [134868.421933] start 0-0 end: 4,4 size: 11 ; value 4 4
+    ...
+
+To capture the log in a file, let's call it `testTSB.log` - run the program once, either redirecting its stderr to the file:
+
+    ./archive/testTimeSyslogBuffer 2>testTSB.log
+
+... or run a `grep` and `cut` on the main `syslog` file, and save/redirect that to a file `testTSB.log` (note that consecutive runs of the `testTimeSyslogBuffer` program, will _append_ their output to `syslog` - and the below operation would retrieve them _all_):
+
+    grep 'testTimeSyslogBuffer' /var/log/syslog | cut -d' ' -f5- > testTSB.log
+
+Here, either way, we should have in `testTSB.log`:
+
+    $ head -n2 `testTSB.log`
+    testTimeSyslogBuffer[23879]: [134868.420862] start 0-0 end: 0,0 size: 11 ; value 0 0
+    testTimeSyslogBuffer[23879]: [134868.421314] start 0-0 end: 1,1 size: 11 ; value 1 1
+
+
+### <a id="convlogcsv"></a>CONVERT NUMERIC SYSLOG DATA TO CSV ###
+
+Now, we'd want to eliminate the process ID information from that `testTSB.log` file (cut from the colon `:`, so a space is left before the timestamp, which is needed for the CSV conversion later):
+
+    cat testTSB.log | cut -d':' -f2- > testlogcut
+
+Here we should have in `testlogcut`:
+
+    $ head -n2 testlogcut
+     [134868.420862] start 0-0 end: 0,0 size: 11 ; value 0 0
+     [134868.421314] start 0-0 end: 1,1 size: 11 ; value 1 1
+
+At last, create a CSV from this log file using `tools/numLogfile2Csv.py`:
+
+    $ python tools/numLogfile2Csv.py testlogcut > testTSB_log.csv
+    Stage 1
+    Parsed line 30
+    Stage 2 - check columns['[', 'start', 'start2', 'end', 'end2', 'size', 'value', 'value2']
+    Stage 3 - outputting
+
+Notice that the `numLogfile2Csv` tool:
+
+* automatically assigns column names, based on words found on the line;
+* treats minus/dash `-` as a separator character (like space, comma etc) - not as an actual "minus" (given that in this context no negative numbers are expected!)
+
+Now we have in `testTSB_log.csv`:
+
+    $ head -n3 testTSB_log.csv
+    # [,start,start2,end,end2,size,value,value2
+    134868.420862,0,0,0,0,11,0,0
+    134868.421314,0,0,1,1,11,1,1
+
+As a final step, replace the automatically extracted column name '`[`' with '`time`' - here easily done with in-place `sed`:
+
+    $ sed -n 's/# \[/# time/p' testTSB_log.csv
+    # time,start,start2,end,end2,size,value,value2
+
+    $ sed -i 's/# \[/# time/' testTSB_log.csv
+
+    $ head -n3 testTSB_log.csv
+    # time,start,start2,end,end2,size,value,value2
+    134868.420862,0,0,0,0,11,0,0
+    134868.421314,0,0,1,1,11,1,1
+
+Now we have a CSV file, that represents the numeric values of a timestamped logfile, which we can visualize/analyze in `numStepCsvLogVis`.
+
+An example of `testTSB.log` and `testTSB_log.csv` files can also be found in the `archive/` subfolder of the installation directory. For the examples in this README, consider them symlinked (or copied) to the installation directory (as in `ln -s archive/testTSB* .`).
+
+
+### <a id="playspecterm"></a>FIND PLAYERSPEC IN TERMINAL MODE ###
+
+While it is a given that (especially) in GUI mode, the playerspec "fps" setting is of little importance - it is relatively more accurate, and relevant, in terminal mode; and we can use it there, to obtain the proper settings for our final animation rendering.
+
+The benefit of having a numeric data CSV file, is that now we can express the playerspec, in terms of columns _other_ than the automatic "ID" index (column 0). In this case, we are interested in expressing it in terms of column 1 of `testTSB_log.csv` — which, as seen before, represents a timestamp. This timestamp represents floating point seconds, and we can see that the delta between the first two entries is 134868.421314-134868.420862 = 0.000452, or 4.52 milliseconds. Thus, with a step, in the order of approx 5 ms, we should be able to generate frames, where delays on this order would be observable in the animation. For instance, we can startup the application in default terminal mode:
+
+    python numStepCsvLogVis.py testTSB_log.csv
+
+... and we can try issuing different step/fps combinations, to see "what plays well". Note the convenience of specifying the step parameter in scientific notation (which is an acceptable format to Python for floating point number representation). So, first lets try a step of 10ms for column 1 at 25 fps, or "`1 10e-3 25`":
+
+     :: Play [0 1.0 2.0]? 1 10e-3 25
+
+This should play back all rows in the CSV files rather quickly (a bit too fast) - and no special delay would be observable in between frames. Now we should go back to first frame again (use Home key, or player command `g`oto 1), and we can issue a new playerspec; now let's try a step which is 1000 times smaller: 0.01ms (or 10 μs) for column 1:
+
+     :: Play [1 0.01 25.0]? 1 10e-6 25
+
+Now, the lines are output much slower; and this time, we should be able to perceive that some lines have an extra delay. However, as a whole, this setting may take too much time to play back these 30 lines in the CSV file; so we can try a step in-between. A step of 0.5 ms (or 500 μs) may again go a bit too fast - but a step of 0.05 ms (or 50 μs) looks about right:
+
+     :: Play [1 1e-05 25.0]? 1 50e-6 25
+
+... since it goes relatively fast; and yet one can perceive some lines have more delay than others.
+
+Thus, we have determined that for this CSV log file (`testTSB_log.csv`), we would like its lines animated as per the value in column 1 (timestamp), with a step of 50 μs, and ultimately at a framerate of 25 fps - or as a playerspec, "`1 50e-6 25`".
+
+Note that by varying the step as we did, we effectively performed a _resampling_ in the time domain (as expressed by respective column 1 data); or, some would argue, what is known as _time stretching_.
+
+Again, the GUI plot will not be able to keep up with our chosen playerspec "`1 50e-6 25`" in realtime application use - however, it will render PNG frames, that can be assembled in a video file, which could reproduce that rate.
+
+### <a id="guipng"></a>GUI CONFIG AND RENDERING PNG ###
+
+We are now ready to start the `numStepCsvLogVis` application, with `testTSB_log.csv` as input file, and render the PNG frames for an animation.
+
+Recall that when started in GUI mode, the application needs a GUI config file - and it autogenerates a rather simple one if it cannot find one. For this example, there is a more involved GUI config file in `testTSB_log._gk`; which:
+
+* Extracts timestamp data, and displays it as an anchored text on the plot
+* Extracts values of columns 2-6 as `numpy` arrays, and displays them as individual annotated markers; with y position based on column, and x position based on column's current row value
+    * the first two (columns 2 and 3) markers are on same y location (1.2), to demonstrate overlap
+* Markers have individual sizes, colors, and marker shapes (including a custom shape)
+* Uses the application provided `self.getNumpyXyIter` function to get a proper `numpy` array iterator
+* Uses the application provided `self.update_Axes_xylim_range` function to autoscale the axes range/limits
+
+Note here, that this GUI config file uses the `.plot()` command for the markers, simply because it's the most common command in the `matplotlib` world; however, it is hardly optimal in this visualization case. For one, it is intended to display lines, and so supports only a single class of marker per line (even if many markers could be rendered). The requirement to have custom markers then forces us to `.plot()` each individual marker - and correspondingly, update each individual marker in a Python loop in `self._gk_update`. On the other hand, we could have used `.scatter()`, which doesn't render lines; and accepts arrays for markers' shape, size and colors - and because of that, would be more efficient in doing the same rendering.
+
+In any case, as long as the `._gk` file is in the same directory as the `.csv`, it will be automatically loaded by the application when `--gui` is specified - and since now we have [found our playerspec in terminal mode](#playspecterm), we can also specify it on the command line; so we can call:
+
+    python numStepCsvLogVis.py -g -y "1 50e-6 25" testTSB_log.csv
+
+The application should start up, with the GUI showing a plot of the first line. At this point:
+
+* Click "Render" in the GUI to toggle it
+* Click on the terminal window to focus it
+* In the terminal, press Space to start playback - and at the same time, rendering (note playerspec is already set)
+* (note fps is ignored - application takes its time to render each frame)
+* Wait until finished (or interrupt the playback - and rendering - process, by pressing Space again)
+
+When the rendering finishes, there should be a subfolder `render_testTSB_log/`, with 124 PNG files inside, starting from `00001_testTSB_log.png`, and ending with `00124_testTSB_log.png`. The PNGs can quite conveniently be viewed (and quickly stepped through) with the Linux image viewer `feh`. At this point, we have the PNG rendering, so we can quit the `numStepCsvLogVis` application.
+
+### <a id="sonify"></a>SONIFICATION AND RENDERING AUDIO ###
+
+The command line argument `-b`/`--dump-playstep` suppresses all usual output, and instead runs the player from beginning to end, according to given playerspec, and: dumps the byte 0x2A `*` if the step player would encounter a keyframe; and the byte 0x0A `\n` otherwise. This can ultimately be interpreted as audio data, in two contexts:
+
+* One is where we have a rather long CSV log file input, and we intend to resample with a relatively large step, like in playerspec "0 0.5 fps"; this generates a sequence 1, 1.5, 2, 2.5,.. where the integer numbers represent keyframes - or in other words, there is typically one (usual) frame for each keyframe. In that case, we would typically interpret the sequence as a waveform - a single (drone) sound; and delays on the order of an insertion of extra usual frame per keyframe, would be detected as a change of timbre or frequency of the sound. However, it depends on the nature of the delays, whether they will influence an audible change of the final sound.
+* Another case is where our CSV file is relatively short, but we have found a playerspec where it is played back on the order of seconds and more. That means, that the "dump-playstep" data cannot be interpreted as an audio waveform anymore - at best, it can be interpreted as a trigger for a sound (say, a click) in realtime. To generate an output audio file, based on an input sound (a click) and such triggering data, we would have to perform the convolution operation in the time domain.
+
+In our `testTSB_log.csv` example, we are dealing with the second use case; so we need to prepare with some calculations first.
+
+* the chosen playerspec "1 50e-6 25" rendered a total of 124 PNG frames
+* At rate of 25 fps, 124 frames will take 124/25 = 4.96 seconds to play back
+* Thus we need dump-playstep data, enough for 4.96 seconds of audio
+* We choose to work with the lowest WAV file setting: 8 kHz, 8-bit, mono
+* 4.96 sec of audio @ 8 kHz gives 4.96*8000 = 39680 samples
+* Thus, `dump-playstep` needs to generate 39680 bytes { ~= samples ~= "frames" }
+* If step of 50e-6 generated 124 frames - then:
+    * 39680 frames will be generated with a step of 50e-6*124/39680 = 1.5625e-07
+
+So, we can now call the application again, with `testTSB_log.csv` as input, and with a new playerspec "`1 1.5625e-7 25`" (again, the fps will be ignored) - and we can immediately redirect the output, so we save the "dump-playstep" data to file:
+
+    python numStepCsvLogVis.py --dump-playstep -e -y "1 1.5625e-7 25" testTSB_log.csv > testTSB.playstep
+
+After this is done, we can check the file size in bytes of the newly generated `testTSB.playstep` file:
+
+    $ du -b testTSB.playstep
+    39327	testTSB.playstep
+
+... and indeed, 39327 samples is in the order of 39680 samples, as requested. If we view the file in a text editor (or `less`), we can see it as a long sequence of linebreaks; separated at times with an `*`, indicating a keyframe - which will also be our sound trigger in the convolution process. Since the file doesn't start with a keyframe, we can simply open it a text editor, and add a * at the very start.
+
+At this point, first we need to obtain an input sound file which will serve as a "click" to be triggered. For instance, the "audio bell" terminal sound on most Linux OS's is appropriate; on the development platform, it can be found at `/usr/share/sounds/ubuntu/stereo/bell.ogg`. However, we first need to convert it to 8-bit (unsigned), 8kHz, mono audio file; we can use the `sox` command line utility for the conversion, and we can use `aplay` to make sure conversion settings are OK:
+
+    $ sox /usr/share/sounds/ubuntu/stereo/bell.ogg -r 8k -e unsigned -b 8 -c 1 bell.wav
+    $ du -b bell.wav
+    1644	bell.wav
+    $ aplay bell.wav
+    Playing WAVE 'bell.wav' : Unsigned 8 bit, Rate 8000 Hz, Mono
+
+Now, we can use `tools/naiveConvolveWav.py` in order to perform the convolution; as in:
+
+    python tools/naiveConvolveWav.py testTSB.playstep bell.wav > testTSB_log.wav
+
+This tool can only handle convolution of byte values (which is why we converted to unsigned 8-bit) - but due to the "naive" algorithm (taken from Python documentation) it is also very slow (takes a minute @ 100% CPU to render this task):
+
+    $ /usr/bin/time -v python tools/naiveConvolveWav.py testTSB.playstep bell.wav > testTSB_log.wav
+    size 39329x1601 convolution: 40930
+    40000
+      Command being timed: "python tools/naiveConvolveWav.py testTSB.playstep bell.wav"
+      User time (seconds): 61.78
+      System time (seconds): 0.02
+      Percent of CPU this job got: 99%
+      Elapsed (wall clock) time (h:mm:ss or m:ss): 1:01.92
+      ...
+    $ du -b testTSB_log.wav
+    40973	testTSB_log.wav
+    $ aplay testTSB_log.wav
+    Playing WAVE 'testTSB_log.wav' : Unsigned 8 bit, Rate 8000 Hz, Mono
+
+The changes in keyframe delays seem to be audible, as the change of the clicks' rhythm; however, `naiveConvolveWav.py` by default doesn't handle audio silences, which can introduce additional perceivable clicks - there is a crude attempt to deal with those levels, thereby alleviating the muting clicks somewhat, at the cost of introducing further sound distortion. A better convolution algorithm for 8-bit unsigned audio would be appropriate here.
+
+
+### <a id="renderfinal"></a>RENDERING FINAL AUDIO/VISUAL MOVIE ###
+
+There are several programs we could use for interleaving the rendered PNG frames, and the rendered audio file, in a single video file - such as `ffmpeg`, `mencoder`, etc. First of all, we better convert the audio from the 8-bit, 8kHz into an audio format, most of these applications can understand - CD quality (16-bit, 44.1 kHz, stereo) would be appropriate; however we will sample at 22050 Hz (see below why):
+
+    $ sox testTSB_log.wav -r 22050 -e signed -b 16 -c 2 testTSB_log_hCD.wav
+    $ du -b testTSB_log_hCD.wav
+    902528	testTSB_log_hCD.wav
+    $ aplay testTSB_log_hCD.wav
+    Playing WAVE 'testTSB_log_hCD.wav' r: Signed 16 bit Little Endian, Rate 22050 Hz, Stereo
+
+To create the final video from the PNG images and the audio, we can use a single `ffmpeg` call, and create a `.mpg` video. Note that if the output video is `.ogv` from this call, the interleaving of audio and images is not as correct:
+
+    ffmpeg -f image2 -i render_testTSB_log/%05d_testTSB_log.png -itsoffset -0.15 -i "testTSB_log_hCD.wav" testTSB_log.mpg && mplayer -really-quiet testTSB_log.mpg -loop 0 2>/dev/null
+
+Note that after a successful encoding, we immediately call `mplayer` to play this short video in a loop, so we can see if the audio and video are synchronized properly. `mplayer` can use a `-delay` command line argument to intruduce an offset between audio and video - but it also allows the use of +/- keys, to change the audio/video delay in increments of 100 ms. On the other hand, `ffmpeg` implements the audio/video offset (or delay) through the command line argument `-itsoffset`, which is applied to "all the input files that follow it." (and in this case, it is the audio file that follows it). In that way, we can quickly render a video, see the results and adjust audio offset, and repeat that until satisfying results are obtained. The `mplayer` runs the video in an endless loop, because the video is quite short - as it is otherwise very difficult to see, if there is any sort of audio/video sync otherwise.
+
+Unfortunately, if we convert this .mpg video to .ogv:
+
+    ffmpeg2theora testTSB_log.mpg -o testTSB_log.ogv
+
+... we'll see the audio/video offset could be quite different (and `mplayer` may additionally have problems playing `.ogv` files in a loop).
+
+We could also try directly encoding in the Vorbis/Theora domain:
+
+    # sudo apt-get install ffmpeg2theora oggz-tools
+
+    ffmpeg2theora --no-skeleton render_testTSB_log/%05d_testTSB_log.png -o video.ogv
+    ffmpeg2theora --no-skeleton testTSB_log_CD.wav -o audio.ogv
+    oggz-merge video.ogv audio.ogv -o testTSB_log_merge.ogv
+
+... unfortunately this also has poor audio/video sync - and no obvious way to correct it.
+
+Thus, at least the encoding the video to `.mpg` via `ffmpeg`, seems to be reliable enough for this kind of application - interleaving PNG image renderings and audio output from a `numStepCsvLogVis` analysis run.
+
+Note that on the development platform, some problems were experienced playing back audio encoded with a rate of 44.1 kHz in `vlc` - which propagated all the way to the video encoded with it. Note that if `vlc` (on the development platform, v. 1.1.9) is set to use the audio output `--aout alsa`, then it can at most reproduce 22050 Hz audio files (it will fail for 44100, playing just a click at start). On the other hand, if it uses `--aout pulse`, then it can reproduce a rate of 44100 - however, the sync between the audio and video will not be very accurate. Thus, by encoding the audio file at a rate of 22050 Hz, we make sure that `vlc` (on the development platform) can open it using the `alsa` audio backend, and play it with slightly better synchronization. While VLC has a seamless loop option in the GUI, it is not accessible from the command line - and the only way to setup a loop from the command line is on the level of a playlist (`--loop`) or file (`--repeat`). This doesn't provide a seamless, continuous loop of the video (as in the `mplayer` case), since there is a perceptible pause when the video loops; still, the following command can be used to view the looped video file:
+
+    cvlc --aout alsa --repeat ./testTSB_log.mpg
+
+In any case, the delays introduced in the code, should be visible and audible in the video (albeit not in a perfect manner)
+
+## <a id="bugs"></a>BUGS ##
+
+Probably too many to list `:)`
+
+## <a id="author"></a>AUTHOR ##
+
+Originally written by sdaau, march/may 2013
+
+

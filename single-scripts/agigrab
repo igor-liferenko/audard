@@ -1,0 +1,102 @@
+
+#!/bin/bash
+
+# Author: Smilen Dimitrov
+# License: GNU GPL (http://www.gnu.org/copyleft/gpl.html)
+#
+# Dependencies: agiload
+
+## NOTE: when reading DATA, scope MUST be paused/'stopped'! (i.e. you have 
+## run a 'single' capture, after which the 'run/stop' button shines red - 
+## meaning the scope is 'stopped') - else `agiload DATA ...` will simply 
+## freeze!
+
+## ALSO: this script downloads BOTH data for channel1 and channel2 - which 
+## implies that you MUST have BOTH channel1 and channel2 traces on the 
+## scope window! If you have only channel1 - and this script tries to 
+## download channel2; then it will, again, freeze! 
+
+FNAMEBASE=$1
+
+# logging:
+logfile=$FNAMEBASE.log
+# Redirect stderr to stdout
+exec 2>&1
+# Redirect stdout to tee using process substitution
+# exec > >(tee -a $logfile) # will print everything - many "reading data" lines
+# so here we get rid of those lines first (and convert CRs) before we show
+# exec > >(sed -e 's#\r#\n#g' | grep -v 'reading data' | tee -a $logfile) # this changes both log and stdout..
+exec > >(tee -a >(sed -e 's#\r#\n#g' | grep -v 'reading data' > $logfile))
+
+echo agigrab starting....
+echo Filename base is $FNAMEBASE, working...
+
+# change bitrate... for Agilent 54621a rs-232 cannot do more than 9600
+# TO CHANGE SERIAL SPEED on scope:
+# click on Utility button - it shows I/O submenu, click that, you get Controller (set to RS232), then Baud
+BITRATE=9600
+CHAN="CHANNEL1"
+DEVICE=/dev/ttyUSB0
+
+# for agilent 54261, getting either Syntax or Framing error for SETDATE
+# CMD="agiload SETDATE -d $DEVICE -b $BITRATE"
+# echo Get scope setup, executing: $CMD
+# $CMD
+
+
+# save current scope setup
+CMD="agiload SAVESETUP $FNAMEBASE.setup -d $DEVICE -b $BITRATE"
+echo Get scope setup, executing: $CMD
+echo     .. started @ `date`
+$CMD
+echo     .. finished @ `date`
+echo
+
+# get screenshot of channel - as tiff, it goes faster...
+CMD="agiload SCR $FNAMEBASE.tiff -d $DEVICE -s $CHAN -b $BITRATE"
+echo Get screenshot, executing: $CMD
+echo     .. started @ `date`
+$CMD
+echo     .. finished @ `date`
+echo
+
+# get data of channel
+CMD="agiload DATA $FNAMEBASE.dat -d $DEVICE -s $CHAN -b $BITRATE"
+echo Get data, executing: $CMD
+echo     .. started @ `date`
+$CMD
+echo     .. finished @ `date`
+echo
+
+# and channel 2 too, in case..
+CMD="agiload DATA $FNAMEBASE-ch2.dat -d $DEVICE -s CHANNEL2 -b $BITRATE"
+echo Get data, ch.2,  executing: $CMD
+echo     .. started @ `date`
+$CMD
+echo     .. finished @ `date`
+echo
+
+
+# visualise data - gnuplot must have a script file as command line input...
+# ...do a heredoc
+cat > $FNAMEBASE.gplot << EOF
+set xlabel "Elapsed Time (samples)"
+set ylabel "Voltage"
+#ignore svg for now...
+#set term svg
+#set output '$FNAMEBASE.svg'
+#plot '$FNAMEBASE.dat' with linespoints
+set term png
+set output '$FNAMEBASE.png'
+plot '$FNAMEBASE.dat' with linespoints
+EOF
+echo Created gnuplot script...
+
+CMD="gnuplot $FNAMEBASE.gplot"
+echo Visualising data w/ gnuplot, executing: $CMD
+$CMD
+
+echo agigrab is done with $FNAMEBASE.
+echo Finished.
+
+exit $?; # this sometimes doesn't fire, for some reason...

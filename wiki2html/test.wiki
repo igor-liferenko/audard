@@ -1,0 +1,21 @@
+== Test title ==
+
+Just trying it out: 
+
+* Something
+* Something else
+** Something 
+* Something else
+
+File '''''must''''' be in '''Unix''' format (\n) ''for the paragraph thing to work'' (i.e. with two \n\n) 
+
+ attempting a pre display
+ pre display here
+
+Just to see if [google.com link] works... No, but with http it works: [http://google.com link] ... 
+
+Test [[something]].. 
+
+Image link: <br> 
+[[image:img/tbird_01.png|thumb|captionz]] 
+

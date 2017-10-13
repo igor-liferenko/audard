@@ -1,0 +1,227 @@
+@charset "utf-8";
+
+/**
+ * markdown.css
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see http://gnu.org/licenses/lgpl.txt.
+ *
+ * @project      Weblog and Open Source Projects of Florian Wolters
+ * @version      GIT: $Id$
+ * @package      xhtml-css
+ * @author       Florian Wolters <florian.wolters.85@googlemail.com>
+ * @copyright    2012 Florian Wolters
+ * @cssdoc       version 1.0-pre
+ * @license      http://gnu.org/licenses/lgpl.txt GNU Lesser General Public License
+ * @link         http://github.com/FlorianWolters/jekyll-bootstrap-theme
+ * @media        all
+ * @valid        true
+
+ sdaau 2012: modified from:
+ * https://github.com/jasonm23/markdown-css-themes/blob/gh-pages/markdown4.css
+ also uses parts from:
+ * https://github.com/simonlc/Markdown-CSS
+ * https://github.com/rstudio/markdown/blob/master/inst/resources/markdown.css
+*/
+
+body {
+  font-family: Helvetica, Arial, Freesans, clean, sans-serif;
+  padding:0em;
+  margin: 2em; /* was auto; */
+  background: #fcfffc;
+  font-size: 15px; /* default seems 16px */
+  line-height: 120%; /* 1.25em; */
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: bold;
+}
+
+h1 {
+  color: #000000;
+  font-size: 30px; /* was 28px for Arial */
+  font-family: Palatino, 'Palatino Linotype', Georgia, Times, 'Times New Roman', serif;
+  border-top:4px solid #aaa;padding-top:.5em;margin-top:1.5em;
+}
+h1:first-child{margin-top:0;padding-top:.25em;border-top:none;}
+
+h2 {
+  border-bottom: 1px solid #CCCCCC;
+  color: #000000;
+  font-size: 24px;
+  margin-top:1.5em;border-top:4px solid #e0e0e0;padding-top:.5em;
+}
+
+h3 {
+  border-bottom: 1px solid #CCCCCC;
+  font-size: 18px;
+}
+
+h4 {
+  border-bottom: 1px solid #CCCCCC;
+  font-size: 16px;
+}
+
+h5 {
+  border-bottom: 1px solid #CCCCCC;
+  font-size: 14px;
+}
+
+h6 {
+  border-bottom: 1px solid #CCCCCC;
+  color: #777777;
+  background-color: inherit;
+  font-size: 14px;
+}
+
+hr {
+  height: 0.2em;
+  border: 0;
+  color: #CCCCCC;
+  background-color: #CCCCCC;
+}
+
+p, blockquote, ul, ol, dl, table, pre {
+  margin: 15px 0;
+  list-style-position:inside; /*need for IE, else it sticks list items inside - but then this pads in WebKit*/
+}
+
+ul, ol { margin: 0em 1em; padding: 0 0 0 0em; }
+li {
+  line-height: 1.25em; /* 18px; */
+/*   margin: 5px;
+  */
+  margin-bottom: 3px;
+}
+/*
+li p:last-child { margin:0 }
+
+ */
+img {
+  border: 0;
+  -ms-interpolation-mode: bicubic;
+  vertical-align: middle;
+  /* width: 80%; */ /* nope, messes with spinner etc images */
+}
+code, pre {
+  border-radius: 3px;
+  background-color: #F8F8F8;
+  color: inherit;
+}
+
+code {
+  border: 1px solid #EAEAEA;
+  margin: 0 2px;
+  padding: 0 5px;
+}
+
+
+/* * html pre{
+height: expression( this.scrollHeight > 49px ? "50px" : "auto" ); /* fix for ie 5+ ; SO: 8753631 ; no * /
+} */
+
+pre {
+  border: 1px solid #CCCCCC;
+  line-height: 1.15em;
+
+  /* height: expression( this.scrollHeight > 49 ? "50px" : "auto" ); /* sets max-height for IE;
+"CSS : create scrollbar when reach max height - IE and FF" ; expressions no work any longer in IE9 * / */
+
+  /* with !important - again, doesn't work in IE9 (apparently only for min-height? - http://www.ilovemyjournal.com/?action=view_entry&eid=4779 ; http://css-tricks.com/snippets/css/cross-browser-min-height/ */
+  max-height: 150px; /* for those who understand it */
+  height:auto !important;  /*again */
+  height: auto; /* IE doesn't respect !important within single rule, though, most other browsers do */
+
+  /* height:auto; */
+  /* overflow: scroll; /* was auto; * / */
+  Overflow:auto;
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  padding: 6px 10px;
+}
+
+pre>code{
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* SO: 7707 */
+/* pre>code:first-child{max-height:50px\9;display:block\9;}
+ */
+/* pre{max-height:none\9;}
+ */
+
+/* md-rstudio.css */
+tt, code, pre {
+  font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace, 'courier new';
+}
+
+
+/* ReText wraps code into <pre> - so <code> changes all;
+so having code,pre     {  font-size: 0.91em; } makes pre smaller than code
+*/
+
+code     {  font-size: 0.95em; }
+pre      {  font-size: 0.89em; }
+/* md-simonlc.css */
+pre {
+  white-space: pre;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+kbd, samp {
+  color: #000;
+  font-family: monospace, monospace;
+  _font-family: 'courier new', monospace;
+  font-size: 0.98em;
+}
+kbd {
+
+  padding: 0em 0.2em;
+  /* margin: 0.2em 0em; */
+  border-radius: 5px;
+  border: 1px solid #000000;
+  /* display: inline-block; */
+  background-color: #FFFFFF;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  text-shadow: 0 1px 0 #ddd;
+
+}
+blockquote{
+  color: #666666;
+  margin: 0;
+  padding-left: 0.7em; /* was 3em; */
+  border-left: 0.5em #EEE solid;
+  /* font-family: Times, 'Times New Roman', serif; */
+  max-width: 78%; /* 37em; */
+  background-color: #F8F8F8;
+  /* font-size: 0.96em; */
+}
+sub, sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+sup { top: -0.5em; }
+sub { bottom: -0.25em; }
+
+
+
+a, a:visited {
+  color: #4183C4;
+  background-color: inherit;
+  text-decoration: none;
+}

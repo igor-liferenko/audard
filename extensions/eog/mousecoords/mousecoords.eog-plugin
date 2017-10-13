@@ -1,0 +1,13 @@
+[Eog Plugin]
+Loader=python
+Module=mousecoords
+IAge=2
+Name=Mouse Coordinates
+
+Description=Mouse coordinates Python plugin for Eye of GNOME\nOn mouse motion, shows in statusbar: scaled image size; window coords, and image pixel coords of pointer; and viewport geometry (for zoomed images). The statusbar string can be copied to clipboard via shortcut key 'M' (or /Tools menu item).
+
+
+Icon=about
+Authors=sdaau
+Copyright=Copyleft sdaau 2013
+Website=http://example.com

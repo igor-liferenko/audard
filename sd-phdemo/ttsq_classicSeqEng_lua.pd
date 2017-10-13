@@ -1,0 +1,96 @@
+#N canvas 311 177 701 416 10;
+#X text 18 20 instantiate as [.. deck-id d-id+1]:;
+#X text 18 30 [ttsq_classicSeqEng_lua 0 1];
+#X text 18 10 "classic" (triggered) sequencer engine (w v \, t tables)
+;
+#X text 19 65 was [pd AudioSequences]:;
+#X text 19 84 vseq: velocity/trigger sequence;
+#X text 20 95 pseq: pitch sequence (only Tr/Ch 2);
+#X obj 321 150 table \$2-2-1-vseq 16;
+#X text 18 117 ids: Song-Track-Notenum (or Song-Channel-Track);
+#X obj 451 150 table \$2-2-1-tseq 16;
+#X text 20 105 tseq: trigger sequence;
+#X text 320 104 try without pseq - instead \, have same tables \; for
+track 2 - try to set up polyphony by \; reading from the same table
+\, pitched;
+#X obj 321 170 table \$2-2-2-vseq 16;
+#X obj 321 190 table \$2-2-3-vseq 16;
+#X obj 321 210 table \$2-2-4-vseq 16;
+#X obj 321 230 table \$2-2-5-vseq 16;
+#X obj 451 170 table \$2-2-2-tseq 16;
+#X obj 451 190 table \$2-2-3-tseq 16;
+#X obj 451 210 table \$2-2-4-tseq 16;
+#X obj 451 230 table \$2-2-5-tseq 16;
+#X obj 21 146 table \$2-1-1-vseq 16;
+#X obj 21 167 table \$2-1-2-vseq 16;
+#X obj 21 188 table \$2-1-3-vseq 16;
+#X obj 21 209 table \$2-1-4-vseq 16;
+#X obj 21 230 table \$2-1-5-vseq 16;
+#X obj 151 146 table \$2-1-1-tseq 16;
+#X obj 151 167 table \$2-1-2-tseq 16;
+#X obj 151 188 table \$2-1-3-tseq 16;
+#X obj 151 209 table \$2-1-4-tseq 16;
+#X obj 151 230 table \$2-1-5-tseq 16;
+#X obj 402 14 inlet;
+#X obj 443 15 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
+1;
+#X obj 402 37 s csqEnabled\$1;
+#X text 545 27 DSP in this subwindow is turned on and off by the [switch~]
+object. Any subwindows of this window can also be switched off here.
+If a patch and a superpatch both have switches \, both must be "on"
+for DSP to run in the patch.;
+#X obj 497 37 switch~;
+#X text 18 127 ( now: Deck-Track-Notenum/lane );
+#X msg 27 273 getsequence;
+#X obj 124 399 prepend list;
+#X obj 241 344 r clrseqpatchg\$1;
+#X obj 27 297 s rseqintf\$1;
+#X obj 124 363 spigot;
+#X obj 133 342 r csqEnabled\$1;
+#X text 24 256 (for testing);
+#X text 463 13 enable this sequencer engine?;
+#X obj 432 289 loadbang;
+#X text 461 302 velocity gating \; time [ms];
+#X msg 432 311 5;
+#X obj 432 333 s vgt\$1;
+#X text 16 480 _end;
+#X obj 432 372 ttsq_clasSqAudEngTr1_smap \$1 \$2 1;
+#X obj 431 404 outlet~;
+#X obj 487 404 outlet~;
+#X obj 124 423 pdluax procPatSeq \$2;
+#X text 122 437 converts sequence string to v/t tables \; now uses
+argument to set deckid (1-based);
+#X obj 538 464 outlet~;
+#X obj 594 464 outlet~;
+#X obj 432 432 ttsq_clasSqAudEngTr2_pitch \$1 \$2 2;
+#X text 429 269 from [pd AudioEngineTrX]:;
+#X text 431 353 was [pd AudioEngineTrX]:;
+#X obj 226 324 r emptpatseq\$1;
+#X obj 124 302 r rcvpatseq\$1;
+#X obj 241 394 spigot;
+#X obj 250 373 r csqEnabled\$1;
+#X text 127 281 rcvpatseq now in [ttsq_uiSetSngPatSeq];
+#X text 315 307 handle bang (for \; empty sequence) \; separately;
+#X obj 289 55 s rstimgtick\$1;
+#X obj 248 55 sel 1;
+#X text 246 28 reset rwav imgs to ticks \; in this classic mode;
+#X connect 29 0 30 0;
+#X connect 30 0 31 0;
+#X connect 30 0 33 0;
+#X connect 30 0 65 0;
+#X connect 35 0 38 0;
+#X connect 36 0 51 0;
+#X connect 37 0 60 0;
+#X connect 39 0 36 0;
+#X connect 40 0 39 1;
+#X connect 43 0 45 0;
+#X connect 45 0 46 0;
+#X connect 48 0 49 0;
+#X connect 48 1 50 0;
+#X connect 55 0 53 0;
+#X connect 55 1 54 0;
+#X connect 58 0 60 0;
+#X connect 59 0 39 0;
+#X connect 60 0 51 1;
+#X connect 61 0 60 1;
+#X connect 65 0 64 0;

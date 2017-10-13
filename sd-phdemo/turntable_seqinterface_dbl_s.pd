@@ -1,0 +1,718 @@
+#N canvas 348 49 673 546 10;
+#N canvas 250 49 709 544 start_gripd 0;
+#X obj 51 32 inlet;
+#X msg 54 103 connect;
+#X msg 69 138 disconnect;
+#X text 122 454 Takes one optional argument to specify a port.;
+#X text 151 130 Set gripd object to stop waiting for a connection.
+;
+#X text 152 143 Also closes gripd GUI opened by "open <filename>".
+;
+#X text 118 96 Set gripd object to wait for a connection (Not needed
+with "open" message.);
+#X floatatom 54 501 5 0 0 0 - - -;
+#X msg 134 347 lock;
+#X msg 144 378 unlock;
+#X text 173 347 Set GUI to lock mode;
+#X text 193 378 Set GUI to normal (editable) mode;
+#X text 93 502 left outlet: 1 on connect \, 0 on disconnect;
+#X floatatom 81 479 5 0 0 0 - - -;
+#X text 119 480 right outlet: 1 when shown \, 0 when hidden;
+#X msg 88 219 show;
+#X msg 97 247 hide;
+#X text 125 220 show GUI window when hidden;
+#X text 135 246 hide GUI window when shown;
+#X text 523 411 Path to directory containing gripd executable;
+#X text 523 426 "../gripd" by default;
+#X msg 108 280 openpanel;
+#X msg 118 311 savepanel;
+#X text 185 311 open a save file dialog and send file to savepanel
+receive symbol;
+#X text 181 274 open an open file dialog and send file to openpanel
+receive symbol;
+#X msg 142 407 set_path /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/gripd
+;
+#X obj 54 453 gripd 3490;
+#X msg 463 134 open /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/gripd/examples/gripd.gpd
+;
+#X text 460 178 open_locked: Open gripd GUI in locked mode;
+#X msg 80 166 open /DISKPATHTO/THISDIR/turntable_seqinterface_dbl.gpd
+;
+#X obj 51 64 t b b;
+#X text 97 33 initialization loadbang;
+#X text 269 12 Note: there is pd-extended/extra/gripd/gripd.opt \,
+with joystick = TRUE \, midi = TRUE (needs hacking for py 2.7);
+#X obj 280 42 inlet;
+#X text 316 44 to pass show from outside;
+#X obj 404 509 outlet;
+#X connect 0 0 30 0;
+#X connect 1 0 26 0;
+#X connect 2 0 26 0;
+#X connect 8 0 26 0;
+#X connect 9 0 26 0;
+#X connect 13 0 35 0;
+#X connect 15 0 26 0;
+#X connect 16 0 26 0;
+#X connect 21 0 26 0;
+#X connect 22 0 26 0;
+#X connect 25 0 26 0;
+#X connect 26 0 7 0;
+#X connect 26 1 13 0;
+#X connect 29 0 26 0;
+#X connect 30 0 29 0;
+#X connect 30 1 25 0;
+#X connect 33 0 26 0;
+#X restore 14 97 pd start_gripd;
+#X text 28 492 quarter note at 60 BPM lasts 1 sec = 60/BPM \; metro
+needs to drive at sixteenth notes \; so \, at duration 15/BPM;
+#X text 11 5 NB:only PD abstractions have args \, one-off subpatches
+don't!;
+#N canvas 320 52 695 537 GetFileListing 0;
+#X msg 101 30 /DISKPATHTO/smp;
+#X obj 171 152 zexy/list2symbol /;
+#X obj 171 173 route symbol;
+#X symbolatom 171 195 25 0 0 0 - - -;
+#X text 288 149 prints: symbol ...;
+#X text 250 172 prints: symbol ...;
+#X text 326 193 prints: symbol ...;
+#X obj 171 216 prepend ls;
+#X text 239 215 removes the "symbol"!;
+#X text 221 29 choice of directory with *.wav samples;
+#X obj 61 378 ggee/shell;
+#X obj 91 409 print DONE;
+#X obj 71 430 print STDOUT;
+#X obj 171 131 list append *.wav;
+#X text 435 51 Note: this needs a patched/fixed `shell` \, which might
+(though shouldn't) generate "warning: -1 removed from poll list but
+not found" - but otherwise \, DONE should trigger (regardless if DONE
+is 0 \, or other exit status)! Also \, the `shell` will again block
+\, if the command exits with error for some reason!;
+#X obj 61 316 prepend cd;
+#X obj 61 292 list append && ls *.wav;
+#X text 209 288 first append \; then prepend \; so the "list" \; after
+the prepend \; is removed;
+#X obj 171 238 print CMDA;
+#X obj 141 349 print CMDB;
+#X text 169 111 (code to get full pathnames list):;
+#X text 64 274 (code to get pnly basenames list):;
+#X text 66 261 NOTE: cannot use semicolons in here! use && for shell
+cmds!;
+#X obj 61 88 t s b;
+#X obj 81 67 prepend symbol;
+#X obj 88 132 s clrmenu;
+#X obj 61 30 inlet;
+#X obj 258 425 key;
+#X obj 291 425 sel 80;
+#X text 333 425 P;
+#X text 255 378 entire patch reacts to the [key] \; regardless which
+subpatch is open \; and even if we want to type (and not to choose)
+;
+#X obj 61 450 s audfiles;
+#X text 171 59 must prepend symbol for trigger \; now done above;
+#X connect 1 0 2 0;
+#X connect 2 0 3 0;
+#X connect 3 0 7 0;
+#X connect 7 0 18 0;
+#X connect 10 0 12 0;
+#X connect 10 0 31 0;
+#X connect 10 1 11 0;
+#X connect 13 0 1 0;
+#X connect 15 0 19 0;
+#X connect 15 0 10 0;
+#X connect 16 0 15 0;
+#X connect 23 0 13 0;
+#X connect 23 0 16 0;
+#X connect 23 1 25 0;
+#X connect 26 0 23 0;
+#X connect 27 0 28 0;
+#X restore 14 265 pd GetFileListing;
+#X msg 57 176 /DISKPATHTO/smp;
+#X text 54 146 choice of directory \; with *.wav samples;
+#X obj 57 218 s audiodir;
+#X obj 14 244 r audiodir;
+#X obj 57 197 prepend symbol;
+#X obj 528 50 pddp/dsp;
+#X msg 73 63 show;
+#X text 511 3 1 Run Dsp (+volume) \; 2 set seq Running \; 3 Run turntable
+;
+#X obj 14 48 lbang;
+#X obj 14 70 t b b;
+#N canvas 445 296 446 281 initguis 0;
+#X obj 50 19 inlet;
+#X obj 50 47 sel 1;
+#X text 89 46 bang if value ==1;
+#X text 89 17 expected: bang from Gripd when gui is shown (loaded)
+;
+#X obj 20 90 ttsq_start_ttable_ui 0;
+#X obj 25 110 ttsq_start_seqintf_ui 0;
+#X obj 50 68 t b b b b;
+#X obj 120 155 ttsq_start_ttable_ui 1;
+#X text 170 93 deck 0;
+#X text 78 138 deck 1;
+#X msg 366 128 fitb 1;
+#X obj 346 170 t a a;
+#X obj 316 65 r rkinitbang0;
+#X obj 343 204 s rimgbckgSq1sl;
+#X obj 316 100 t b b;
+#X msg 316 150 ./faderbckg.png;
+#X obj 306 170 t a a;
+#X obj 316 225 s rimgbckgSq2sl;
+#X obj 126 132 ttsq_start_seqintf_ui 1;
+#X connect 0 0 1 0;
+#X connect 1 0 6 0;
+#X connect 6 0 4 0;
+#X connect 6 1 5 0;
+#X connect 6 2 7 0;
+#X connect 6 3 18 0;
+#X connect 10 0 11 0;
+#X connect 11 0 17 0;
+#X connect 11 1 13 0;
+#X connect 12 0 14 0;
+#X connect 14 0 15 0;
+#X connect 14 1 10 0;
+#X connect 15 0 16 0;
+#X connect 16 0 17 0;
+#X connect 16 1 13 0;
+#X restore 14 125 pd initguis;
+#X obj 183 91 cnv 15 194 382 empty empty empty 20 12 0 14 -204786 -66577
+0;
+#X obj 448 91 cnv 15 194 382 empty empty empty 20 12 0 14 -204786 -66577
+0;
+#X obj 381 503 output~;
+#X obj 191 114 ttsq_SoundSamples 0 1;
+#X obj 191 137 ttsq_BackBuffers 0 1;
+#X obj 456 114 ttsq_SoundSamples 1 2;
+#N canvas 668 152 530 540 SavedStuff0 0;
+#X text 19 6 as subpatcher \, because we want this saved with the main
+patch as it changes!;
+#X obj 61 54 r rSng1bank0;
+#X obj 152 54 r rSng2bank0;
+#X text 21 76 sample bank \; song 1;
+#X text 111 124 sample bank \; song 2;
+#X msg 61 92 list symbol cymb_06.wav hhat_03.wav clap_03.wav snar_05.wav
+kick_01.wav orch_01.wav;
+#X msg 152 141 list symbol crsh_03.wav cymb_02.wav mrmb_01.wav snar_03.wav
+kick_06.wav bass_02.wav;
+#X text 16 124 deck 0;
+#X obj 61 183 s sSng1bank0;
+#X obj 152 183 s sSng2bank0;
+#X msg 150 245 00v 0 0 0 0 0 2.76 0.76 0.76 0.76 0 0 0 0 0 0 0 0 |
+01v 0 0 0 0 2.65 0 0 0 0 0 0 0 0 0 0 0 0 | 02v 0 0 0 2.5 0 0 0 0 0
+0 0 0 0 0 0 0 0 | 03v 0 0 2.35 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 04v 0
+2.29 0.29 0.29 0.29 0 0 0 0 0 0 0 0 0 0 0 0 | 10v 0 2.88 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 | 11v 0 0 2.76 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 12v
+0 0 0 2.5 0 0 0 0 0 0 0 0 0 0 0 0 0 | 13v 0 0 0 0 2.41 0 0 0 0 0 0
+0 0 0 0 0 0 | 14v 0 0 0 0 0 2.29 0 0 0 0 0 0 0 0 0 0 0;
+#X msg 140 381 00v 0 2.3 0.3 0.3 0.3 0.3 0.3 0.3 0.3 0 0 0 0 0 0 0
+0 | 01v 0 2.1 0.1 2.1 0.1 2.1 0.1 2.1 0.1 2.1 0.1 2.1 0.1 2.1 0.1 2.1
+0.1 | 02v 0 0 0 0 0 2.5 0 0 2.1 0 0 0 2.1 2.5 0 0 0 | 03v 0 0 0 0 0
+2.75 0.75 0 0 0 2.45 0 0 2.75 0.75 0 0 | 04v 0 2.5 0 0 2.15 0.15 0
+0 0 2.5 0.5 0.5 0 0 0 0 0 | 10v 0 0 0 0 0 0 0 0 0 2.2 0.2 0.2 0.2 0.2
+0.2 0.2 0.2 | 11v 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 12v 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 | 13v 0 2.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2
+0.2 0.2 0.2 0 0 0 0 | 14v 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0;
+#X msg 120 658 00v 0 0 0 2.5 0 0 0 0 0 0 0 0 0 0 0 0 0 | 01v 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 02v 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+| 03v 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 04v 0 2.5 0 0 0 2.5 0 0 0
+2.5 0 0 0 2.5 0 0 0;
+#X text 155 228 Song 2 \, pattern 2;
+#X text 148 364 Song 2 \, pattern 1;
+#X text 138 504 Song 1 \, pattern 2;
+#X text 128 641 Song 1 \, pattern 1;
+#X msg 130 521 00v 0 0 0 0 2.45 0 2.45 0 0 0 0 2.2 2.45 0 2.45 0 0
+| 01v 0 2.2 0 2.2 2.2 2.2 2.2 2.2 0 2.2 0 2.2 0 2.2 0 2.2 0 | 02v 0
+0 0 0 0 2.5 0 0 2.1 0 0 0 0 2.5 0 0 0 | 03v 0 0 0 0 0 2.5 0 0 0 0 2.2
+0 0 2.5 0 0 0 | 04v 0 2.5 0 0 0 2.5 0 0 0 2.5 0 0 0 2.5 0 0 0 | 10v
+0 0 0 0 0 0 0 2.35 0 0 0 0 2.35 0 0 0 2.2 | 11v 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 | 12v 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 13v 0 2.2 0.2
+0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0 0 0 0 | 14v 0 0 0 0 0 0 0
+0 0 0 0 0 2.2 0.2 0 0 0;
+#X obj 70 245 r rSq2pat20;
+#X obj 60 381 r rSq2pat10;
+#X obj 60 485 s sSq2pat10;
+#X obj 70 349 s sSq2pat20;
+#X obj 40 658 r rSq1pat10;
+#X obj 40 762 s sSq1pat10;
+#X obj 50 521 r rSq1pat20;
+#X obj 50 625 s sSq1pat20;
+#X connect 1 0 5 0;
+#X connect 2 0 6 0;
+#X connect 5 0 8 0;
+#X connect 6 0 9 0;
+#X connect 10 0 21 0;
+#X connect 11 0 20 0;
+#X connect 12 0 23 0;
+#X connect 17 0 25 0;
+#X connect 18 0 10 0;
+#X connect 19 0 11 0;
+#X connect 22 0 12 0;
+#X connect 24 0 17 0;
+#X restore 191 169 pd SavedStuff0;
+#X text 200 93 deck 0;
+#X text 465 93 deck 1;
+#X obj 191 282 ttsq_SndSamplesMenuLoader 0 1;
+#X obj 376 214 key;
+#X obj 235 252 sel 65 83 68 70 71 72;
+#X obj 406 214 t f f;
+#X text 260 236 A_ S_ D_ F_ G_ H;
+#X obj 191 329 ttsq_ttableStepCtl 0;
+#X obj 191 306 ttsq_uiSetSngPatSeq 0;
+#X obj 191 412 ttsq_classicSeqEng_lua 0 1;
+#N canvas 329 131 714 442 crsFmixer~ 0;
+#X obj 32 136 inlet~;
+#X text 80 134 in 1Left;
+#X obj 152 136 inlet~;
+#X text 200 134 in 1Right;
+#X obj 314 136 inlet~;
+#X obj 434 136 inlet~;
+#X text 362 134 in 2Left;
+#X text 482 135 in 2Right;
+#X obj 182 306 outlet~;
+#X text 232 304 out Left;
+#X obj 302 306 outlet~;
+#X text 352 304 out Right;
+#X obj 556 257 r scrosfade;
+#X floatatom 595 350 5 0 0 0 - - -;
+#X obj 595 327 / 100;
+#N canvas 0 22 450 300 (subpatch) 0;
+#X array curve-0 100 float 3;
+#A 0 0.99714 0.994259 0.991357 0.988434 0.985488 0.982521 0.979531
+0.976517 0.97348 0.97042 0.967335 0.964224 0.961089 0.957928 0.95474
+0.951525 0.948283 0.945013 0.941714 0.938386 0.935028 0.93164 0.92822
+0.924769 0.921285 0.917767 0.914215 0.910629 0.907006 0.903347 0.89965
+0.895915 0.89214 0.888325 0.884468 0.880569 0.876626 0.872637 0.868603
+0.864521 0.86039 0.856208 0.851975 0.847688 0.843347 0.838948 0.834491
+0.829973 0.825393 0.820748 0.816036 0.811255 0.806402 0.801474 0.79647
+0.791385 0.786217 0.780962 0.775617 0.770178 0.764641 0.759002 0.753255
+0.747396 0.74142 0.73532 0.729091 0.722725 0.716215 0.709553 0.702731
+0.695738 0.688565 0.681198 0.673627 0.665835 0.657808 0.649527 0.640973
+0.632122 0.622949 0.613424 0.603512 0.593175 0.582364 0.571026 0.559092
+0.546483 0.533098 0.518813 0.503466 0.486847 0.468668 0.448524 0.425814
+0.399578 0.368125 0.327953 0.269167 0;
+#X coords 0 1 100 0 100 100 1 0 0;
+#X restore 555 142 graph;
+#X obj 597 65 hsl 128 15 -1 1 0 0 empty empty empty -2 -6 0 8 -262144
+-1 -1 0 0;
+#X floatatom 620 85 7 0 0 0 - 0-to-numbox -;
+#N canvas 0 22 450 300 (subpatch) 0;
+#X array curve-1 100 float 3;
+#A 0 0 0.269167 0.327953 0.368125 0.399578 0.425814 0.448524 0.468668
+0.486847 0.503466 0.518813 0.533098 0.546483 0.559092 0.571026 0.582364
+0.593175 0.603512 0.613424 0.622949 0.632122 0.640973 0.649527 0.657808
+0.665835 0.673627 0.681198 0.688565 0.695738 0.702731 0.709553 0.716215
+0.722725 0.729091 0.73532 0.74142 0.747396 0.753255 0.759002 0.764641
+0.770178 0.775617 0.780962 0.786217 0.791385 0.79647 0.801474 0.806402
+0.811255 0.816036 0.820748 0.825393 0.829973 0.834491 0.838948 0.843347
+0.847688 0.851975 0.856208 0.86039 0.864521 0.868603 0.872637 0.876626
+0.880569 0.884468 0.888325 0.89214 0.895915 0.89965 0.903347 0.907006
+0.910629 0.914215 0.917767 0.921285 0.924769 0.92822 0.93164 0.935028
+0.938386 0.941714 0.945013 0.948283 0.951525 0.95474 0.957928 0.961089
+0.964224 0.967335 0.97042 0.97348 0.976517 0.979531 0.982521 0.985488
+0.988434 0.991357 0.994259 0.99714;
+#X coords 0 1 100 0 100 100 1 0 0;
+#X restore 670 142 graph;
+#N canvas 175 114 494 302 draw_array 0;
+#X msg 20 104 bang;
+#X obj 20 125 until;
+#X text 51 104 start;
+#X obj 20 147 f;
+#X obj 49 147 + 1;
+#X obj 20 65 loadbang;
+#X obj 20 202 trigger float float;
+#X obj 93 149 select 0;
+#X obj 104 31 inlet;
+#X obj 105 75 trigger bang float;
+#X obj 49 169 mod 200;
+#X obj 20 279 / 200;
+#X text 62 279 mapping output range: 0 to 1;
+#X obj 19 305 mapping/curve;
+#X obj 119 54 send 0-to-numbox;
+#X obj 314 35 inlet;
+#X msg 277 104 bang;
+#X obj 277 125 until;
+#X text 308 103 start;
+#X obj 277 147 f;
+#X obj 306 147 + 1;
+#X obj 277 202 trigger float float;
+#X obj 350 149 select 0;
+#X obj 306 169 mod 200;
+#X obj 237 273 expr 1-$f1;
+#X text 274 12 copy inverse on bang;
+#X text 337 281 change index \, not val;
+#X obj 190 151 loadbang;
+#X msg 190 172 100;
+#X obj 190 195 s crvsz;
+#X obj 92 113 r crvsz;
+#X obj 49 244 r crvsz;
+#X obj 442 237 r crvsz;
+#X obj 351 115 r crvsz;
+#X obj 386 265 expr $f2-1-$f1;
+#X obj 401 309 print;
+#X text 18 353 to sync the faders properly \, the kind of curve that
+is autogenerated should be in curve-1 \, and inverse from that into
+curve-0!;
+#X obj 19 335 tabwrite curve-1;
+#X obj 277 235 tabread curve-1;
+#X obj 277 299 tabwrite curve-0;
+#X connect 0 0 1 0;
+#X connect 1 0 3 0;
+#X connect 3 0 4 0;
+#X connect 3 0 6 0;
+#X connect 4 0 10 0;
+#X connect 6 0 11 0;
+#X connect 6 1 37 1;
+#X connect 7 0 1 1;
+#X connect 8 0 9 0;
+#X connect 8 0 14 0;
+#X connect 9 0 0 0;
+#X connect 9 1 13 1;
+#X connect 10 0 3 1;
+#X connect 10 0 7 0;
+#X connect 11 0 13 0;
+#X connect 13 0 37 0;
+#X connect 15 0 16 0;
+#X connect 16 0 17 0;
+#X connect 17 0 19 0;
+#X connect 19 0 20 0;
+#X connect 19 0 21 0;
+#X connect 20 0 23 0;
+#X connect 21 0 35 0;
+#X connect 21 0 38 0;
+#X connect 21 1 34 0;
+#X connect 22 0 17 1;
+#X connect 23 0 19 1;
+#X connect 23 0 22 0;
+#X connect 27 0 28 0;
+#X connect 28 0 29 0;
+#X connect 30 0 10 1;
+#X connect 31 0 11 1;
+#X connect 32 0 34 1;
+#X connect 33 0 23 1;
+#X connect 34 0 35 0;
+#X connect 34 0 39 1;
+#X connect 38 0 39 0;
+#X restore 608 108 pd draw_array;
+#X obj 674 86 bng 15 250 50 0 empty empty empty 17 7 0 10 -262144 -1
+-1;
+#X text 692 83 copy inv;
+#X obj 800 258 r svolchan1;
+#X obj 718 258 r svolchan0;
+#X floatatom 718 323 5 0 0 0 - - -;
+#X floatatom 800 323 5 0 0 0 - - -;
+#X obj 157 64 s rvolchan0;
+#X obj 239 64 s rvolchan1;
+#X obj 320 64 s rcrosfade;
+#X msg 306 39 50;
+#X obj 265 15 r rkinitbang0;
+#X obj 595 41 prepend set;
+#X msg 674 42 -0.181102;
+#X obj 556 373 tabread curve-0;
+#X obj 556 302 t f f f;
+#X obj 575 394 tabread curve-1;
+#X floatatom 556 421 5 0 0 0 - - -;
+#X floatatom 616 421 5 0 0 0 - - -;
+#X obj 60 65 s ich0;
+#X obj 107 65 s ich1;
+#X text 57 79 just init vals;
+#X obj 397 64 s icf;
+#X obj 728 281 r ich0;
+#X obj 810 281 r ich1;
+#X obj 566 279 r icf;
+#X obj 662 456 *;
+#X obj 734 456 *;
+#X obj 654 506 s rvolchan0;
+#X obj 738 506 s rvolchan1;
+#X floatatom 662 481 5 0 0 0 - - -;
+#X floatatom 734 481 5 0 0 0 - - -;
+#X msg 225 39 95;
+#X obj 718 345 / 100;
+#X obj 718 367 s ch0f;
+#X obj 800 345 / 100;
+#X obj 800 367 s ch1f;
+#X obj 604 485 / 100;
+#X obj 604 507 s ch0f;
+#X obj 816 483 / 100;
+#X obj 816 505 s ch1f;
+#X obj 74 219 *~;
+#X obj 89 195 r ch0f;
+#X obj 198 219 *~;
+#X obj 213 195 r ch0f;
+#X obj 304 219 *~;
+#X obj 428 219 *~;
+#X obj 319 195 r ch1f;
+#X obj 444 195 r ch1f;
+#X obj 182 268 +~;
+#X obj 301 268 +~;
+#X msg 268 395 print;
+#X msg 227 373 start;
+#X msg 229 395 stop;
+#X obj 218 420 writesf~ 2;
+#X msg 218 348 open /tmp/foo.wav;
+#X text 217 331 create a new 16-bit soundfile;
+#X connect 0 0 60 0;
+#X connect 2 0 62 0;
+#X connect 4 0 64 0;
+#X connect 5 0 65 0;
+#X connect 12 0 34 0;
+#X connect 14 0 13 0;
+#X connect 16 0 19 0;
+#X connect 17 0 31 0;
+#X connect 20 0 19 1;
+#X connect 22 0 25 0;
+#X connect 23 0 24 0;
+#X connect 24 0 45 1;
+#X connect 24 0 52 0;
+#X connect 25 0 46 1;
+#X connect 25 0 54 0;
+#X connect 29 0 28 0;
+#X connect 29 0 41 0;
+#X connect 30 0 51 0;
+#X connect 30 0 29 0;
+#X connect 31 0 32 0;
+#X connect 33 0 36 0;
+#X connect 34 0 33 0;
+#X connect 34 1 35 0;
+#X connect 34 2 14 0;
+#X connect 35 0 37 0;
+#X connect 36 0 45 0;
+#X connect 37 0 46 0;
+#X connect 42 0 24 0;
+#X connect 43 0 25 0;
+#X connect 44 0 34 0;
+#X connect 45 0 49 0;
+#X connect 46 0 50 0;
+#X connect 49 0 47 0;
+#X connect 49 0 56 0;
+#X connect 50 0 48 0;
+#X connect 50 0 58 0;
+#X connect 51 0 26 0;
+#X connect 51 0 27 0;
+#X connect 51 0 38 0;
+#X connect 51 0 39 0;
+#X connect 52 0 53 0;
+#X connect 54 0 55 0;
+#X connect 56 0 57 0;
+#X connect 58 0 59 0;
+#X connect 60 0 68 0;
+#X connect 61 0 60 1;
+#X connect 62 0 69 0;
+#X connect 63 0 62 1;
+#X connect 64 0 68 1;
+#X connect 65 0 69 1;
+#X connect 66 0 64 1;
+#X connect 67 0 65 1;
+#X connect 68 0 8 0;
+#X connect 68 0 73 0;
+#X connect 69 0 10 0;
+#X connect 69 0 73 1;
+#X connect 70 0 73 0;
+#X connect 71 0 73 0;
+#X connect 72 0 73 0;
+#X connect 74 0 73 0;
+#X restore 372 480 pd crsFmixer~;
+#X obj 213 452 ttsq_seqTrkMixer~ 0;
+#X obj 329 431 r ch0f;
+#X text 485 236 Z_ X_ C_ V_ B_ N;
+#X obj 460 252 sel 90 88 67 86 66 78;
+#N canvas 401 54 530 540 SavedStuff1 0;
+#X text 19 6 as subpatcher \, because we want this saved with the main
+patch as it changes!;
+#X text 21 76 sample bank \; song 1;
+#X text 111 124 sample bank \; song 2;
+#X msg 61 92 list symbol cymb_06.wav hhat_03.wav clap_03.wav snar_05.wav
+kick_01.wav orch_01.wav;
+#X msg 152 141 list symbol crsh_03.wav cymb_02.wav mrmb_01.wav snar_03.wav
+kick_06.wav bass_02.wav;
+#X msg 150 245 00v 0 0 0 0 0 2.76 0.76 0.76 0.76 0 0 0 0 0 0 0 0 |
+01v 0 0 0 0 2.65 0 0 0 0 0 0 0 0 0 0 0 0 | 02v 0 0 0 2.5 0 0 0 0 0
+0 0 0 0 0 0 0 0 | 03v 0 0 2.35 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 04v 0
+2.29 0.29 0.29 0.29 0 0 0 0 0 0 0 0 0 0 0 0 | 10v 0 2.88 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 | 11v 0 0 2.76 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 12v
+0 0 0 2.5 0 0 0 0 0 0 0 0 0 0 0 0 0 | 13v 0 0 0 0 2.41 0 0 0 0 0 0
+0 0 0 0 0 0 | 14v 0 0 0 0 0 2.29 0 0 0 0 0 0 0 0 0 0 0;
+#X msg 140 381 00v 0 2.3 0.3 0.3 0.3 0.3 0.3 0.3 0.3 0 0 0 0 0 0 0
+0 | 01v 0 2.1 0.1 2.1 0.1 2.1 0.1 2.1 0.1 2.1 0.1 2.1 0.1 2.1 0.1 2.1
+0.1 | 02v 0 0 0 0 0 2.5 0 0 2.1 0 0 0 2.1 2.5 0 0 0 | 03v 0 0 0 0 0
+2.75 0.75 0 0 0 2.45 0 0 2.75 0.75 0 0 | 04v 0 2.5 0 0 2.15 0.15 0
+0 0 2.5 0.5 0.5 0 0 0 0 0 | 10v 0 0 0 0 0 0 0 0 0 2.2 0.2 0.2 0.2 0.2
+0.2 0.2 0.2 | 11v 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 12v 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 | 13v 0 2.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2
+0.2 0.2 0.2 0 0 0 0 | 14v 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0;
+#X msg 120 658 00v 0 0 0 2.5 0 0 0 0 0 0 0 0 0 0 0 0 0 | 01v 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 02v 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+| 03v 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 04v 0 2.5 0 0 0 2.5 0 0 0
+2.5 0 0 0 2.5 0 0 0;
+#X text 155 228 Song 2 \, pattern 2;
+#X text 148 364 Song 2 \, pattern 1;
+#X text 138 504 Song 1 \, pattern 2;
+#X text 128 641 Song 1 \, pattern 1;
+#X msg 130 521 00v 0 0 0 0 2.45 0 2.45 0 0 0 0 2.2 2.45 0 2.45 0 0
+| 01v 0 2.2 0 2.2 2.2 2.2 2.2 2.2 0 2.2 0 2.2 0 2.2 0 2.2 0 | 02v 0
+0 0 0 0 2.5 0 0 2.1 0 0 0 0 2.5 0 0 0 | 03v 0 0 0 0 0 2.5 0 0 0 0 2.2
+0 0 2.5 0 0 0 | 04v 0 2.5 0 0 0 2.5 0 0 0 2.5 0 0 0 2.5 0 0 0 | 10v
+0 0 0 0 0 0 0 2.35 0 0 0 0 2.35 0 0 0 2.2 | 11v 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 | 12v 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 13v 0 2.2 0.2
+0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0.2 0 0 0 0 | 14v 0 0 0 0 0 0 0
+0 0 0 0 0 2.2 0.2 0 0 0;
+#X obj 61 54 r rSng1bank1;
+#X obj 152 54 r rSng2bank1;
+#X obj 61 183 s sSng1bank1;
+#X obj 152 183 s sSng2bank1;
+#X obj 70 245 r rSq2pat21;
+#X obj 70 349 s sSq2pat21;
+#X obj 60 381 r rSq2pat11;
+#X obj 60 485 s sSq2pat11;
+#X obj 50 521 r rSq1pat21;
+#X obj 50 625 s sSq1pat21;
+#X obj 40 658 r rSq1pat11;
+#X obj 40 762 s sSq1pat11;
+#X text 16 124 deck 1;
+#X connect 3 0 15 0;
+#X connect 4 0 16 0;
+#X connect 5 0 18 0;
+#X connect 6 0 20 0;
+#X connect 7 0 24 0;
+#X connect 12 0 22 0;
+#X connect 13 0 3 0;
+#X connect 14 0 4 0;
+#X connect 17 0 5 0;
+#X connect 19 0 6 0;
+#X connect 21 0 12 0;
+#X connect 23 0 7 0;
+#X restore 456 169 pd SavedStuff1;
+#X obj 456 282 ttsq_SndSamplesMenuLoader 1 2;
+#X obj 456 306 ttsq_uiSetSngPatSeq 1;
+#X obj 456 329 ttsq_ttableStepCtl 1;
+#X obj 594 430 r ch1f;
+#X obj 478 451 ttsq_seqTrkMixer~ 1;
+#X obj 203 392 ttsq_backbufSeqEng_py 0 1;
+#X obj 456 411 ttsq_classicSeqEng_lua 1 2;
+#N canvas 413 227 486 202 choSeqEng 0;
+#X obj 132 118 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
+1;
+#X text 155 69 default setting \; upon loadbang;
+#X floatatom 150 117 4 0 0 0 - - -;
+#X floatatom 103 117 4 0 0 0 - - -;
+#X obj 214 109 expr 1-$f1 \; $f1;
+#X obj 103 149 outlet;
+#X obj 150 149 outlet;
+#X text 150 163 orig val;
+#X text 100 163 inv val;
+#X text 14 17 choose sequencer engine (simultaneous toggle);
+#X text 287 104 for spigot/gate/switch - get \; simultaneously both
+original \; and inverse toggle value;
+#X obj 84 76 lbangv 0;
+#X connect 0 0 4 0;
+#X connect 2 0 6 0;
+#X connect 3 0 5 0;
+#X connect 4 0 3 0;
+#X connect 4 1 2 0;
+#X connect 11 1 0 0;
+#X coords 0 -1 1 1 79 36 1 100 100;
+#X restore 372 300 pd choSeqEng;
+#X text 134 18 Note: since we do backbuffer rendering of sequence here
+\, there is no more velocity/trigger tables anymore (but there are
+backbuffer arrays now instead) \; NOTE: two backbuffers (* L+R = 4
+garrays) are needed PER TRACK - since we want to mix the tracks separately!
+;
+#X obj 456 137 ttsq_BackBuffers 1 2;
+#N canvas 410 222 486 202 locSeqEng 0;
+#X obj 132 118 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 1
+1;
+#X floatatom 150 117 4 0 0 0 - - -;
+#X floatatom 103 117 4 0 0 0 - - -;
+#X obj 214 109 expr 1-$f1 \; $f1;
+#X obj 103 149 outlet;
+#X obj 150 149 outlet;
+#X text 150 163 orig val;
+#X text 100 163 inv val;
+#X text 14 17 choose sequencer engine (simultaneous toggle);
+#X text 287 104 for spigot/gate/switch - get \; simultaneously both
+original \; and inverse toggle value;
+#X obj 132 67 inlet;
+#X connect 0 0 3 0;
+#X connect 1 0 5 0;
+#X connect 2 0 4 0;
+#X connect 3 0 2 0;
+#X connect 3 1 1 0;
+#X connect 10 0 0 0;
+#X coords 0 -1 1 1 79 36 1 100 100;
+#X restore 188 350 pd locSeqEng;
+#N canvas 410 222 486 202 locSeqEng 0;
+#X obj 132 118 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
+1;
+#X floatatom 150 117 4 0 0 0 - - -;
+#X floatatom 103 117 4 0 0 0 - - -;
+#X obj 214 109 expr 1-$f1 \; $f1;
+#X obj 103 149 outlet;
+#X obj 150 149 outlet;
+#X text 150 163 orig val;
+#X text 100 163 inv val;
+#X text 14 17 choose sequencer engine (simultaneous toggle);
+#X text 287 104 for spigot/gate/switch - get \; simultaneously both
+original \; and inverse toggle value;
+#X obj 132 67 inlet;
+#X connect 0 0 3 0;
+#X connect 1 0 5 0;
+#X connect 2 0 4 0;
+#X connect 3 0 2 0;
+#X connect 3 1 1 0;
+#X connect 10 0 0 0;
+#X coords 0 -1 1 1 79 36 1 100 100;
+#X restore 463 350 pd locSeqEng;
+#X obj 468 392 ttsq_backbufSeqEng_py 1 2;
+#X text 243 193 A -> 1.1 | S -> 1.2 \; D -> 1.3 | F -> 1.4 \; G ->
+1.5 | H -> 2.*;
+#X connect 0 0 14 0;
+#X connect 4 0 8 0;
+#X connect 7 0 3 0;
+#X connect 8 0 6 0;
+#X connect 10 0 0 1;
+#X connect 12 0 13 0;
+#X connect 13 0 0 0;
+#X connect 13 1 4 0;
+#X connect 25 0 27 0;
+#X connect 26 0 24 0;
+#X connect 26 1 24 1;
+#X connect 26 2 24 2;
+#X connect 26 3 24 3;
+#X connect 26 4 24 4;
+#X connect 26 5 24 5;
+#X connect 27 0 26 0;
+#X connect 27 1 36 0;
+#X connect 31 0 33 0;
+#X connect 31 1 33 1;
+#X connect 31 2 33 2;
+#X connect 31 3 33 3;
+#X connect 32 0 17 0;
+#X connect 32 1 17 1;
+#X connect 33 0 32 0;
+#X connect 33 1 32 1;
+#X connect 34 0 33 4;
+#X connect 36 0 38 0;
+#X connect 36 1 38 1;
+#X connect 36 2 38 2;
+#X connect 36 3 38 3;
+#X connect 36 4 38 4;
+#X connect 36 5 38 5;
+#X connect 41 0 42 4;
+#X connect 42 0 32 2;
+#X connect 42 1 32 3;
+#X connect 43 0 33 0;
+#X connect 43 1 33 1;
+#X connect 43 2 33 2;
+#X connect 43 3 33 3;
+#X connect 44 0 42 0;
+#X connect 44 1 42 1;
+#X connect 44 2 42 2;
+#X connect 44 3 42 3;
+#X connect 45 0 48 0;
+#X connect 45 1 49 0;
+#X connect 48 0 31 0;
+#X connect 48 1 43 0;
+#X connect 49 0 50 0;
+#X connect 49 1 44 0;
+#X connect 50 0 42 0;
+#X connect 50 1 42 1;
+#X connect 50 2 42 2;
+#X connect 50 3 42 3;

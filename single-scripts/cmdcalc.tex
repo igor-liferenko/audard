@@ -1,0 +1,114 @@
+#!/media/nonos/ebin/texlive/2011/bin/i386-linux/pdflatex "\catcode`\#=14\batchmode\gdef\cmd{\gdef\mcmd}\gdef\e{\input"
+
+% http://tex.stackexchange.com/questions/187886/a-command-line-latex-calculator
+
+%
+% just this survives ./cmdcalc.tex
+% #!/path/to/texlive/2011/bin/i386-linux/pdflatex "\catcode`\#=14\relax\input{cmdcalc.tex}"
+%
+% with gdef:
+% <*> ...e`\#=14\relax\gdef\e{\input{cmdcalc.tex}} .
+%                                                   /cmdcalc.tex typeout{aa}e
+% ?
+% (note, that is the command line name inserted as argument)
+% like above, typeout will hide the command name inserted by the shell, but we must then terminate it manually; so the call will be like:
+% ./cmdcalc.tex '} \typeout{hello} \e' # then order is:
+%    ./cmdcalc.tex
+%   hello
+%   (./cmdcalc.tex
+% !/bin/echo /...
+% #!/bin/echo /path/to/texlive/2011/bin/i386-linux/pdflatex "\batchmode\catcode`\#=14\relax\gdef\cmd{\xdef\mycmd}\gdef\e{\input{cmdcalc.tex}}\typeout{"
+% NB: limited chars in shebang; cut at:
+% ./cmdcalc.tex '} \typeout{hello} \e'
+% /path/to/texlive/2011/bin/i386-linux/pdflatex "\batchmode\catcode`\#=14\relax\gdef\cmd{\xdef\mycmd}\gdef\e
+%
+% now also
+% ./cmdcalc.tex '} \cmd{\pgfmathparse{1+2}} \e'
+% ./cmdcalc.tex '} \cmd{\pgfmathtruncatemacro{\pgfmathresult}{floor(2.5)}} \e'
+
+% at entry, shebang already did \make#comment
+% now that we have entered here, restore (\make#parameter)
+\catcode`\#=6\relax
+% \def\typeout#1{\begingroup\immediate\write0{#1}\endgroup} % etex, but no \dimexpr
+
+% enable messages here, if we need to debug package loading
+% \errorstopmode
+
+% "preamble" - load packages;
+% since we haven begun{document} yet, should
+% use \RequirePackage/\input:
+
+% \makeatletter
+\input pgfutil-common.tex
+\input pgfmathutil.code.tex
+% \makeatother
+\RequirePackage{pgfkeys}
+\RequirePackage{pgfmath}
+
+% some Latex utility functions/macros:
+%
+% http://tex.stackexchange.com/a/8337/2595
+\makeatletter
+\def\convertto#1#2{\strip@pt\dimexpr #2*65536/\number\dimexpr 1#1}
+% with units at end:
+\def\converttou#1#2{\strip@pt\dimexpr #2*65536/\number\dimexpr 1#1 #1}
+\newcommand{\gettikzcmxy}[3]{%
+  \tikz@scan@one@point\pgfutil@firstofone#1\relax
+  \global\edef#2{\convertto{cm}{\the\pgf@x}}%
+  \global\edef#3{\convertto{cm}{\the\pgf@y}}%
+  \typeout{ gettikzcmxy: x \the\pgf@x #2 cm, y \the\pgf@y #3 cm}
+}
+\makeatother
+
+% initialize \pgfmathresult, so it's not "! Undefined control sequence."
+\pgfmathparse{0}
+
+% set a debug flag, if needed, here:
+% (if not wanted, simply keep commented=undefined)
+% \def\dbg{1}
+\ifx\dbg\undefined\else%
+  \RequirePackage{trace}% debug
+\fi
+
+% stop the quiet batchmode, and halt on errors
+% (if we want terminal interaction upon error)
+% \errorstopmode
+% % (or)
+% stop the quiet batchmode, and just report errors and exit
+\scrollmode
+
+% run the set \cmd{} by user:
+% %\expandafter\edef\expandafter\mrescmd{\mcmd} % bad!
+% just run directly:
+% \ifx\dbg\empty\else\traceon\fi% (if debug)
+\ifx\mcmd\undefined%
+  \typeout{The \string\cmd is undefined!}
+\else%
+  \ifx\dbg\undefined\else\traceon\fi%
+  \mcmd%
+  \ifx\dbg\undefined\else\traceoff\fi%
+\fi%
+
+
+% convenience result variable - \pmr (short for \pgfmathresult);
+% check it after running of command:
+% (do not handle \ifx\pmr\empty - maybe it's a valid outcome)
+\ifx\pmr\undefined%
+  \let\pmr\pgfmathresult%
+\fi
+
+
+% print out \pg
+\typeout{^^J RESULT: '\pmr' }
+\typeout{ (for command: '\meaning\mcmd')}
+\batchmode
+\stop
+
+% other possibilities: with luatex:
+% \directlua0{io.stderr:write("Error: what do you thing you are doing^^J")}
+
+% we don't need to begin document; we've already exited :)
+% \begin{document}
+
+
+

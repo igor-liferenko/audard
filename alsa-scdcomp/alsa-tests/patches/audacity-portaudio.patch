@@ -1,0 +1,184 @@
+diff -Naur -x '*.lo' -x '*.la' -x '*.o' -x '*m4*' -x '*.log' -x .libs -x bin -x '*.guess' -x '*.status' -x '*.sub' -x '*sh' -x '*.pc' -x '*.pdf' -x '*.py' -x '*.csv' -x test -x libtool audacity-1.3.13-orig/lib-src/portaudio-v19/configure audacity-1.3.13/lib-src/portaudio-v19/configure
+--- audacity-1.3.13-orig/lib-src/portaudio-v19/configure	2011-04-07 01:35:52.000000000 +0200
++++ audacity-1.3.13/lib-src/portaudio-v19/configure	2013-05-31 19:44:23.988758839 +0200
+@@ -719,6 +858,7 @@
+ with_asiodir
+ with_dxdir
+ enable_debug_output
++enable_debug_logapi
+ enable_cxx
+ enable_mac_debug
+ enable_mac_universal
+@@ -1358,6 +1499,7 @@
+   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
+   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+   --enable-debug-output   Enable debug output [no]
++  --enable-debug-logapi   Enable debug logapi [no]
+   --enable-cxx            Enable C++ bindings [no]
+   --enable-mac-debug      Enable Mac debug [no]
+   --enable-mac-universal  Build Mac universal binaries [yes]
+@@ -2578,6 +2727,19 @@
+ fi
+ 
+ 
++debug_logapi=no
++# Check whether --enable-debug-logapi was given.
++if test "${enable_debug_logapi+set}" = set; then :
++  enableval=$enable_debug_logapi; if test "x$enableval" != "xno" ; then
++
++$as_echo "#define PA_LOG_API_CALLS /**/" >>confdefs.h
++
++                  debug_logapi=yes
++               fi
++
++fi
++
++
+ # Check whether --enable-cxx was given.
+ if test "${enable_cxx+set}" = set; then :
+   enableval=$enable_cxx; enable_cxx=$enableval
+diff -Naur -x '*.lo' -x '*.la' -x '*.o' -x '*m4*' -x '*.log' -x .libs -x bin -x '*.guess' -x '*.status' -x '*.sub' -x '*sh' -x '*.pc' -x '*.pdf' -x '*.py' -x '*.csv' -x test -x libtool audacity-1.3.13-orig/lib-src/portaudio-v19/configure.in audacity-1.3.13/lib-src/portaudio-v19/configure.in
+--- audacity-1.3.13-orig/lib-src/portaudio-v19/configure.in	2011-04-07 01:35:52.000000000 +0200
++++ audacity-1.3.13/lib-src/portaudio-v19/configure.in	2013-05-31 19:43:16.236422882 +0200
+@@ -7,6 +7,8 @@
+ dnl Require autoconf >= 2.13
+ AC_PREREQ(2.13)
+ 
++AC_CONFIG_MACRO_DIR([m4])
++
+ dnl Init autoconf and make sure configure is being called
+ dnl from the right directory
+ AC_INIT([include/portaudio.h])
+@@ -76,6 +78,15 @@
+                fi
+               ])
+ 
++debug_logapi=no
++AC_ARG_ENABLE(debug-logapi,
++              AS_HELP_STRING([--enable-debug-logapi], [Enable debug logapi @<:@no@:>@]),
++              [if test "x$enableval" != "xno" ; then
++                  AC_DEFINE(PA_LOG_API_CALLS,,[Enable debugging logapi messages])
++                  debug_logapi=yes
++               fi
++              ])
++
+ AC_ARG_ENABLE(cxx,
+               AS_HELP_STRING([--enable-cxx], [Enable C++ bindings @<:@no@:>@]),
+               enable_cxx=$enableval, enable_cxx="no")
+diff -Naur -x '*.lo' -x '*.la' -x '*.o' -x '*m4*' -x '*.log' -x .libs -x bin -x '*.guess' -x '*.status' -x '*.sub' -x '*sh' -x '*.pc' -x '*.pdf' -x '*.py' -x '*.csv' -x test -x libtool audacity-1.3.13-orig/lib-src/portaudio-v19/Makefile.in audacity-1.3.13/lib-src/portaudio-v19/Makefile.in
+--- audacity-1.3.13-orig/lib-src/portaudio-v19/Makefile.in	2013-07-18 21:51:40.901730849 +0200
++++ audacity-1.3.13/lib-src/portaudio-v19/Makefile.in	2013-07-18 21:52:04.545848095 +0200
+@@ -97,7 +97,8 @@
+ 	bin/patest_write_sine \
+ 	bin/pa_devs \
+ 	bin/pa_fuzz \
+-	bin/pa_minlat
++	bin/pa_minlat \
++	bin/patest_duplex_wire
+ 
+ # Most of these don't compile yet.  Put them in TESTS, above, if
+ # you want to try to compile them...
+diff -Naur -x '*.lo' -x '*.la' -x '*.o' -x '*m4*' -x '*.log' -x .libs -x bin -x '*.guess' -x '*.status' -x '*.sub' -x '*sh' -x '*.pc' -x '*.pdf' -x '*.py' -x '*.csv' -x test -x libtool audacity-1.3.13-orig/lib-src/portaudio-v19/src/hostapi/alsa/pa_linux_alsa.c audacity-1.3.13/lib-src/portaudio-v19/src/hostapi/alsa/pa_linux_alsa.c
+--- audacity-1.3.13-orig/lib-src/portaudio-v19/src/hostapi/alsa/pa_linux_alsa.c	2011-04-07 01:35:52.000000000 +0200
++++ audacity-1.3.13/lib-src/portaudio-v19/src/hostapi/alsa/pa_linux_alsa.c	2013-07-11 04:52:32.624975719 +0200
+@@ -239,7 +239,14 @@
+     return (const PaAlsaDeviceInfo *)hostApi->deviceInfos[device];
+ }
+ 
+-/** Uncommented because AlsaErrorHandler is unused for anything good yet. If AlsaErrorHandler is 
++char tmpath[] = "/sys/kernel/debug/tracing/trace_marker"; //added
++int marker_fd = -1;                                       //added
++//~ #define PA_MDEBUG(format, arg...) do { dprintf( marker_fd, format , ## arg); } while (0)
++#define PA_MDEBUG(x) PA_DPRINTF x
++#define PA_DPRINTF(format, arg...) dprintf( marker_fd, format , ## arg);
++
++
++/** Uncommented because AlsaErrorHandler is unused for anything good yet. If AlsaErrorHandler is
+     to be used, do not forget to register this callback in PaAlsa_Initialize, and unregister in Terminate.
+ */
+ /*static void AlsaErrorHandler(const char *file, int line, const char *function, int err, const char *fmt, ...)
+@@ -292,6 +299,8 @@
+ 
+     PA_ENSURE( PaUnixThreading_Initialize() );
+ 
++    marker_fd = open(tmpath, O_WRONLY); //added
++
+     return result;
+ 
+ error:
+@@ -327,6 +336,7 @@
+ 
+     PaUtil_FreeMemory( alsaHostApi );
+     snd_config_update_free_global();
++    close(marker_fd); //added
+ }
+ 
+ /** Determine max channels and default latencies.
+@@ -3032,6 +3042,10 @@
+     int pollTimeout = self->pollTimeout;
+     int xrun = 0, timeouts = 0;
+     int pollResults;
++    PaStreamCallbackTimeInfo timeInfo = {0, 0, 0}; //added
++    unsigned long fAinit = *framesAvail;
++
++    CalculateTimeInfo( self, &timeInfo ); //added
+ 
+     assert( self );
+     assert( framesAvail );
+@@ -3058,6 +3072,8 @@
+         }
+     }
+ 
++    PA_MDEBUG(( "%s: [% 13.6f]: frai:%lu fra:%lu plp:%d, plc:%d plt:%d scb:%d, xrun:%d prdy:%d crdy:%d scb:%d\n", __FUNCTION__, timeInfo.currentTime, fAinit, *framesAvail, pollPlayback, pollCapture, pollTimeout, self->callbackMode, xrun, self->playback.ready, self->capture.ready, self->callbackMode)); //added
++
+     while( pollPlayback || pollCapture )
+     {
+         int totalFds = 0;
+@@ -3174,6 +3190,7 @@
+             if( !self->playback.ready && !self->neverDropInput )
+             {
+                 /* Drop input, a period's worth */
++                PA_MDEBUG(( "%s: full-duplex (not xrun): Drop input, a period's worth - fra:%lu \n", __FUNCTION__, *framesAvail )); //added
+                 assert( self->capture.ready );
+                 PaAlsaStreamComponent_EndProcessing( &self->capture, PA_MIN( self->capture.framesPerBuffer,
+                             *framesAvail ), &xrun );
+@@ -3537,10 +3554,14 @@
+          */
+         while( framesAvail > 0 )
+         {
++            PaTime urn, orn;
++
+             xrun = 0;
+ 
+             pthread_testcancel();
+ 
++            urn = stream->underrun;
++            orn = stream->overrun;
+             /** @concern Xruns Under/overflows are to be reported to the callback */
+             if( stream->underrun > 0.0 )
+             {
+@@ -3559,7 +3580,7 @@
+                 if( !stream->capture.ready )
+                 {
+                     cbFlags |= paInputUnderflow;
+-                    PA_DEBUG(( "%s: Input underflow\n", __FUNCTION__ ));
++                    PA_DEBUG(( "%s: Input underflow fra:%d urn:%d orn:%d\n", __FUNCTION__, framesAvail, urn, orn ));
+                 }
+                 else if( !stream->playback.ready )
+                 {
+@@ -3591,6 +3612,10 @@
+                 framesGot = PA_MIN( framesGot, stream->maxFramesPerHostBuffer );
+             }
+             PA_ENSURE( PaAlsaStream_SetUpBuffers( stream, &framesGot, &xrun ) );
++            //if( stream->capture.pcm ) //added
++            //{
++              PA_MDEBUG(( "%s: c:%d p:%d [% 13.6f]: fra:%lu frg:%lu, urn:%f orn:%f ready:%d\n", __FUNCTION__, stream->capture.pcm != NULL, stream->playback.pcm != NULL, timeInfo.currentTime, framesAvail, framesGot, urn, orn, stream->capture.ready )); //added
++            //}
+             /* Check the host buffer size against the buffer processor configuration */
+             framesAvail -= framesGot;
+ 
+
+. this should be manually copied:
+.diff -Naur audacity-1.3.13-orig/lib-src/portaudio-v19/test/patest_duplex_wire.c audacity-1.3.13/lib-src/portaudio-v19/test/patest_duplex_wire.c
+. --- audacity-1.3.13-orig/lib-src/portaudio-v19/test/patest_duplex_wire.c      1970-01-01 01:00:00.000000000 +0100
+. +++ audacity-1.3.13/lib-src/portaudio-v19/test/patest_duplex_wire.c   2013-07-18 07:25:45.877763701 +0200

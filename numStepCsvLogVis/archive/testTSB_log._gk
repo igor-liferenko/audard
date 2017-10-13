@@ -1,0 +1,72 @@
+# -*- coding: utf-8 -*-
+self._gk.id = "numStepCsvLogVis.py / testTSB_log.csv / testTSB_log._gk"
+
+# self._gk = type('Object', (object,), {}) # already done
+# do NOT use engineering notation @V specifier, in
+# direct numeric value setters (eg. where float()!)
+
+self._gk.tval  = float("@(v1)")
+self._gk.tvalE =       "@(V1-[1])"
+self._gk.tnam  =       "@(n1)"
+self._gk.xvals    = np.array( "@(v2:4) @(v5-1) @(v6)".split() , dtype=np.float)
+self._gk.yvals    = np.array( [1.2,1.2,3,  5.1,    6] )
+self._gk.cnames   =           "@(n2:4) @(n5)   @(n6)".split()
+self._gk.markers  =           "s o x   CUST1   s".split()
+self._gk.markszs  =         [10,10,10, 20,     10]
+self._gk.markcls  =           "r g b   orange  b".split()
+
+
+def _gk_setup(self):
+  # self.frame.clear() # or ax.cla(): already done
+  matplotlib.rc('font',**{'family':'sans-serif','sans-serif':['Arial']})
+  matplotlib.rcParams.update({'font.size': 10})
+  fnames = self._gk.id.split(' / ')
+  self.ax.set_title('{0} plot for {1} (GUI config {2})'.format(fnames[0], fnames[1], fnames[2]))
+  self.ax.title.set_fontsize(11)
+  self.ax.set_xlabel('Numeric value')
+  self.ax.set_ylabel('Column as position')
+  self.fig.subplots_adjust(left=0.13, bottom=0.2, top=0.85, right=0.95)
+  mrki  = itertools.cycle(self._gk.markers)
+  mrksi = itertools.cycle(self._gk.markszs)
+  mrkci = itertools.cycle(self._gk.markcls)
+  self._gk.plotelems = []
+  self._gk.annots    = []
+  for xv, yv in self.getNumpyXyIter(np.array([self._gk.xvals,self._gk.yvals])):
+    tlines = self.ax.plot(xv, yv,
+      marker=next(mrki), markersize=next(mrksi), markerfacecolor=next(mrkci)
+      )
+    self._gk.plotelems.append(tlines[0])
+    annotoffsets=(-10, -20 if yv>3.5 else 5 )
+    tannot = self.ax.annotate('', xy=(xv, yv),
+      size = 8, ha = 'right', va = 'bottom',
+      xytext = annotoffsets, textcoords = 'offset points',
+      bbox = dict(
+        boxstyle='round,pad=0.3', fc='yellow', alpha=0.55),
+      arrowprops = dict(
+        arrowstyle='->', connectionstyle='arc3,rad=0')
+      )
+    self._gk.annots.append(tannot)
+  self._gk.anchtxt = mpl_toolkits.axes_grid.anchored_artists.AnchoredText("",
+        prop=dict(size=8), frameon=True,
+        loc=1, # which corner
+        bbox_to_anchor=(0., 0.),      # this and below, to ...
+        bbox_transform=self.ax.transAxes,  # place textbox out of plot
+        )
+  self._gk.anchtxt.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+  self.ax.add_artist(self._gk.anchtxt)
+
+def _gk_update(self):
+  ic = 0
+  for xv in self.getNumpyXyIter(np.array([self._gk.xvals])):
+    tline = self._gk.plotelems[ic]
+    tline.set_xdata(np.array([xv]))
+    if matplotlib.__version__ < "1":
+      tline.recache()
+    tannot = self._gk.annots[ic]
+    tannot.xy = (xv, tannot.xy[1])
+    tannot.set_text("{0}:\n{1}".format(self._gk.cnames[ic], xv))
+    ic += 1
+  # set_text must have utdd() to render μ prefix in Py2.7/mpl0.99!
+  self._gk.anchtxt.txt.set_text(utdd("{0}:\n{1}".format(self._gk.tnam, self._gk.tvalE)))
+  self.update_Axes_xylim_range(self.ax, min(self._gk.xvals), max(self._gk.xvals), "x")
+

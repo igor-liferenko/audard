@@ -1,0 +1,11 @@
+
+Minimal virtual oscillator (minivosc) soundcard
+http://www.alsa-project.org/main/index.php/Minivosc
+
+
+Fix build error in Linux Kernel v3.8 or later.
+
+
+Loading this module creates two files:
+/dev/snd/controlC1
+/dev/snd/pcmC1D0c

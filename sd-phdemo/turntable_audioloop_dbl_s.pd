@@ -1,0 +1,414 @@
+#N canvas 308 49 627 481 10;
+#X obj 59 105 bng 15 250 50 0 empty empty empty 0 -6 0 8 -262144 -1
+-1;
+#X obj 59 82 loadbang;
+#N canvas 253 96 694 536 start_gripd 0;
+#X obj 51 32 inlet;
+#X msg 54 103 connect;
+#X msg 69 138 disconnect;
+#X text 122 454 Takes one optional argument to specify a port.;
+#X text 151 130 Set gripd object to stop waiting for a connection.
+;
+#X text 152 143 Also closes gripd GUI opened by "open <filename>".
+;
+#X text 118 96 Set gripd object to wait for a connection (Not needed
+with "open" message.);
+#X floatatom 54 501 5 0 0 0 - - -;
+#X msg 134 347 lock;
+#X msg 144 378 unlock;
+#X text 173 347 Set GUI to lock mode;
+#X text 193 378 Set GUI to normal (editable) mode;
+#X text 93 502 left outlet: 1 on connect \, 0 on disconnect;
+#X floatatom 81 479 5 0 0 0 - - -;
+#X text 119 480 right outlet: 1 when shown \, 0 when hidden;
+#X msg 88 219 show;
+#X msg 97 247 hide;
+#X text 125 220 show GUI window when hidden;
+#X text 135 246 hide GUI window when shown;
+#X text 523 411 Path to directory containing gripd executable;
+#X text 523 426 "../gripd" by default;
+#X msg 108 280 openpanel;
+#X msg 118 311 savepanel;
+#X text 185 311 open a save file dialog and send file to savepanel
+receive symbol;
+#X text 181 274 open an open file dialog and send file to openpanel
+receive symbol;
+#X msg 142 407 set_path /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/gripd
+;
+#X obj 54 453 gripd 3490;
+#X msg 463 134 open /DISKPATHTO/pd-extended_0.43.4-1/usr/lib/pd-extended/extra/gripd/examples/gripd.gpd
+;
+#X text 460 178 open_locked: Open gripd GUI in locked mode;
+#X msg 80 166 open /DISKPATHTO/THISDIR/turntable_audioloop_dbl.gpd
+;
+#X obj 51 64 t b b;
+#X text 97 33 initialization loadbang;
+#X text 269 12 Note: there is pd-extended/extra/gripd/gripd.opt \,
+with joystick = TRUE \, midi = TRUE (needs hacking for py 2.7);
+#X obj 407 505 starter_rotknob_ui 0;
+#X obj 537 505 starter_rotknob_ui 1;
+#X obj 407 461 sel 1;
+#X text 446 460 bang if value ==1;
+#X obj 407 482 t b b;
+#X connect 0 0 30 0;
+#X connect 1 0 26 0;
+#X connect 2 0 26 0;
+#X connect 8 0 26 0;
+#X connect 9 0 26 0;
+#X connect 13 0 35 0;
+#X connect 15 0 26 0;
+#X connect 16 0 26 0;
+#X connect 21 0 26 0;
+#X connect 22 0 26 0;
+#X connect 25 0 26 0;
+#X connect 26 0 7 0;
+#X connect 26 1 13 0;
+#X connect 29 0 26 0;
+#X connect 30 0 29 0;
+#X connect 30 1 25 0;
+#X connect 35 0 37 0;
+#X connect 37 0 33 0;
+#X connect 37 1 34 0;
+#X restore 59 130 pd start_gripd;
+#X obj 187 106 print rotknob;
+#X floatatom 175 164 8 0 0 0 - - -;
+#X floatatom 232 164 8 0 0 0 - - -;
+#X obj 175 82 r srotknobctrl0;
+#X obj 175 139 unpack f f;
+#X obj 388 380 scope~ 199 159 256 3 100 -10 10 0 0 0 0 102 255 51 135
+135 135 0;
+#X obj 314 239 sig~;
+#X msg 445 334 bufsize 100;
+#X obj 314 215 line 0 40;
+#X msg 86 266 \; pd dsp \$1;
+#X obj 59 269 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 1
+1;
+#X obj 160 236 vsl 30 60 0 1 0 0 empty empty empty 0 -9 0 10 -262144
+-1 -1 5900 1;
+#X obj 232 215 vline~;
+#X obj 461 311 loadbang;
+#X obj 520 310 t b b;
+#X msg 518 332 range -10 10;
+#X msg 518 352 range -2 2;
+#X msg 232 189 \$1 30;
+#X obj 231 248 lop~ 20;
+#X obj 59 211 loadbang;
+#X obj 59 233 t b b;
+#X msg 160 211 1;
+#X obj 45 345 audiolooper_s 0;
+#X obj 275 285 s~ rspd0;
+#X obj 389 332 r~ rspd0;
+#X obj 389 106 print rotknob;
+#X floatatom 377 164 8 0 0 0 - - -;
+#X floatatom 434 164 8 0 0 0 - - -;
+#X obj 377 139 unpack f f;
+#X obj 434 215 vline~;
+#X msg 434 189 \$1 30;
+#X obj 433 248 lop~ 20;
+#X obj 377 82 r srotknobctrl1;
+#X obj 477 285 s~ rspd1;
+#X text 37 6 CAREFUL when saving the gripd \; multiline text hack requires
+Ch1/r/nf/r/na/r/nd/r/ne/r/nr (with backslashes)- but it gets turned
+to actual multiline when saving \, messing up the .gpd file format!
+So if saving it - make sure to manually replace those "vertical" texts!
+;
+#N canvas 158 161 423 206 filechoice 0;
+#X text 10 13 /DISKPATHTO/tmp/tt_seqintf_song1_93.wav;
+#X text 9 24 /DISKPATHTO/tmp/tt_seqintf_song1_93.wav;
+#X obj 41 133 outlet;
+#X obj 153 133 outlet;
+#X msg 62 98 /DISKPATHTO/tmp/tt_seqintf_song2_93.wav;
+#X obj 27 50 loadbang;
+#X msg 12 72 /DISKPATHTO/tmp/tt_seqintf_song1_93.wav;
+#X connect 4 0 3 0;
+#X connect 5 0 6 0;
+#X connect 5 0 4 0;
+#X connect 6 0 2 0;
+#X restore 70 314 pd filechoice;
+#X obj 119 421 dac~ 1 2;
+#X obj 151 345 audiolooper_s 1;
+#N canvas 98 49 884 429 mixer 0;
+#X obj 12 116 inlet~;
+#X text 60 114 in 1Left;
+#X obj 132 116 inlet~;
+#X text 180 114 in 1Right;
+#X obj 294 116 inlet~;
+#X obj 414 116 inlet~;
+#X text 342 114 in 2Left;
+#X text 462 115 in 2Right;
+#X obj 162 286 outlet~;
+#X text 212 284 out Left;
+#X obj 282 286 outlet~;
+#X text 332 284 out Right;
+#X obj 536 237 r scrosfade;
+#X floatatom 575 330 5 0 0 0 - - -;
+#X obj 575 307 / 100;
+#N canvas 0 22 450 300 (subpatch) 0;
+#X array curve-0 100 float 3;
+#A 0 0.99714 0.994259 0.991357 0.988434 0.985488 0.982521 0.979531
+0.976517 0.97348 0.97042 0.967335 0.964224 0.961089 0.957928 0.95474
+0.951525 0.948283 0.945013 0.941714 0.938386 0.935028 0.93164 0.92822
+0.924769 0.921285 0.917767 0.914215 0.910629 0.907006 0.903347 0.89965
+0.895915 0.89214 0.888325 0.884468 0.880569 0.876626 0.872637 0.868603
+0.864521 0.86039 0.856208 0.851975 0.847688 0.843347 0.838948 0.834491
+0.829973 0.825393 0.820748 0.816036 0.811255 0.806402 0.801474 0.79647
+0.791385 0.786217 0.780962 0.775617 0.770178 0.764641 0.759002 0.753255
+0.747396 0.74142 0.73532 0.729091 0.722725 0.716215 0.709553 0.702731
+0.695738 0.688565 0.681198 0.673627 0.665835 0.657808 0.649527 0.640973
+0.632122 0.622949 0.613424 0.603512 0.593175 0.582364 0.571026 0.559092
+0.546483 0.533098 0.518813 0.503466 0.486847 0.468668 0.448524 0.425814
+0.399578 0.368125 0.327953 0.269167 0;
+#X coords 0 1 100 0 100 100 1 0 0;
+#X restore 535 122 graph;
+#X obj 577 45 hsl 128 15 -1 1 0 0 empty empty empty -2 -6 0 8 -262144
+-1 -1 0 0;
+#X floatatom 600 65 7 0 0 0 - 0-to-numbox -;
+#N canvas 0 22 450 300 (subpatch) 0;
+#X array curve-1 100 float 3;
+#A 0 0 0.269167 0.327953 0.368125 0.399578 0.425814 0.448524 0.468668
+0.486847 0.503466 0.518813 0.533098 0.546483 0.559092 0.571026 0.582364
+0.593175 0.603512 0.613424 0.622949 0.632122 0.640973 0.649527 0.657808
+0.665835 0.673627 0.681198 0.688565 0.695738 0.702731 0.709553 0.716215
+0.722725 0.729091 0.73532 0.74142 0.747396 0.753255 0.759002 0.764641
+0.770178 0.775617 0.780962 0.786217 0.791385 0.79647 0.801474 0.806402
+0.811255 0.816036 0.820748 0.825393 0.829973 0.834491 0.838948 0.843347
+0.847688 0.851975 0.856208 0.86039 0.864521 0.868603 0.872637 0.876626
+0.880569 0.884468 0.888325 0.89214 0.895915 0.89965 0.903347 0.907006
+0.910629 0.914215 0.917767 0.921285 0.924769 0.92822 0.93164 0.935028
+0.938386 0.941714 0.945013 0.948283 0.951525 0.95474 0.957928 0.961089
+0.964224 0.967335 0.97042 0.97348 0.976517 0.979531 0.982521 0.985488
+0.988434 0.991357 0.994259 0.99714;
+#X coords 0 1 100 0 100 100 1 0 0;
+#X restore 650 122 graph;
+#N canvas 175 114 494 302 draw_array 0;
+#X msg 20 104 bang;
+#X obj 20 125 until;
+#X text 51 104 start;
+#X obj 20 147 f;
+#X obj 49 147 + 1;
+#X obj 20 65 loadbang;
+#X obj 20 202 trigger float float;
+#X obj 93 149 select 0;
+#X obj 104 31 inlet;
+#X obj 105 75 trigger bang float;
+#X obj 49 169 mod 200;
+#X obj 20 279 / 200;
+#X text 62 279 mapping output range: 0 to 1;
+#X obj 19 305 mapping/curve;
+#X obj 119 54 send 0-to-numbox;
+#X obj 314 35 inlet;
+#X msg 277 104 bang;
+#X obj 277 125 until;
+#X text 308 103 start;
+#X obj 277 147 f;
+#X obj 306 147 + 1;
+#X obj 277 202 trigger float float;
+#X obj 350 149 select 0;
+#X obj 306 169 mod 200;
+#X obj 237 273 expr 1-$f1;
+#X text 274 12 copy inverse on bang;
+#X text 337 281 change index \, not val;
+#X obj 190 151 loadbang;
+#X msg 190 172 100;
+#X obj 190 195 s crvsz;
+#X obj 92 113 r crvsz;
+#X obj 49 244 r crvsz;
+#X obj 442 237 r crvsz;
+#X obj 351 115 r crvsz;
+#X obj 386 265 expr $f2-1-$f1;
+#X obj 401 309 print;
+#X text 18 353 to sync the faders properly \, the kind of curve that
+is autogenerated should be in curve-1 \, and inverse from that into
+curve-0!;
+#X obj 19 335 tabwrite curve-1;
+#X obj 277 235 tabread curve-1;
+#X obj 277 299 tabwrite curve-0;
+#X connect 0 0 1 0;
+#X connect 1 0 3 0;
+#X connect 3 0 4 0;
+#X connect 3 0 6 0;
+#X connect 4 0 10 0;
+#X connect 6 0 11 0;
+#X connect 6 1 37 1;
+#X connect 7 0 1 1;
+#X connect 8 0 9 0;
+#X connect 8 0 14 0;
+#X connect 9 0 0 0;
+#X connect 9 1 13 1;
+#X connect 10 0 3 1;
+#X connect 10 0 7 0;
+#X connect 11 0 13 0;
+#X connect 13 0 37 0;
+#X connect 15 0 16 0;
+#X connect 16 0 17 0;
+#X connect 17 0 19 0;
+#X connect 19 0 20 0;
+#X connect 19 0 21 0;
+#X connect 20 0 23 0;
+#X connect 21 0 35 0;
+#X connect 21 0 38 0;
+#X connect 21 1 34 0;
+#X connect 22 0 17 1;
+#X connect 23 0 19 1;
+#X connect 23 0 22 0;
+#X connect 27 0 28 0;
+#X connect 28 0 29 0;
+#X connect 30 0 10 1;
+#X connect 31 0 11 1;
+#X connect 32 0 34 1;
+#X connect 33 0 23 1;
+#X connect 34 0 35 0;
+#X connect 34 0 39 1;
+#X connect 38 0 39 0;
+#X restore 588 88 pd draw_array;
+#X obj 654 66 bng 15 250 50 0 empty empty empty 17 7 0 10 -262144 -1
+-1;
+#X text 672 63 copy inv;
+#X obj 780 238 r svolchan1;
+#X obj 698 238 r svolchan0;
+#X floatatom 698 303 5 0 0 0 - - -;
+#X floatatom 780 303 5 0 0 0 - - -;
+#X obj 137 44 s rvolchan0;
+#X obj 219 44 s rvolchan1;
+#X obj 300 44 s rcrosfade;
+#X msg 286 19 50;
+#X obj 245 -5 r rkinitbang0;
+#X obj 575 21 prepend set;
+#X msg 654 22 -0.181102;
+#X obj 536 353 tabread curve-0;
+#X obj 536 282 t f f f;
+#X obj 555 374 tabread curve-1;
+#X floatatom 536 401 5 0 0 0 - - -;
+#X floatatom 596 401 5 0 0 0 - - -;
+#X obj 40 45 s ich0;
+#X obj 87 45 s ich1;
+#X text 37 59 just init vals;
+#X obj 377 44 s icf;
+#X obj 708 261 r ich0;
+#X obj 790 261 r ich1;
+#X obj 546 259 r icf;
+#X obj 642 436 *;
+#X obj 714 436 *;
+#X obj 634 486 s rvolchan0;
+#X obj 718 486 s rvolchan1;
+#X floatatom 642 461 5 0 0 0 - - -;
+#X floatatom 714 461 5 0 0 0 - - -;
+#X msg 205 19 95;
+#X obj 698 325 / 100;
+#X obj 698 347 s ch0f;
+#X obj 780 325 / 100;
+#X obj 780 347 s ch1f;
+#X obj 584 465 / 100;
+#X obj 584 487 s ch0f;
+#X obj 796 463 / 100;
+#X obj 796 485 s ch1f;
+#X obj 54 199 *~;
+#X obj 69 175 r ch0f;
+#X obj 178 199 *~;
+#X obj 193 175 r ch0f;
+#X obj 284 199 *~;
+#X obj 408 199 *~;
+#X obj 299 175 r ch1f;
+#X obj 424 175 r ch1f;
+#X obj 162 248 +~;
+#X obj 281 248 +~;
+#X connect 0 0 60 0;
+#X connect 2 0 62 0;
+#X connect 4 0 64 0;
+#X connect 5 0 65 0;
+#X connect 12 0 34 0;
+#X connect 14 0 13 0;
+#X connect 16 0 19 0;
+#X connect 17 0 31 0;
+#X connect 20 0 19 1;
+#X connect 22 0 25 0;
+#X connect 23 0 24 0;
+#X connect 24 0 45 1;
+#X connect 24 0 52 0;
+#X connect 25 0 46 1;
+#X connect 25 0 54 0;
+#X connect 29 0 28 0;
+#X connect 29 0 41 0;
+#X connect 30 0 51 0;
+#X connect 30 0 29 0;
+#X connect 31 0 32 0;
+#X connect 33 0 36 0;
+#X connect 34 0 33 0;
+#X connect 34 1 35 0;
+#X connect 34 2 14 0;
+#X connect 35 0 37 0;
+#X connect 36 0 45 0;
+#X connect 37 0 46 0;
+#X connect 42 0 24 0;
+#X connect 43 0 25 0;
+#X connect 44 0 34 0;
+#X connect 45 0 49 0;
+#X connect 46 0 50 0;
+#X connect 49 0 47 0;
+#X connect 49 0 56 0;
+#X connect 50 0 48 0;
+#X connect 50 0 58 0;
+#X connect 51 0 26 0;
+#X connect 51 0 27 0;
+#X connect 51 0 38 0;
+#X connect 51 0 39 0;
+#X connect 52 0 53 0;
+#X connect 54 0 55 0;
+#X connect 56 0 57 0;
+#X connect 58 0 59 0;
+#X connect 60 0 68 0;
+#X connect 61 0 60 1;
+#X connect 62 0 69 0;
+#X connect 63 0 62 1;
+#X connect 64 0 68 1;
+#X connect 65 0 69 1;
+#X connect 66 0 64 1;
+#X connect 67 0 65 1;
+#X connect 68 0 8 0;
+#X connect 69 0 10 0;
+#X restore 119 396 pd mixer;
+#X text 18 444 Note: using wav2png \, called by gripd image control
+(hack) \, to render the .wav \; otherwise passing arrays from Pd to
+Gripd is not really quick: [http://osdir.com/ml/multimedia.puredata.general/2003-06/msg00382.html
+multimedia.puredata.general - Re: PD arrays in Gripd windows - msg#00382]
+;
+#X connect 0 0 2 0;
+#X connect 1 0 0 0;
+#X connect 5 0 20 0;
+#X connect 6 0 7 0;
+#X connect 7 0 4 0;
+#X connect 7 1 5 0;
+#X connect 10 0 8 0;
+#X connect 11 0 9 0;
+#X connect 13 0 12 0;
+#X connect 14 0 25 1;
+#X connect 14 0 40 1;
+#X connect 15 0 21 0;
+#X connect 16 0 17 0;
+#X connect 17 0 10 0;
+#X connect 17 1 18 0;
+#X connect 18 0 8 0;
+#X connect 19 0 8 0;
+#X connect 20 0 11 0;
+#X connect 20 0 15 0;
+#X connect 21 0 26 0;
+#X connect 22 0 23 0;
+#X connect 23 0 13 0;
+#X connect 23 1 24 0;
+#X connect 24 0 14 0;
+#X connect 25 0 41 0;
+#X connect 25 1 41 1;
+#X connect 27 0 8 0;
+#X connect 30 0 33 0;
+#X connect 31 0 29 0;
+#X connect 31 1 30 0;
+#X connect 32 0 34 0;
+#X connect 33 0 32 0;
+#X connect 34 0 36 0;
+#X connect 35 0 31 0;
+#X connect 38 0 25 0;
+#X connect 38 1 40 0;
+#X connect 40 0 41 2;
+#X connect 40 1 41 3;
+#X connect 41 0 39 0;
+#X connect 41 1 39 1;

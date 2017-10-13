@@ -1,0 +1,49 @@
+sd-phdemo
+Copyleft sdaau, 2015
+
+Demo files for my PhD presentation; the main files being:
+
+* run-pd-patch.sh - Bash script to run the Pure Data (Pd) patches:
+** turntable_audioloop_s.pd - loop-playing turntable emulator, single
+** turntable_audioloop_dbl_s.pd - loop-playing turntable emulator, double
+** seqinterface_s.pd - "piano roll" sequencer interface
+** turntable_seqinterface_s.pd - turntable-controlled sequencer interface, single
+** turntable_seqinterface_dbl_s.pd - turntable-controlled sequencer interface, double
+
+The `_s` suffix indicates that stereo audio files are expected, in particular CD quality (16-bit, 44.1 kHz, stereo).
+
+NOTE:
+These patches cannot run as-is; some preparation is required.
+
+1) Paths: Pd does not support relative paths from the patch location (see [[PD] relative pathes: problems with [open(-message to pd](http://www.mail-archive.com/pd-list@iem.at/msg04869.html)). Thus some paths need to be specified absolutely. All such paths have been replaced in the patches with the prefix /DISKPATHTO - which you should replace to what is the state on your system. Do first a:
+
+    grep -r /DISKPATHTO .
+
+in this directory, to see where they show up (especially the patches) - then replace them accordingly, for instance with `sed`.
+
+The paths you can expect are:
+
+* /DISKPATHTO/tmp - corresponds to ./tmp in this directory; contains "song" .wav and .wav.png files. Note that the files tt_seqintf_song*_93.wav* in it here are just stand-ins; you can derive them by rendering the loops from song 1 and song 2 from, say, seqinterface_s.pd
+
+* /DISKPATHTO/smp - corresponds to ./smp in this directory; contains "sound samples" .wav files. Note that the files *.wav in it here are just stand-ins; see the script procsnd.sh for an example on how to obtain a set.
+
+* /DISKPATHTO/pd-extended_0.43.4-1/ - folder where I've had pd-extended executables - not installed, just expanded/extracted from `dpkg -x pd-extended_0.43.4-1~natty_i386.deb`. Note that this by default doesn't contain GriPD, which is a requirement here.
+
+* /DISKPATHTO/pd-l2ork_git - the git source of the l2ork fork of pd; this contains GriPD in source form, where you should first apply the `l2ork-gripd.patch`, then build and copy (or symlink) to the executable location.
+
+* /DISKPATHTO/THISDIR - the .gpd files used with the .pd patches in here, must be specified through their full path; replace accordingly with full local path to this directory
+
+* /DISKPATHTO/wav2png_git - location of the git source of wav2png program, which is a requirement, and should be patched with `wav2png_git.patch`
+
+
+DEPENDENCIES
+
+* GriPD for Pd - pd-extended_0.43.4-1 doesn't have it, you can build it from pd-l2ork_git; it should previously be patched with `l2ork-gripd.patch`, which introduces additional GriPD user interface elements.
+
+* Pd py/pyext and pdlua - both scripting languages are used in Pd here, pd-extended_0.43.4-1 comes with neither (I think?). You can build py/pyext from pd-l2ork_git, and (I think?) there is a separate svn for pdlua (that can be grabbed via `git svn`), which should be patched with `pdlua_sgit.patch`
+
+* wav2png - Waveform PNG images of .wav audio files are rendered with wav2png, whose git version should be patched with `wav2png_git.patch`
+
+* nthreshold~ Pd external - source is in the `pd_nthreshold~` subfolder, build it and place it where the executable Pd can utilize it
+
+* ./smp and ./tmp folders whould be populated with sounds - first, see the `procsnd.sh` to populate ./smp with .wav sound samples from freesound.org; then, use say `seqinterface_s.pd` to generate .wav audio loops for ./tmp.

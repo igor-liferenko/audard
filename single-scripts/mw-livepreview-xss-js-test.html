@@ -1,0 +1,78 @@
+<html>
+<!-- Have FF3.6, Firebug and NoScript - which can cause problems: -->
+<!-- http://www.hunlock.com/blogs/Social_Javascript_%28cross-site_ajax%29 -->
+<!-- http://poeticcode.wordpress.com/2007/10/03/innerhtml-and-script-tags/ -->
+<!-- https://developer.mozilla.org/en/using_xmlhttprequest#In_Firefox_3.5_and_later -->
+<!-- http://bytes.com/topic/javascript/answers/469740-ajax-http-send-null -->
+<!-- http://bytes.com/topic/javascript/answers/681905-firefox-reports-uncaught-exception-ns_error_failure-nsixmlhttprequest-send -->
+<!-- http://ajaxpatterns.org/Talk:XMLHttpRequest_Call -->
+<!-- http://mirmodynamics.com/post/2009/03/31/Ajax-query-failing-unexpectedly (Ad-block killing it) -->
+<!-- http://answers.splunk.com/questions/2146/why-is-firebug-reporting-component-returned-failure-code -->
+<!-- http://code.google.com/p/fbug/issues/detail?id=35 -->
+<!-- REMEMBER TO ALLOW BOTH file:/// AND en.wikipedia.org!  -->
+<head>
+<script type="text/javascript" language="javascript">
+alert("a1");
+
+//~ //works in modern DOM aware browsers
+//~ var scriptTag = document.createElement('script');
+//~ scriptTag.appendChild( document.createTextNode( 'your js code here' ) );
+
+//~ //in IE, you can't do the above (it will just ignore the code), you need to do:
+//~ var scriptTag = document.createElement('script');
+//~ scriptTag.text = 'your js code here';
+
+var sobj=document.createElement("script");
+//sobj.src="http://hunlock.com/tmp/test.js";
+urllink ="http://en.wikipedia.org/w/index.php?title=User:Pilaf/livepreview.js&action=raw&ctype=text/javascript&dontcountme=s";
+//~ sobj.src=urllink;
+
+var url = urllink; //"http://www.example.com/";
+//~ var request =
+  //~ Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].
+    //~ createInstance(Ci.nsIXMLHttpRequest);
+//~ var request = new XMLHttpRequest();
+
+//~ request.onload =
+  //~ function(aEvent) {
+    //~ window.alert("Response Text: " + aEvent.target.responseText);
+    //~ sobj.appendChild( document.createTextNode( aEvent.target.responseText ) );
+  //~ };
+//~ request.onerror =
+  //~ function(aEvent) {
+    //~ window.alert("Error Status: " + aEvent.target.status);
+  //~ };
+//~ request.open("GET", url, true);
+//~ request.send(null);
+
+var req = new XMLHttpRequest();
+req.open('GET', urllink, false); 
+alert(req.readyState);
+alert(req.readyState);
+alert(req.readyState);
+alert(req.readyState);
+alert(req.readyState);
+alert(req.readyState);
+alert(req.readyState);
+alert("presend");
+try {
+	req.send(null);
+}
+catch(err) {
+	alert(err); // keep getting 0x80004005 (NS_ERROR_FAILURE) [nsIXMLHttpRequest.send] here
+}
+alert("send");
+alert(req.readyState);
+alert(req.readyState);
+if(req.status == 200) {
+  alert(req.responseText);
+  sobj.appendChild( document.createTextNode( req.responseText ) );
+  document.body.appendChild(sobj);
+}
+
+</script>
+<script src="http://en.wikipedia.org/w/index.php?title=User:Pilaf/monobook.js&oldid=17178012&action=raw&ctype=text/javascript&useskin=monobook" type="text/javascript" language="javascript"></script>
+</head>
+<body onload="alert(Main);alert(LivePreviewInstall);">
+a
+</html>

@@ -1,0 +1,166 @@
+-- running against Lua5.1 interpreter
+
+-- left inlet: process list and set PD tables
+-- next inlet: (on bang only): clear all PD tables
+return function(self, sel, atoms)
+  self.inlets = 2
+  self.stored = {}
+  -- self.id2tabname = {["00v"]="1-1-1",["01v"]="1-1-2"}; -- no need
+  self.deckid = 1 -- 1-based, so 0 here is invalid (was: local song = 1 -- for now); actually set to 1, so older .pd's that don't use an argument still work
+  if type(atoms[1]) == "number" then self.deckid = atoms[1] end -- get from first script argument (will overwrite value only if argument exists)
+  self.nNotes = 5
+  self.nTracks = 2
+  pd.post("Hello from procPatSeq! deckid: " .. self.deckid)
+
+  -- tracks are sent as lane lists; lane == notes in a single pitch
+  -- get lchars from caller, so we don't have to parse it again
+  function self:processSingleLane(lanelist, lchars, deckid)
+    local inlen = table.getn(lanelist)
+    -- extract/get the part/portion of array that is the steps only:
+    -- (should be 16 in length)
+    local origvelos = {unpack(lanelist, 3, inlen)}
+    local seqlen = table.getn(origvelos)
+    -- print(table_print(origvelos, " ")) -- to stdout
+    local velos = {} ; local triggers = {}
+    if ( lchars[3] == "v") then -- we're processing velo array
+      for i = 1,seqlen do
+        -- lua floats are strings - ok here:
+        -- may get vals "0.099999904632568" "0.10000000149012" - round
+        -- NOTE: while Lua performs auto-conversion between string and float,
+        -- it does so ONLY in context of arithmetic operators!
+        -- That means the below string.format would enter the array as string;
+        -- and since we only formatted some values - that is why
+        -- velos 0.25, 0.5, 0.75 worked, and the others failed:
+        -- pd.Table:set failed silently on a string!
+        -- that is why, force numbers here using tonumber
+        local ovel = origvelos[i]
+        local trig = (ovel >= 2 and 1 or 0) -- working ternary
+        local nvel = ovel - 2*trig
+        if string.len(nvel) > 4 then nvel = tonumber(string.format("%g",string.format("%.2f", nvel))) end
+        triggers[i] = trig ; velos[i] = nvel ;
+      end
+      -- get the PD table name
+      local tabnm = string.format("%d-%d-%d-", deckid, lchars[1]+1, lchars[2]+1)
+      local vtabnm = tabnm .. "vseq" ; local ttabnm = tabnm .. "tseq"
+      -- STRANGELY, code seems most reliable when these prints here are enabled ?! nevermind this..
+      --print(vtabnm .. " " .. ttabnm)
+      --print(table_print(velos, " ")) ; print(table_print(triggers, " "))
+      -- we don't need to actually print - but running these too, it looks like they increase the stability greatly --> there are no more unupdated tables when GetSequence runs?! Cargo cult? Or maybe just need to iterate through the tables to "actualize" them? Nevermind, at least it seems to work... (well that was not entire story, see above - not really neeeded)
+      --table_print(velos, " ") ; table_print(triggers, " ")
+      local tv = pd.Table:new():sync(vtabnm)
+      if tv ~= nil then
+        --tv:set(0, atoms[2]) -- t zero-based here; atoms 1-based (and this is the insertion index; 2nd elem in "00v 0 ..." ) -- NO need for this here
+        -- thus, in the loop the index will be synchronized -- well NOT without the above
+        -- tv:set always returns nil (0 from C); velos[i] is "number"
+        -- actually, the table updates on velos[i] values "0.25", "0.5" and "0.75", but not on "0.60" or "0.55" ?!
+        for i = 1,seqlen do
+          --io.write(velos[i].." ") ; --io.write(tostring2(tv:set(i-1, velos[i])) .." " .. type(velos[i]))
+          tv:set(i-1, velos[i])
+        end
+        --print() --lf
+        tv:redraw()
+      end
+      local tt = pd.Table:new():sync(ttabnm)
+      if tt ~= nil then
+        --tt:set(0, atoms[2])
+        for i = 1,seqlen do tt:set(i-1, triggers[i]) end
+        tt:redraw()
+      end
+    end
+  end -- function self:processSingleLane
+
+  -- with prepend list, sel is "list" - and rest are the items (lua: zomg weasels!)
+  -- without prepend list, sel is "00v" - and have one less items (lua: zomg weasels!)
+  -- with prepend symbol, getting only "00v" as the only item (no weasels)
+  function self:in_1(sel, atoms)
+    -- sel is "list", etc
+    local totlen = table.getn(atoms)
+    -- split table/list into subtables at delimiter (no auto lua function for this)
+    local alllaneslist = {} ; local last_delim = 1
+    for key, value in ipairs(atoms) do
+      if (value == "|") then
+        -- split off part here
+        local lanepart = {unpack(atoms, last_delim, key-1)}
+        table.insert(alllaneslist, lanepart) ; last_delim = key+1
+      end
+    end
+    -- this condition should always be satisfied due to the way Python .joins, but still:
+    if (last_delim < totlen) then table.insert(alllaneslist, {unpack(atoms, last_delim, totlen)}) end
+    --print(table_print(alllaneslist, " ")) -- got 'em all
+    -- now loop through alllaneslist, and update pd tables:
+    for key, tlanelist in ipairs(alllaneslist) do
+      local tlabel = tlanelist[1]
+      local tlchars = { tlabel:match( (tlabel:gsub(".", "(.)")) ) }
+      self:processSingleLane(tlanelist, tlchars, self.deckid)
+    end
+    --print() --lf
+  end -- function self:in_1
+
+  -- clear PD tables
+  -- note, there is pd.Table:destruct() - but it truly destroys, length and all; does not just clear (as in, set allocated elements to zero)
+  function self:in_2_bang()
+    for nt = 1,self.nTracks do
+      for nn = 1,self.nNotes do
+        local tabname = string.format("%d-%d-%d-", self.deckid, nt, nn)
+        local vtabnm = tabname .. "vseq" ; local ttabnm = tabname .. "tseq"
+        --pd.post("clr: " .. vtabnm .. " " .. ttabnm)
+        local tv = pd.Table:new():sync(vtabnm)
+        if tv ~= nil then
+          for i = 1,tv:length() do tv:set(i-1, 0) end
+          tv:redraw()
+        end
+        local tt = pd.Table:new():sync(ttabnm)
+        if tt ~= nil then
+          for i = 1,tt:length() do tt:set(i-1, 0) end
+          tt:redraw()
+        end
+      end
+    end
+  end -- function self:in_2_bang
+
+  return true
+end
+
+--[[
+
+  -- lua wiki
+  local function table_print (tt, lsep, indent, done)
+    done = done or {}
+    lsep = lsep or "\n"
+    indent = indent or 0
+    if type(tt) == "table" then
+      local sb = {}
+      for key, value in pairs (tt) do
+        table.insert(sb, string.rep (" ", indent)) -- indent it
+        if type (value) == "table" and not done [value] then
+          done [value] = true
+          table.insert(sb, "{"..lsep);
+          table.insert(sb, table_print (value, lsep, indent + 2, done))
+          table.insert(sb, string.rep (" ", indent)) -- indent it
+          table.insert(sb, "}"..lsep);
+        elseif "number" == type(key) then
+          table.insert(sb, string.format("\"%s\""..lsep, tostring(value)))
+        else
+          table.insert(sb, string.format(
+              "%s = \"%s\""..lsep, tostring (key), tostring(value)))
+         end
+      end
+      return table.concat(sb)
+    else
+      return tt .. "\n"
+    end
+  end
+
+  local function tostring2(instuff)
+    if instruff == nil then return 'nil' else return tostring(instuff) end
+  end
+
+
+    -- lchars = split(label,"") -- split noexist
+    --origvelos = table.unpack(atoms [, 3 [, inlen] ]) -- unexpected symbol near ','
+    -- if (ovel >= 2) then 1 else 0 end -- this nowork as ternary
+
+-- http://stackoverflow.com/questions/11472143/split-lua-string-into-characters/27937370#27937370
+
+--]]
+

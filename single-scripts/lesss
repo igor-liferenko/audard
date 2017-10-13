@@ -1,0 +1,45 @@
+# can sit in ~/lesss
+# sdaau 2012 / enforce syntax coloring for less
+# see: [http://blog.tersmitten.nl/archives/1015 ter Smitten's » How to enable Syntax highlighting in less]
+
+# cp /usr/share/source-highlight/src-hilite-lesspipe.sh ~/
+# but needs hack; so:
+cat > ~/src-hilite-lesspipe.sh <<EOF
+#! /bin/bash
+
+for source in \$2; do
+    case \$source in
+	*ChangeLog|*changelog) 
+        source-highlight --failsafe -f esc --lang-def=changelog.lang --style-file=esc.style -i \$source ;;
+	*Makefile|*makefile) 
+        source-highlight --failsafe -f esc --lang-def=makefile.lang --style-file=esc.style -i \$source ;;
+        *) source-highlight --failsafe \$1 -f esc --style-file=esc.style -i \$source ;;
+    esac
+done
+EOF
+
+
+
+#export LESSOPEN="| /usr/share/source-highlight/src-hilite-lesspipe.orig.sh %s"
+#export LESSOPEN="| ~/src-hilite-lesspipe.sh --infer-lang %s" # nowork w/ ~, apparently
+
+#export LESSOPEN="| /home/administrator/src-hilite-lesspipe.sh --src-lang=sh %s" # ok
+export LESSOPEN="| /home/administrator/src-hilite-lesspipe.sh --src-lang=tex %s" # ok
+export LESS=' -R '
+
+# NO WORK!
+#export LESSOPEN="source-highlight --failsafe --infer-lang -f esc --style-file=esc.style -i $source"
+#export LESSOPEN='source-highlight --failsafe --infer-lang -f esc --style-file=esc.style -i %s'
+
+# source-highlight --lang-list
+#  -s, --src-lang=STRING         source language (use --lang-list to get the 
+#                                  complete list).  If not specified, the source 
+#                                  language will be guessed from the file 
+#                                  extension.
+#sh = sh.lang
+#shell = sh.lang
+#sig = sml.lang
+#tex = latex.lang
+
+echo "$1"
+less $1

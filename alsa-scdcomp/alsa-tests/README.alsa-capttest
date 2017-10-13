@@ -1,0 +1,548 @@
+This is a (somewhat) brief readme related to the `run-alsa-capttest.sh` script, in this folder (`alsa-capttest`). (03 aug 2013)
+
+(edit 13 aug 2013 - separated in capture and playback sections; added playback test information)
+
+(edit 12 sep 2013 - added full-duplex run-alsa-lattest.sh/latency info)
+
+(edit 21 oct 2013 - see below)
+
+This is the development info on which I ran the test:
+
+    $ cat /proc/cpuinfo | grep 'processor\|model name'
+    processor   : 0
+    model name  : Intel(R) Atom(TM) CPU N450   @ 1.66GHz
+    processor   : 1
+    model name  : Intel(R) Atom(TM) CPU N450   @ 1.66GHz
+    $ uname -a
+    Linux ljutntcol 2.6.38-16-generic #67-Ubuntu SMP Thu Sep 6 18:00:43 UTC 2012 i686 i686 i386 GNU/Linux
+    $ cat /etc/issue
+    Ubuntu 11.04 \n \l
+    $ echo $(lsb_release -a 2>/dev/null | tr '\n' ' ')
+    Distributor ID: Ubuntu Description: Ubuntu 11.04 Release: 11.04 Codename: natty
+    $ aplay --version  # returns ALSA version
+    aplay: version 1.0.24.2 by Jaroslav Kysela <perex@perex.cz>
+
+--------------
+
+## CAPTURE / RECORD ##
+
+This folder contains code (and corresponding results from a test run), intended to analyze & visualize what happens when ALSA performs a (brief) capture/record (only). In particular, the intent is to "drill down" the actions that happen when the high-level (userspace) `snd_pcm_readi` command of ALSA is executed - from the userspace level, down to the kernel level. The main end results are plots (explained further below), given as:
+
+* `montage-dummy.pdf` (or as bitmap, `montage-dummy.png`)
+* `montage-hda-intel.pdf` (or as bitmap, `montage-hda-intel.png`)
+
+... as well as an animated version:
+
+* `capttest.gif`
+
+
+For that purpose, there is, first and foremost:
+
+* `captmini.c` - the main userspace program for the test. Besides ALSA initialization (and cleanup), the only thing this program does, is to execute just two `snd_pcm_readi` commands one after another. This is not unlike what typically happens, when audio software using ALSA does a capture - as the audio software will usually spin a for/while loop, which executes snd_pcm_readi (or a similar function) in quick succession.
+** Note that `captmini.c` sets the audio capture format to CD quality (16-bit, stereo, 44.1 kHz), which makes an ALSA frame be 4 bytes in size. It also sets the ALSA buffer size to 64 frames (256 bytes); and the ALSA period size to half that, 32 frames (128 bytes) - which also sets the ALSA period to 32/44100 = 0.000725624 seconds, or approx 726 microseconds.
+** Note that with each of the two `snd_pcm_readi` calls, `captmini.c` requests 32 frames from ALSA per call; a successful completion of the `snd_pcm_readi` means that ALSA in response will also return/provide 32 frames.
+** Since there are only two `snd_pcm_readi` calls, we thus expect the duration of their execution to be at least two periods (2*726 us ~= 1.4 ms), and certainly a bit more than that
+
+
+However, instrumenting software to obtain an accurate "drill down", all the way from userspace to kernelspace, is not a trivial task; which is why it has been separated in two parts:
+* Obtaining a function "call graph" from `snd_pcm_readi` throughout userspace
+* Obtaining a function "call graph" from kernel space, during the same time `snd_pcm_readi` is active.
+
+Both of these are obtained by running the executable `captmini.c`, but in different contexts. After trying several possibilities (such as `dtrace4linux` and `systemtap`, which both exhibited problems on this platform for this particular purpose), the approach finally adopted here is:
+
+* To use a `gdb` Python script, to run `captmini.c` under the `gdb` debugger, and automatically step through it to obtain a call graph
+* To use the Linux built-in `ftrace` kernel debugger, to capture, inspect and plot the kernel "function graph", that was executed while the `captmini` program was running.
+
+(NB: newer Linux allows for UPROBES, which allows for tracing of userspace functions together with kernel space - that functionality was not available on this development platform.)
+
+
+#### Userspace call graph of "snd_pcm_readi"
+
+For this purpose, there is:
+
+* `captmini-debug-fg.gdb` - a `gdb` script, containing Python `gdb` code. The `gdb` debugger needs to be installed, for this script to run.  See the comments in this script for how to run it properly.
+
+Note that you will have to rebuild `libasound.so` with source debugging information for this to work - on this platform, I did `apt-get source libasound2`, and then the following:
+
+    ln -s /usr/share/libtool/config/config.sub .
+    ln -s /usr/share/libtool/config/config.guess .
+    sed -n 's/^CFLAGS =/override CFLAGS +=/p' Makefile
+    ./configure --with-debug
+    make CFLAGS+="-g -D_GNU_SOURCE"
+    objdump -S src/.libs/libasound.so.2.0.0 | less  # check to see if there is source information
+
+With this done, `gdb` can then be used to call the `captmini-debug-fg.gdb`, which will run and step through the `captmini.c` executable. The resulting output looks like this:
+
+
+    ** Got final period_chunksize_frames: 32 (bytes: 128); buffer_size_frames: 64
+    0x8048eab       captmini.c:64	void doCapture() {
+    67	  ret1 = readi_func(capture_pcm_handle, audiobuf, period_chunksize_frames);
+    snd_pcm_readi (pcm=0x8054d90, buffer=0x8059630, size=32) at pcm.c:1304
+    1304		assert(pcm);
+    1305		assert(size == 0 || buffer);
+    1306		if (CHECK_SANITY(! pcm->setup)) {
+    1310		if (pcm->access != SND_PCM_ACCESS_RW_INTERLEAVED) {
+    1314		return _snd_pcm_readi(pcm, buffer, size);
+    _snd_pcm_readi (pcm=0x8054d90, buffer=0x8059630, size=32) at pcm_local.h:531
+    531		return pcm->fast_ops->readi(pcm->fast_op_arg, buffer, size);
+    snd_pcm_hw_readi (pcm=0x8054d90, buffer=0x8059630, size=32) at pcm_hw.c:797
+    797		snd_pcm_hw_t *hw = pcm->private_data;
+    798		int fd = hw->fd;
+    800		xferi.buf = buffer;
+    801		xferi.frames = size;
+    802		xferi.result = 0; /* make valgrind happy */
+    803		err = ioctl(fd, SNDRV_PCM_IOCTL_READI_FRAMES, &xferi);
+    804		err = err >= 0 ? sync_ptr(hw, SNDRV_PCM_SYNC_PTR_APPL) : -errno;
+    sync_ptr (hw=0x8054d40, flags=2) at pcm_hw.c:146
+    146		return hw->sync_ptr ? sync_ptr1(hw, flags) : 0;
+    147	}
+    snd_pcm_hw_readi (pcm=0x8054d90, buffer=0x8059630, size=32) at pcm_hw.c:808
+    808		if (err < 0)
+    810		return xferi.result;
+    811	}
+    _snd_pcm_readi (pcm=0x8054d90, buffer=0x8059630, size=32) at pcm_local.h:532
+    532	}
+    snd_pcm_readi (pcm=0x8054d90, buffer=0x8059630, size=32) at pcm.c:1315
+    1315	}
+    doCapture () at captmini.c:72
+    72	  ret2 = readi_func(capture_pcm_handle, audiobuf, period_chunksize_frames);
+    snd_pcm_readi (pcm=0x8054d90, buffer=0x8059630, size=32) at pcm.c:1304
+    1304		assert(pcm);
+    1305		assert(size == 0 || buffer);
+    1306		if (CHECK_SANITY(! pcm->setup)) {
+    1310		if (pcm->access != SND_PCM_ACCESS_RW_INTERLEAVED) {
+    1314		return _snd_pcm_readi(pcm, buffer, size);
+    _snd_pcm_readi (pcm=0x8054d90, buffer=0x8059630, size=32) at pcm_local.h:531
+    531		return pcm->fast_ops->readi(pcm->fast_op_arg, buffer, size);
+    snd_pcm_hw_readi (pcm=0x8054d90, buffer=0x8059630, size=32) at pcm_hw.c:797
+    797		snd_pcm_hw_t *hw = pcm->private_data;
+    798		int fd = hw->fd;
+    800		xferi.buf = buffer;
+    801		xferi.frames = size;
+    802		xferi.result = 0; /* make valgrind happy */
+    803		err = ioctl(fd, SNDRV_PCM_IOCTL_READI_FRAMES, &xferi);
+    804		err = err >= 0 ? sync_ptr(hw, SNDRV_PCM_SYNC_PTR_APPL) : -errno;
+    808		if (err < 0)
+    809			return snd_pcm_check_error(pcm, err);
+    snd_pcm_check_error (pcm=0x8054d90, err=-32) at pcm_local.h:404
+    404		if (err == -EINTR) {
+    416		return err;
+    417	}
+    snd_pcm_hw_readi (pcm=0x8054d90, buffer=0x8059630, size=32) at pcm_hw.c:811
+    811	}
+    _snd_pcm_readi (pcm=0x8054d90, buffer=0x8059630, size=32) at pcm_local.h:532
+    532	}
+    snd_pcm_readi (pcm=0x8054d90, buffer=0x8059630, size=32) at pcm.c:1315
+    1315	}
+    0x8048f23       captmini.c:74	}
+    ** Asked for 2x 32 frames --> got: 32 then -32 frames Broken pipe
+    ** [Inferior 1 (process 21240) exited normally]
+
+Note first, that the actual function called in the `captmini` code is named `readi_func`, which also appears in the trace - but that one is simply a proxy, which calls `snd_pcm_readi`.
+
+We can note that the first call here succeeded (32 frames were returned); however, the overhead from `gdb` is so large, that it pushes the second call so late - that ALSA notices something is wrong, and returns an error ("-32" frames) consistently for the second call; also visible in the branching to `snd_pcm_check_error`.
+
+From this trace, we can construct the following simplified call chain through userspace:
+
+readi_func ->
+  snd_pcm_readi ->
+    _snd_pcm_readi ->
+      snd_pcm_hw_readi ->
+        ioctl(fd, SNDRV_PCM_IOCTL_READI_FRAMES, &xferi);
+
+Note that the "end" of the  `snd_pcm_readi` command in userspace, is the `ioctl(fd, SNDRV_PCM_IOCTL_READI_FRAMES, &xferi)` command. `ioctl` is the system provided function, that allows userspace application to send requests to the kernel - and, since device drivers (being kernel modules) are also part of the kernel space, `ioctl` also interfaces with drivers. Note that this chain remains the same, regardless of which soundcard driver `captmini.c` talks to.
+
+
+#### Kernelspace call graph of "snd_pcm_readi"
+
+To obtain information, beyond what the previous step provided for userspace - we'd need to inspect what happens in kernelspace; most of the files in this directory are related to this part.
+
+For this purpose, the `captmini` executable here is tested with two ALSA soundcard drivers:
+
+* snd_hda_intel - this is the driver for onboard PCI Intel soundcards; found in the Linux kernel source under `sound/pci/hda/hda_intel.c`. Here the source for this driver is not provided; the only thing provided is a small patch, `hda_intel_2.6.38.patch`, which shows the only change needed for the test run - the inclusion of a printout from the `_pointer` function, used in the later analysis. Thus, to have the test run, you should get `hda_codec.h`, as well as `hda_intel.c` which needs to be patched (and renamed to `hda_intel_2.6.38.c`, because that is the filename the `Makefile`, that builds the drivers, expects)
+
+* snd_dummy - this is a virtual driver, which is not associated with any hardware at all. The only thing needed to build it, is the included file `dummy-2.6.32-patest.c` - which also prints out from its `_pointer` function (and it prints the same data as the hda_intel driver).
+
+* The included `Makefile` makes sure that both drivers are built, when `make` is executed on the command line.
+
+Both drivers print the same information from their respective `_pointer` functions:
+
+* The buffer position (in frame units), as returned by the `_pointer` function
+* The "application pointer" ALSA driver variable, `substream->runtime->c
+ontrol->appl_ptr` (also in frames)
+* The "hardware pointer" ALSA driver variable, `substream->runtime->status->hw_ptr` (also in frames)
+
+The main test is then performed by:
+
+* `run-alsa-capttest.sh` - this Bash script has:
+** code for building and loading the drivers (enable it manually if you need to use it)
+*** ( `makemodules.log` is the log file generated, if you enable this code to build the drivers )
+** Main code that:
+*** builds `captmini.c` corresponding to each driver
+*** runs `./captmini` with each driver, and collects the output generated by it
+*** parses the collected output, generating .csv files
+*** plots the data in the .csv files as PDF files
+
+Captures resulting from several runs of `run-alsa-capttest.sh` are provided:
+
+* `captures-2013-08-02-23-45-20` - an example directory, containing unpacked files from a single capture run
+* `_cappics` - directory containing `.png` renderings of several capture runs; note that these images are the source files for the `capttest.gif` animation
+* `captures-alsa-capttest.tar.xz` - an XZ archive (~90 MB unpacked), containing the capture files from which the .png images in `_cappics` are generated
+
+
+###### Some kernelspace details
+
+The `ftrace` functionality in the Linux kernel, allows us to (under certain conditions), read from a special file in the filesystem:
+
+    cat /sys/kernel/debug/tracing/trace
+
+... and obtain a readable, plain-text "function graph", which looks like below (showing part of a run with the hda_intel driver):
+
+    ...
+     8675.385838 |   0)               |    do_vfs_ioctl() {
+     8675.385839 |   0)               |      snd_pcm_capture_ioctl() {
+     8675.385839 |   0)               |        snd_pcm_capture_ioctl1() {
+     8675.385840 |   0)   0.703 us    |          _cond_resched();
+     8675.385842 |   0)               |          copy_from_user() {
+     8675.385843 |   0)               |            _copy_from_user() {
+     8675.385843 |   0)   0.636 us    |              _cond_resched();
+     8675.385844 |   0)   0.703 us    |              __copy_from_user_ll();
+     8675.385846 |   0)   3.207 us    |            }
+     8675.385846 |   0)   4.505 us    |          }
+     8675.385847 |   0)               |          snd_pcm_lib_read() {
+     8675.385848 |   0)               |            snd_pcm_lib_read1() {
+     8675.385848 |   0)   0.691 us    |              _raw_read_lock_irq();
+     8675.385850 |   0)   0.691 us    |              _raw_spin_lock();
+     8675.385851 |   0)               |              snd_pcm_update_hw_ptr() {
+     8675.385852 |   0)               |                snd_pcm_update_hw_ptr0() {
+     8675.385853 |   0)               |                  azx_pcm_pointer() {
+     8675.385853 |   0)   0.871 us    |                    azx_get_position();
+     8675.385856 |   0)               |                    /* _pointer: 41 (1) a:33 h:32 */
+     8675.385857 |   0)   4.090 us    |                  }
+     8675.385857 |   0)   0.786 us    |                  snd_pcm_update_state();
+     8675.385859 |   0)   7.111 us    |                }
+     8675.385859 |   0)   8.474 us    |              }
+    ....
+     8675.385636 |   0)   ==========> |
+     8675.385636 |   0)               |    do_IRQ() {
+    ...
+     8675.385661 |   0)               |          handle_IRQ_event() {
+     8675.385661 |   0)               |            azx_interrupt() {
+     8675.385662 |   0)   0.679 us    |              _raw_spin_lock();
+     8675.385666 |   0)               |              azx_position_ok() {
+     8675.385667 |   0)   0.859 us    |                azx_get_position();
+     8675.385669 |   0)   3.459 us    |              }
+     8675.385670 |   0)               |              snd_pcm_period_elapsed() {
+     8675.385671 |   0)   0.727 us    |                _raw_read_lock_irqsave();
+     8675.385672 |   0)   0.678 us    |                _raw_spin_lock();
+     8675.385673 |   0)               |                snd_pcm_update_hw_ptr0() {
+     8675.385674 |   0)               |                  azx_pcm_pointer() {
+     8675.385675 |   0)   0.691 us    |                    azx_get_position();
+     8675.385677 |   0)               |                    /* _pointer: 33 (1) a:9 h:9 */
+     8675.385678 |   0)   4.330 us    |                  }
+     8675.385679 |   0)               |                  snd_pcm_update_state() {
+    ...
+
+While here it is the entry and exit of kernel functions which is being logged (traced), it is also possible to write data into the log directly from kernel modules, using the `trace_printk` function - that is what both drivers use to log the state in their `_pointer` function. It is also possible to both write in the trace from userspace, by writing to `/sys/kernel/debug/tracing/trace_marker` - and to start/stop the tracing altogether. The `captmini.c` program does both of these things: enabling tracing only for the duration of the two `snd_pcm_readi` commands - and writing a "marker" string right before userspace gets to execute each of the `snd_pcm_readi`.
+
+Note that every line is timestamped - however, only the function exits have a duration. While this is excellent for clear and direct human observation, it turns out to be somewhat problematic if we intend to plot this data. For use in `gnuplot`, it would be much easier if each function is listed with its entry timestamp, duration and nesting level, on a single line. Also, note that the `==========>` in the log represents an interrupt entry (exits are logged too).
+
+An initial attempt to parse directly the `ftrace` output as above, is archived as `__traceFGLogfile2Csv.py` in this directory. One quickly realizes, that when reading from the trace file, it is quite often one gets unmatched closing brackets at the start of a trace, and unmatched opening brackets at the end of a trace - which gets especially tricky if a task gets switched in the meantime, which can change the nesting levels in mid-run. This has been discussed in a proposed patch from 2009, [http://lkml.indiana.edu/hypermail/linux/kernel/0912.1/01111.html "Linux-Kernel Archive: Re: [PATCH 2/4] ftrace - add function_duration tracer"], which was not accepted. (The thread also refers to a similar Python parsing script http://elinux.org/images/d/d9/Ftd.txt ).
+
+The approach taken here, is to use the `trace-cmd` program, which is intended as a command-line front-end user interface to `ftrace`. First, `trace-cmd` allows for the trace to be obtained in binary format (the `.dat` files in the capture directories). Then, `trace-cmd` can read this binary format, and generate a plain-text representation just like the trace above. Finally, newer `trace-cmd` allows for a plugin architecture (v.1.0.3 doesn't have it; v.2.2.0, used here, does).
+
+Here a new plugin for `trace-cmd` 2.2.0 was coded, provided as `trace-cmd-exitprint.patch`. This plugin simply deletes everything from a function entry trace line, and puts both the duration and the entry timestamp at function exits. This simplifies parsing enormously - and the parser script performing this is given as `traceFGTXLogfile2Csv.py`. However, `trace-cmd` on this platform has one problem - it cannot retrieve the data printed via `trace_printk` (in this case, the data printed from the driver `_pointer` functions).
+
+That is why `traceFGTXLogfile2Csv.py` collects both the binary form of a trace (and its text representation) via `trace-cmd` - and the default plain-text form from `/sys/kernel/debug/tracing/trace`. It then uses data from both, to generate a .csv file - where each .csv line represents a function logged in the trace, e.g.:
+
+    ...
+    0.000063,1878.965061,0,captmini,15337,0.001135324,4,do_vfs_ioctl(),2,,,
+    0.000065,1878.965063,1,rsyslogd,591,0.000001135,4,_cond_resched();,0,,,
+    0.000065,1878.965063,0,captmini,15337,0.001133114,4,snd_pcm_capture_ioctl(),4,,,
+    0.000066,1878.965064,0,captmini,15337,0.001131096,4,snd_pcm_capture_ioctl1(),6,,,
+    0.000067,1878.965065,1,rsyslogd,591,0.000000985,4,_raw_spin_lock_irq();,0,,,
+    0.000068,1878.965066,0,captmini,15337,0.000000991,4,_cond_resched();,8,,,
+    0.000069,1878.965067,1,rsyslogd,591,0.000000973,4,_cond_resched();,0,,,
+    0.000069,1878.965067,0,captmini,15337,0.000006654,4,copy_from_user(),8,,,
+    ....
+
+With this format, it is very easy to use for example `awk`, to select only those functions that are of interest - while filtering out the enormous ammount of information, otherwise given by `ftrace`; with the added benefit of security in still having the complete traces (should one need to filter otherwise, for a different analysis).
+
+
+###### Details about plot images
+
+The .csv format, as given above, is plotted by the `gnuplot` script, provided as `traceFGTXLogGraph.gp`.
+
+This script generates one plot per .csv file, where each .csv is a log of a run of `captmini.c` with one of the drivers; the end result being a .pdf plot (found as `trace-dummy.csv_.pdf` and `trace-hda-intel.csv_.pdf` in the capture directories). Each such plot features:
+
+* Three time axes: "real" time, "card" time and "pc" time
+** The "real" time axis is drawn to have unit of time == 1; the "card" time is taken to be "faster" than "real" time (its time unit is smaller than the "real" time axis unit); the "pc" time is taken to be "slower" than "real" time (its time unit is larger than the "real" time axis unit)
+** This is done solely to illustrate the clock domain mismatch, naturally expected from real devices with individual crystal oscillators;
+
+
+* the "real" time axis is an assumed clock of an "independent observer"; thus the "real" time axis has no data plotted on it
+
+* The "card" time is used to visualize where, approximately, an actual interrupt from `snd_hda_intel` would have occured (based on the interrupt entry, within which the `azx_interrupt` driver function is called - but drawn the "card" time domain). For the dummy driver, it has no meaning - however, it is reused to show where the `snd_dummy` timer functions caused a softirq entry (based on the interrupt entry, within which the `dummy_hrtimer_callback` driver function is called). This is visualised with a red impulse.
+** Additionally, from the first such red impulse, a gray line is drawn which is 726 microsecond long, terminated with a gray impulse - and repeated. This is used to visualize how the period of the interrupts (hardware or timer) compares to the expected ALSA pcm period (especially obvious in the .gif animation)
+
+* The "pc" time is used to visualize data from the trace log (.csv file):
+** It's space is divided in three parts: first for CPU0 kernel functions, second for CPU1 kernel functions (these being separated by a magenta line); and the third used both for userspace (`snd_pcm_readi`) marker, and for plotting the data supplied by `_pointer` driver functions (separated by a blue line)
+** Functions of interest are selected through `awk` directly in the gnuplot script, in three general categories shown in different colors: ALSA (`snd_pcm...`) kernel functions (coral color); driver kernel functions (e.g. `azx_interrupt` for hda-inter, or `dummy_hrtimer_callback` for dummy; crimson color) and other kernel functions (red color). These functions are shown with a colored line, indicating their start and duration, and with their respective indent.
+** The `finish_task_switch` function is taken to represent a kernel task switch, and is rendered without indent, and with an orange background, in the area of the CPU where it occured
+** The `_pointer` printout is shown without an indent, in violet color, in the area of the CPU where it occured
+** Interrupt entries/exits are shown as a thick red line, in the area of the CPU where it occured
+** the `snd_pcm_readi` marker is shown in blue, stretching through the kernel areas and up to the userspace area
+** The numeric values (in frames) of _pointer, appl_ptr and hw_ptr are also plotted in the userspace area
+
+
+Note that the each .png image in `_cappics` is an annotated montage of a `trace-dummy.csv_.pdf` plot (shown in upper half), and `trace-hda-intel.csv_.pdf` plot (shown in bottom half of the image) from a respective capture.
+
+
+Finally, `montage-dummy.pdf` and `montage-hda-intel.pdf` are manually annotated versions of `captures-2013-08-02-23-45-20/trace-dummy.csv_.pdf` and `captures-2013-08-02-23-45-20/trace-hda-intel.csv_.pdf`, where:
+
+* There is a header illustration, which is a schematic representation of a CPU with a DMA card, based on http://members.tripod.com/~Eagle_Planet/images/DMA_Block_Diagram.gif (from http://members.tripod.com/~Eagle_Planet/dma_controller.html)
+* The initial, script-generated `.csv_.pdf` is rotated 90 degrees clockwise, and placed below the header, so that the clock domains match the areas of the header illustration
+* Additional overlaid thick arrows emphasize the pcm_start (gray), and the occurence of userspace `snd_pcm_readi` (and its ioctl kernel handler - blue) vs. timed/timing interrupts (dark red - with opposite direction for the `dummy` interrupt in respect to the `hda-intel` case);
+* A row of 16 squares is used to represent 64 frames of both: assumed "card memory" buffer on the (hda-intel) soundcard; and the ALSA kernel driver buffer `substream->runtime->dma_area` (NB: used only by `dummy`; `hda-intel` manages its own `area`) on the PC. They are filled to indicate the approximate buffer position at a given time (for the card case, this is assumed and interpolated; for the `dma_area` case, the filling is according to the position specified by `_pointer`; there are as many such rows close to `_pointer` as space on the diagram allows).
+* For the `dummy` case, it is clearly indicated that the "card" time is not applicable ( given that the virtual driver doesn't communicate with any peripheral hardware).
+
+(edit): see `capttest_03.gif`, for the performance of the capture operation using the original (for this kernel version) `dummy` driver.
+
+
+--------------
+
+## PLAYBACK ##
+
+There are now also files, that allow for the playback soundcard operation to be captured - just like the capture operation was acquired previously; there are also corresponding data and visualisations in this folder.
+
+* `playmini.c` - like captmini.c, it executes just two `snd_pcm_writei` commands; it is this executable that is being analyzed. It contains three functions:
+** `doPlayback_v01()` - starting from just two `snd_pcm_writei` calls, one can realize that one obtains a shorter analysis than expected; after that, #define switches are added to improve that, which doesn't really work (see `capttest_04_shp.gif`; "shp" standing for "short play", the rest of the suffixes refer to the #defines being enabled)
+** `doPlayback_v02()` - an attempt is made to "start up" the stream with `snd_pcm_start` (which doesn't really improve things), and to read the stream status with `snd_pcm_avail_delay`; it is realized that adding `fprintf`'s adds a delay which effects things - and those are then replaced with `nanosleep`. This function was used in conjunction with `playdelay.sh` (see below)
+** `doPlayback_v03()` - a cleaned-up version, only with the two `snd_pcm_writei` commands, a `nanosleep` with a fixed NSDLY in-between, and a `snd_pcm_drain` at end, before the kernel debug acquisition stops.
+
+The `playmini.c` is set to `doPlayback_v03()`, which was used to obtain most of the other playback operation debug captures/acquisitions:
+
+* `capttest_04.gif`: captures where both `hda-intel` and the modified `dummy-patest` driver complete with success
+* `capttest_04_bdum.gif` - captures where `hda-intel` driver succeeds, and modified `dummy-patest` driver fails
+* `capttest_04_bhda.gif` - captures where `hda-intel` driver fails, and modified `dummy-patest` driver succeeds
+* `capttest_04_or.gif`: captures where both `hda-intel` and the original `dummy` driver complete with success
+* `capttest_04_or_bdum.gif`: captures where `hda-intel` driver succeeds, and the original `dummy` driver fails
+
+The source images for these `.gif`s are given in the `_cappics04/` folder; .pdf files only, to save on disk space - you can generate .png images from these .pdf's using, say, ImageMagick's `convert`:
+
+    convert -density 150 _cappics04/$ix-trace-both.pdf -geometry +0+0 ./$ix-both.png ;
+
+The source data for these images is given in the compressed file `captures-alsa-playtest-04.tar.gz`; only the .csv files from the kernel debug acquisitions are provided.
+
+
+One of these playback acquisitions (`captures-2013-08-11-05-15-21` folder in the compressed file `captures-alsa-playtest-04.tar.gz`; also shown on `_cappics_04/captures-2013-08-11-05-15-21-both.png`) has been chosen to be represented on a manually annotated montage drawing, named `montage-dummy-p.pdf` and `montage-hda-intel-p.pdf` (.png versions of these are also available). One can, thus, compare these to their capture counterparts (`montage-dummy.pdf` and `montage-hda-intel.pdf`) - and thus realize the difference of playback operation, versus the capture operation, in ALSA (for these respective drivers).
+
+
+The `run-alsa-capttest.sh` script is modified - you have to explicitly choose in it, whether you want to perform an ALSA capture/record (`captmini`) - or playback (`playmini`) - operation test/acquisition; `traceFGTXLogGraph.gp` and `traceFGTXLogfile2Csv.py` have also been modified, to support either of these tests.
+
+Finally, there is a script, `playdelay.sh` - it compiles `playmini.c` with different NSDLY settings for the `nanosleep` delay; and then runs `playmini.c` a 100 times per setting; and records the results:
+* When using the `doPlayback_v02()` function, the `avail` stream property is also captured - and the number of failures per 100 runs, and the mean and median of the `avail` property, versus the delay, is plotted on `playdelay-hda-intel_v02.png`
+* When using the `doPlayback_v03()` function, only the number of errors per 100 runs is available - and this, versus the delay, is plotted on `playdelay-hda-intel_v03.png`
+
+The source logs for these images are also included in in the compressed file `captures-alsa-playtest-04.tar.gz`. These diagrams show that there is a "sweet spot" for the `nanosleep` between the two `snd_pcm_writei` commands, where the number of errors is minimal - which "moves" depending on whether `snd_pcm_avail_delay` was used (280 μs) or not (310 μs) [which implies that `snd_pcm_avail_delay` costs about 30 μs on this platform]. All the acquisitions, then, (apart from those suffixed with `shp*`) have been obtained with the `nanosleep` value of 310 μs.
+
+
+--------------
+
+## FULL-DUPLEX: latency.c ##
+
+There are now also files in this directory (`alsa-capttest`), that allow for a full-duplex soundcard operation to be captured as debug log data; there are also corresponding data and visualisations in this folder.
+
+The basis of performing the test(s) is the `latency.c` program, distributed as part of ` alsa-lib`; for more, see the page:
+
+    http://www.alsa-project.org/main/index.php/Test_latency.c
+
+
+In here, a modified version is used, present in this directory as `latency-mod.c`. This version prints some extra information, and adds some command line switches - like `--looplimit` (allows for setting test duration in frames, as opposed to seconds), `polltime` (allows setting of wait time in ms, if polling is used), or `--nosched` (allows for skipping of scheduler setting, even if the program is called with `sudo`).
+
+The debug acquisitions are obtained through use of `latency-mod.c` as a user-space program -  and the `hda-intel` and `dummy-2.6.32-patest.c` drivers, patched as described previously. Basically, the debug acquisition algorithms expect that a `trace_printk` is present in the drivers' `.pointer` function - which allows for analysis of the original `dummy.c` driver (here, version 2.6.32), and potentially other drivers, as long as they include this `trace_printk` stanza in the .pointer:
+
+    trace_printk("_pointer: %d (%d) a:%lu h:%lu d:%ld\n", pos, substream->stream, substream->runtime->control->appl_ptr, substream->runtime->status->hw_ptr, substream->runtime->delay);
+
+However, since the debug acquisition algorithms also now expect `substream->runtime->delay` to be present (which turns out to be 0 in all the acquisitions provided here, for both `hda-intel` and either version of `dummy` drivers), this change needs to be incorporated in the drivers as patched above. Those changes are shown in the `latency-drv.patch` file in this directory.
+
+The file `captures-alsa-captlat.tar.xz` contains the raw text data of debug log acquisitions, stored in 39 directories, one per test - excluding the `.dat` binary trace files (to save on space), and the `.pdf` renderings (which are otherwise provided uncompressed in the `_cappics05/` subdirectory).
+
+
+To obtain debug log acquisition of a test:
+
+First, make cure that you have built `latency-mod.c`. The easiest is, probably, to build `alsa-lib` somewhere on a disk drive first, and then do:
+
+    cd /path/to/alsa-lib/test
+    mv latency.c latency_orig.c                           # backup original `latency.c`
+    ln -s /path/to/alsa-capttest/latency-mod.c latency.c  # symlink `latency-mod.c` as `latency`
+    make latency                                          # build `latency-mod.c`
+
+Then, a patched version of the `hda-intel` driver is built and loaded as card 0, and a patched version of `dummy` driver (a patched version of either the original `dummy.c`, or the "modded" `dummy-2.6.32-patest.c` - you have to decide manually by uncommenting the respective line in the `Makefile` in this directory, which builds both drivers) is built and loaded as card 1.
+
+Now, you can edit the main test script, included as `run-alsa-lattest.sh` in this directory. You should edit `ALBTPATH` variable to point to the absolute path of the `alsa-lib/test` directory (where the `latency` program is stored), and the `TRACECMDP` variable to point to the absolute path of the `trace-cmd` executable - patched as described above. Then, you can edit the `LAT*` (`LATLF`, `LATDF`, etc) and related variables, which are used to compose the `latency` command line to be called. Finally, you can edit the `WCOND` variable, using which you can have a test acquisition repeat, until some condition (such as no XRUNs present) is satisfied. Note that this script can also handle the driver building and loading if you choose so - see the `run-alsa-lattest.sh` script for more verbose comments/instructions.
+
+
+Once the `run-alsa-lattest.sh` script is prepared like that, you can obtain a debug acquisition of a single `latency-mod.c` run using a single card, simply by calling:
+
+    bash run-alsa-lattest.sh
+
+As some of the commands used in that script run under `sudo` (administrative privileges), you may also be asked for a password. The result should be a directory named like:
+
+    captlat-2013-09-02-23-15-10-hda-128-256-np-0-ns-nb/
+
+Here, after the timestamp:
+
+* `hda` (or `dum`) identifies the card device (driver) used,
+* 128 is the `-m` == `-M` latency parameter (in frames),
+* 256 is the `--looplimit` duration parameter (in frames);
+* `(y/n)p` determines usage of polling,
+* the next number is the `--polltime` parameter (if polling is used),
+* `(y/n)s` determines if Round Robin scheduling is enforced via `--nosched` parameter, and
+* `(y/n)b` determines if blocking is used via the `--block` parameter
+
+... where all these are options of `latency-mod.c` (as specified in the `run-alsa-lattest.sh`). Note that none of the logs in `captures-alsa-captlat.tar.xz` enforce scheduling (i.e., `--nosched` is used for all of them).
+
+Since the code development was running in parallel with debug log acquisitions in `captures-alsa-captlat.tar.xz`, these log contents are not necessarily consistent between each other. For instance, `latency-mod.c` now outputs an array with the results of each call to `writebuf` and `readbuf` in the array - this allows for determining which call has failed in case of an XRUN. At end of a run, `latency-mod.c` typically outputs "*** frames = XX ***" for playback and capture; so if XX/YY are these values for playback/capture - then typical values for `dummy` and this array printout would be (for the `latency` settings of the provided debug logs):
+
+* 384/256   OK: [rd wr] 0: [64 64] 1: [64 64]  2: [64 64] 3: [64 64] ...
+* 128/0   xrun: [rd wr] 0: [-32 0] 1: [0 0]    2: [0 0]   3: [0 0]   ...
+* 192/74  xrun: [rd wr] 0: [64 64] 1: [-32 0]  2: [0 0]   3: [0 0]   ... (also 192/75, 192/64)
+* 192/128 xrun: [rd wr] 0: [64 64] 1: [64 -32] 2: [0 0]   3: [0 0]   ...
+* 320/199 xrun: [rd wr] 0: [64 64] 1: [64 64]  2: [64 64] 3: [-32 0] ...
+
+... so we can tell that for an XRUN which ends with 128 playback and 0 capture frames, it is the first `readbuf` that failed. However, this kind of printout is not present in most of the logs in `captures-alsa-captlat.tar.xz`, as it was a late development.
+
+
+The `run-alsa-lattest.sh` script also uses:
+
+* the `traceFGLatLogfile2Csv.py` Python script, which parses the kernel debug traces, and generates a `.csv` file; and
+* the `traceFGLatLogGraph.gp` Gnuplot script, which generates a PDF plot based on the `.csv` file.
+
+Note that the gnuplot script may sometimes give a verbose "warning: Skipping data file with no valid points", in case a type of event (like finish_task_switch) is not found in the .csv log; however, all other parts which are present will still be plotted.
+
+The PDF files in the `_cappics05` are the result of such runs; note that the `dum` specifier there refers to "original" `dummy` driver, while the `duM` have been manually renamed, to identify the use of the "modded" `dummy-patest` driver (the `-f` at end of the last two, `duM*-f*.pdf`, means that those are failed runs); the same convention is used for folder names in `captures-alsa-captlat.tar.xz` too. By default, these PDFs are "landscape" (horizontally) oriented; and the visualised sections are slightly different than what was described previously:
+
+* Bottommost there is the "Real Time" axis, which is just shown for reference
+
+* Above that is the "Card Time" axis, which shows *interpolated* card IRQs:
+** Violet "cardIRQ?" means that a respective audio driver interrupt handler has been detected within a "marker IRQ" (in the debug trace), but without a respective .pointer call
+** Blue "cardIRQ?" means that an audio driver interrupt handler has been detected, along with a .pointer call for the capture direction
+** Red "cardIRQ?" means that an audio driver interrupt handler has been detected, along with a .pointer call for the playback direction
+
+* Above that is the "PC Time" axis, separated in two sections:
+** Bottom section is the "kernel" section, showing selected kernel functions, with duration and nesting, split in CPU0 (bottom) and CPU1 (top) subsections
+** Above that is the "userspace" section, which shows selected *interpolated* user-space ALSA calls, along with values of `_pointer`, `hw_ptr` and `appl_ptr` - split again in two subsections: bottom for playback direction, and above that for capture direction
+
+
+Besides `snd_pcm_readi` and `snd_pcm_writei`, which are obviously attributed to either capture or playback direction - other ALSA commands, like `snd_pcm_status`, can be called with a playback or capture file handle as argument; that causes them to appear in the context of a `snd_pcm_capture_ioctl` or `snd_pcm_playback_ioctl` (themselves within a `sys_ioctl`), which allows the algorithms to determine a direction for those commands as well. This organization also allows the `traceFGLatLogfile2Csv.py` to extrapolate a respective user-space command, by finding the `sys_ioctl` call, and inserting a "user-space" command entry in the .csv file, offset some time (here 5 μs) earlier than the `sys_ioctl` call, which is then visualized in the "userspace" section of the plot. Otherwise, the color-coding of these plots is the same as for the playback/capture plots described earlier.
+
+Note that the usual "cardIRQ?" interpolation goes like:
+
+* Find a "marker IRQ" (the "==========>"/"<=.." in the acquired trace debug log)
+* If the "marker IRQ" contains an audio driver interrupt handler, mark it as -1 (violet)
+* If the "marker IRQ" with audio driver IRQ handler contains a _pointer, mark it as 0 or 1 (playback/red or capture/blue, respectively)
+
+... and if that is satisfied, then the "marker IRQ" (or "mIRQ") start is taken to represent the assumed time of issuing of a "card IRQ" from the hardware (which then is rendered a little earlier, provided that the "Card Time" axis is taken to be "faster" than the "PC time" axis) - and as such, this is used to simulate hardware card interrupt requests (which we otherwise don't really know) on the plot.
+
+However, that assumes that we always have a nesting of the type `markerIRQ{ audio_IRQ{ _pointer } }`; but, that turns out only to be the most common case for `hda-intel`. In fact, the most common cases for `hda-intel` vs. `dummy` are:
+
+    hda: mIRQ { azx_interrupt (-1) { snd_pcm_period_elapsed { _pointer (0,1) } } } } x 2
+    dum: mIRQ { dhrt_callback (-1) x2 ; hrtimer_pcm_elapsed { snd_pcm_period_elapsed { _pointer (0,1) } } x2 }
+
+... that is, unlike `hda-intel`, which calls each `_pointer` in its own "marker IRQ" - `dummy` calls the two (playback and capture) `_pointer`s in the context of a *single* "marker IRQ"! The `traceFGLatLogfile2Csv.py` attempts to handle that by assigning the first `_pointer` that occurs, to the start of the "marker IRQ" - and the second `_pointer` to the start of the first "interrupt handler" (for dummy, that being the timer function `dummy_hrtimer_callback`). Additionally, sometimes (for either driver) mIRQs can be nested - where additionally sometimes the outer mIRQ contains the `_pointers`, and sometimer the inner one - `traceFGLatLogfile2Csv.py` also attempts to handle that. As such, there can be no guarantee that the visualized "cardIRQs" are an accurate simulation of an interrupt request that a card hardware would have issued.
+
+
+These default "horizontal" PDF plots, are then used as the source images, to generate the `captlat-*.gif` animated GIF files, included in this directory - by using ImageMagick's `convert`. For instance, you could recreate one of these animated GIFs by using:
+
+    convert -density 120 -resize 900x -delay 10 -loop 0 _cappics05/captlat-*hda*np-0-ns-nb*.pdf captlat-hda-128-256-np-0-ns-nb.gif
+
+
+However, there is one more visualization option, allowed by the `traceFGLatLogGraph.gp` - which allows for rendering of the plot, rotated in "landscape" or vertical orientation, as animation frames. The Perl script, included in this directory, called `lat-anim.pl` is used for this purpose. As an example, if the directories in `captures-alsa-captlat.tar.xz` are unpacked, animation frames for one of the debug acquisition directories there (say, `captlat-2013-09-02-23-30-38-hda-128-256-np-0-ns-yb/`) can be obtained by calling:
+
+    perl lat-anim.pl -i captlat-2013-09-02-23-30-38-hda-128-256-np-0-ns-yb
+
+The result of this process, is the creation of a subdirectory called `anfr` inside the input directory, which contains each of the rendered frames as `.pdf` (the output of the Gnuplot `traceFGLatLogGraph.gp` script) and as `.png` (result of converting the `.pdf` using an additional call to ImageMagick `convert`); the `.png` images being 800x600 in size by default.
+
+Essentially, the `lat-anim.pl` script specifies a "time window" to be rendered, and then takes the entire debug log acquisition; and "resamples" it at half the sampling period - in this case, '(1/44100)/2' = 11.34 μs - as a timestep; generating an image (plot) for each increase of the timestep until the end of the debug log. Note that `lat-anim.pl` also tries to utilize all CPUs present on a machine - but even with that, on the development platform (2 CPUs), it takes about 10 minutes to render 100 frames. So, given a typical duration captured on a debug log is about 7 ms; which results with anywhere between 590 and 690 frames per debug log - this amounts to about an hour to render all frames for one debug log (on the development platform)!
+
+Each animation frame is essentially the same as the "horizontal" PDF plot, however rotated clockwise; centered around the "current time"/timestep (expressed on the card time axis); with the "half range" (here 300 μs) before and after the "current time" shown. In addition to the usual elements, there are:
+
+* Overlays over the "playback" and "capture" lane in the "userspace" section (now rightmost):
+** the playback overlay (left block), indicated with red "P", shows `appl_ptr` (darkblue) on top, `_pointer` (violet) on bottom, and `hw_ptr` (darkred) below it (runtime-delay in top left corner)
+** the capture overlay (right block), indicated with blue "C", shows  `_pointer` (violet) on top, `hw_ptr` (darkred) below it, and `appl_ptr` (darkblue) on bottom (runtime-delay in bottom left corner)
+* Overlay over the "Card Time" lane (now to the left):
+** playback buffer on top block, indicated with red "P", shows interpolated playback counter (red) on top, and cumulative `_pointer` values (violet) on bottom
+** capture buffer below it, indicated with blue "C", shows cumulative `_pointer` values (violet) on top, and interpolated capture counter (red) on bottom
+
+The arrangement of the pointers in the "userspace" section overlay is as noted, because:
+
+* For playback, `appl_ptr` changes first - `_pointer` and then `hw_ptr` try to follow it
+* For capture, `_pointer` changes first - `hw_ptr` and then `appl_ptr` try to follow it
+
+... and in that way, the "primary" change in either direction is shown on top; and the dependent ones below it. For the "Card Time" overlay, the `lat-anim.pl` with `traceFGLatLogGraph.gp` basically try to find the first "proper" "cardIRQ?" for playback and capture; and then they take the value of their respective `hw_ptr` at that time, as the "start" of the respective interpolated counters.
+
+From that point on, the interpolated counters are increased as per the timestep and sampling rate, synchronously for both playback and capture - all other counters are updated when the .pointer function hits (for whatever reason; driver or userspace). Note that since the values of `hw_ptr` are assigned to the "mIRQ" a little earlier, the interpolated counters start off a few frames in advance of `hw_ptr`. The violet "Δpc" in the top left corner of the "Card Time" overlay shows the difference between the playback and capture `_pointer`s at the current time; while the black "Δpc" shows the difference between the playback and capture interpolated counters (and it typically stays the same throughout the animation, once both interpolated counters are started).
+
+
+Once the `.png` animation frames are present in the `anfr` subdirectory, `ffmpeg` can be used to create an animation video/movie from them. For instance, there are four `captlat-*.mpg` video files provided in this directory - as an example, one of them was generated using:
+
+    ffmpeg -f image2 -i captlat-2013-09-11-02-21-08-duM-128-256-np-0-ns-yb/anfr/trace-dummy.csv_%05d.png captlat-2013-09-11-02-21-08-duM-128-256-np-0-ns-yb.mpg
+
+Such a `.mpg` file is very heavily compressed, resulting with a relatively small size - but also artefacts, which make all the text and numbers unreadable. To browse while being able to read (at least some of) the text and numbers, as one, you can try using the image viewer `feh` to browse through the `.png` images directly; for instance:
+
+    feh captlat-2013-09-11-02-21-08-duM-128-256-np-0-ns-yb/anfr/*.png &
+
+Since `feh` is quite fast, you could try holding the left/right arrow keys, which may result with a relatively smooth animation - but `feh` is especially convenient for stepping through the frames at leisure.
+
+On the other hand, you can try to generate a video file with (almost) no compression, e.g. by using `ffvhuff` video codec:
+
+    ffmpeg -i captlat-2013-09-11-02-21-08-duM-128-256-np-0-ns-yb/anfr/trace-dummy.csv_%05d.png -vcodec ffvhuff captlat-2013-09-11-02-21-08-duM-128-256-np-0-ns-yb.avi
+
+This will create an `.avi` file approximately 180-200 MB in size; on the development platform, I could view these relatively (but not always) smoothly with `vlc`:
+
+    vlc --repeat --rate 1.0 captlat-2013-09-11-02-21-08-duM-128-256-np-0-ns-yb.avi
+
+... with a speed-up of maximum 3.0 (via `--rate 3.0`) [[note also, that in `vlc`, `--repeat` loops a single video, `--loop` repeats a playlist of videos]].
+
+////
+
+There is now also a script, `comparecsv.pl`, which allows for a side-by-side comparison of two .csv acquisitions. For instance, it can be called on these .csv files included in the `captures-alsa-captlat.tar.xz`:
+
+    perl comparecsv.pl \
+      -i captlat-2013-09-11-00-37-48-duM-128-256-np-0-ns-yb/trace-dummy.csv -o 1580 \
+      -i captlat-2013-09-11-13-46-43-duM-128-256-np-0-ns-yb-f/trace-dummy.csv -o 1054 \
+    -l 844 > compcsv.txt
+
+This will compare the two input files, the first starting at offset of 1580 lines and the second starting at offset 1054 lines - for a duration of 844 lines. The `compcsv.txt` will contain a plain-text side-by-side printout, where each line includes the timestamp - and the process and the kernel command, indented depending on the CPU where they occur; the first file will be printed at the left hand side, and the second at the right hand side. Because of this, it may be a bit difficult to read this file properly - unless a fixed width font with a very small size is used in the text editor/viewer.
+
+That is why, `comparecsv.pl`, besides the `compcsv.txt` file - will also output two additional text files: `_L.txt` and `_R.txt` - which represent the first and the second input file, respectively; but which include only the kernel commands, indented depending on the CPU where they occur. This makes them somewhat easier to use in a side-by-side diff, for visual comparison of differences. For instance, you could use the program `meld` directly on these files:
+
+    meld _L.txt _R.txt
+
+... which will render the side-by-side difference in `meld`'s GUI. On the other, you could also use the program `diff2html.py` to render a visual side-by-side printout in HTML:
+
+    diff -Naur -U 100 _L.txt _R.txt | python diff2html.py > compcsvLR.html
+
+Note here the argument `-U 100` forces 100 lines of unified diff context; however, since in this particular example, there are no contiguous regions of same lines >= 100; the effect is outputting the entire content of 844 lines as a single hunk by `diff`. This is necessarry so we obtain the comparison on the entirety of input files - otherwise `diff` will insert discontinuities. Note that, depending on the font size, lines may break in your HTML browser - in which case you'd have to make the font smaller in the browser.
+
+Because all of these output files take away certain information from the complete `.csv` log, the need to manually cross-reference data from the comparisons and the `.csv` (or other) acquisitions is implied.
+
+The files `compcsv.txt`, `_L.txt`. `_R.txt` and `compcsvLR.html` as result of the above example commands, have been included in the `_cappics05` subfolder in this directory.
+
+----
+
+edit 21 oct 2013:
+
+There have been some changes in the files:
+
+* run-alsa-lattest.sh (added more env variable handling for conditional operation)
+* traceFGLatLogfile2Csv.py (added cutatfunc command line argument; few changes in algorithm)
+* latency-mod.c (fix of rdstat/wrstat)
+
+... however, they should still behave the same as outlined in this Readme.
+
+See also their use in:
+
+    http://sdaaubckp.sourceforge.net/post/alsa-patest-duplex/fix/
+
